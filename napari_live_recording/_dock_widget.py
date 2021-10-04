@@ -1,6 +1,6 @@
 # Plugin imports
 from napari._qt.qthreading import thread_worker
-from PyQt5.QtWidgets import QComboBox
+from PyQt5.QtWidgets import QComboBox, QLabel, QSpinBox
 from napari_plugin_engine import napari_hook_implementation
 import numpy as np
 from qtpy.QtWidgets import QWidget, QGridLayout, QPushButton
@@ -171,41 +171,35 @@ def acquire(camera : ICamera):
         return None
     return camera.capture_image()
 
-class LiveRecordingWidget(QWidget):
+class LiveRecording(QWidget):
     def __init__(self, napari_viewer) -> None:
         super().__init__()
         self.viewer = napari_viewer
         self.camera = None
         self.live_worker = None
 
-        self.camera_connect_button = QPushButton("Connect camera")
+        self.camera_connect_button = QPushButton("Connect camera", self)
         self.camera_connect_button.clicked.connect(self._on_connect_clicked)
         self.camera_connect_button.setEnabled(False)
         self.is_connect = False
 
-        self.camera_live_button = QPushButton("Start live recording")
+        self.camera_live_button = QPushButton("Start live recording", self)
         self.camera_live_button.clicked.connect(self._on_live_clicked)
         self.camera_live_button.setEnabled(False)
         self.is_live = False
 
-        self.camera_selection_combobox = QComboBox()
+        self.camera_selection_combobox = QComboBox(self)
         self.camera_selection_combobox.addItem("Select camera")
-
         self.camera_selection_combobox.addItems(list(supported_cameras.keys()))
         self.camera_selection_combobox.currentIndexChanged.connect(self._on_cam_type_changed)
+        
+        self.camera_exposure_label  = None
+        self.camera_exposure_widget = None
 
         self.setLayout(QGridLayout(self))
         self.layout().addWidget(self.camera_selection_combobox, 0, 0)
         self.layout().addWidget(self.camera_connect_button, 1, 0)
         self.layout().addWidget(self.camera_live_button, 1, 1)
-
-    def _update_layer(self, data):
-        for name, image in data.items():
-            if image is not None:
-                try:
-                    self.viewer.layers[name].data = image
-                except KeyError: # add layer if not existing
-                    self.viewer.add_image(image, name = "Live recording")
     
     def _on_cam_type_changed(self, index):
         self.camera_connect_button.setEnabled(bool(index))
@@ -213,9 +207,40 @@ class LiveRecordingWidget(QWidget):
         try: 
             camera_type = supported_cameras[camera_name]
             self.camera = camera_type() # constructs object of class specified by camera_name
+            self.camera_exposure_label = QLabel("Exposure", self)
+            self.layout().addWidget(self.camera_exposure_label, 2, 0)
+            if isinstance(self.camera, CameraOpenCV):
+                self._add_opencv_exposure()
+            else:
+                self._add_camera_exposure()
         except KeyError:
-            raise CameraError("Unsupported camera selected")
-                        
+            if index > 0:
+                raise CameraError("Unsupported camera selected")
+            self._delete_exposure_widget()
+            self.layout().removeWidget(self.camera_exposure_label)
+            self.camera_exposure_label.deleteLater()
+            self.camera_exposure_label = None
+    
+    def _delete_exposure_widget(self):
+        if self.camera_exposure_widget is not None:
+            self.layout().removeWidget(self.camera_exposure_widget)
+            self.camera_exposure_widget.deleteLater()
+            self.camera_exposure_widget = None
+
+    def _add_opencv_exposure(self):
+        self._delete_exposure_widget()
+        self.camera_exposure_widget = QComboBox(self)
+        self.camera_exposure_widget.addItems(list(self.camera.exposure_dict.keys()))
+        self.layout().addWidget(self.camera_exposure_widget, 2, 1)
+
+
+    def _add_camera_exposure(self):
+        self._delete_exposure_widget()
+        self.camera_exposure_widget = QSpinBox(self)
+        self.camera_exposure_widget.setMaximum(5000)
+        self.camera_exposure_widget.setMinimum(20)
+        self.camera_exposure_widget.setValue(200)
+        self.layout().addWidget(self.camera_exposure_widget, 2, 1)
     
     def _on_connect_clicked(self):
         if not self.is_connect:
@@ -260,8 +285,9 @@ class LiveRecordingWidget(QWidget):
             self.camera_live_button.setText("Start live recording")
             self.is_live = False
             self.live_worker.quit()
+            del self.live_worker
             self.live_worker = None
 
 @napari_hook_implementation
 def napari_experimental_provide_dock_widget():
-    return [LiveRecordingWidget]
+    return [LiveRecording]
