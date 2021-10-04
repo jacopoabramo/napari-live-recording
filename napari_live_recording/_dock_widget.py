@@ -1,11 +1,9 @@
 # Plugin imports
-from typing import Any
-from napari._qt.qthreading import WorkerBase, WorkerBaseSignals
+from napari._qt.qthreading import thread_worker
 from PyQt5.QtWidgets import QComboBox
 from napari_plugin_engine import napari_hook_implementation
 import numpy as np
 from qtpy.QtWidgets import QWidget, QGridLayout, QPushButton
-from qtpy.QtCore import Signal
 
 # Camera classes import
 from abc import ABC, abstractmethod
@@ -59,7 +57,9 @@ class ICamera(ABC):
 class CameraOpenCV(ICamera):
     def __init__(self) -> None:
         super().__init__()
-        self.video_capture = cv2.VideoCapture(0, cv2.CAP_ANY)
+        self.camera_idx = 0
+        self.camera_api = cv2.CAP_ANY
+        self.camera = None
         self.camera_name = CAM_OPENCV
 
         # Windows platforms support discrete exposure times
@@ -82,21 +82,23 @@ class CameraOpenCV(ICamera):
         }
 
     def __del__(self) -> None:
-        self.video_capture.release()
-        del self.video_capture
+        if self.camera is not None:
+            self.camera.release()
     
     def __str__(self) -> str:
         return CAM_OPENCV
     
     def open_device(self) -> bool:
-        if not self.video_capture.isOpened():
-            return self.video_capture.open(0, cv2.CAP_ANY)
+        if self.camera is None:
+            self.camera = cv2.VideoCapture(self.camera_idx, self.camera_api)
+            return self.camera.isOpened()
+        return self.camera.open(self.camera_idx, self.camera_api)
     
     def close_device(self) -> None:
-        self.video_capture.release()
+        self.camera.release()
     
     def capture_image(self) -> np.array:
-        _ , img = self.video_capture.read()
+        _ , img = self.camera.read()
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         cv2.waitKey(1)
         return img
@@ -104,7 +106,7 @@ class CameraOpenCV(ICamera):
     def set_exposure(self, exposure) -> None:
         if system() == "Windows":
             exposure = self.exposure_dict[exposure]
-        self.video_capture.set(cv2.CAP_PROP_EXPOSURE, exposure)
+        self.camera.set(cv2.CAP_PROP_EXPOSURE, exposure)
 
 class CameraXimea(ICamera):
     def __init__(self) -> None:
@@ -153,41 +155,28 @@ supported_cameras = {
     CAM_XIMEA  : CameraXimea
 }
 
-class LiveWorkerSignals(WorkerBaseSignals):
-    yielded = Signal(object)
+def acquire(camera : ICamera):
+    """
+    Acquires a grayscale image from the selected camera and returns it.
+        
+    Parameters
+    ----------
+        camera (ICamera) : interface camera object
 
-class LiveWorker(WorkerBase):
-    def __init__(self, camera : ICamera) -> None:
-        super().__init__(SignalsClass=LiveWorkerSignals)
-        self.camera = camera
-    
-    def work(self):
-        while not self.abort_requested:
-            yield self.camera.capture_image()
-
-    def _acquire(self):
-        """
-        Acquires a grayscale image from the selected camera and returns it.
-
-        Parameters
-        ----------
-            None
-
-        Returns
-        -------
-            2d numpy array / image
-        """
-        if self.camera is None:
-            return None
-        return self.camera.capture_image()
+    Returns
+    -------
+        2d numpy array / image
+    """
+    if camera is None:
+        return None
+    return camera.capture_image()
 
 class LiveRecordingWidget(QWidget):
     def __init__(self, napari_viewer) -> None:
         super().__init__()
         self.viewer = napari_viewer
         self.camera = None
-        self.live_worker = LiveWorker(self.camera)
-        self.live_worker.yielded.connect(self._update_layer)
+        self.live_worker = None
 
         self.camera_connect_button = QPushButton("Connect camera")
         self.camera_connect_button.clicked.connect(self._on_connect_clicked)
@@ -233,14 +222,36 @@ class LiveRecordingWidget(QWidget):
             if self.camera.open_device():
                 self.camera_connect_button.setText("Disconnect camera")
                 self.is_connect = True
+                self.camera_live_button.setEnabled(True)
             else:
                 raise CameraError(f"Error in opening {self.camera.get_name()}")
         else:
             self.camera_connect_button.setText("Connect camera")
             self.is_connect = False
             self.camera.close_device()
+            self.camera_live_button.setEnabled(False)
 
     def _on_live_clicked(self):
+        
+        # inspired by https://github.com/haesleinhuepf/napari-webcam
+        def update_layer(data):
+                if data is not None:
+                    try:
+                        # replace layer if it exists already
+                        self.viewer.layers["Live recording"].data = data
+                    except KeyError:
+                        self.viewer.add_image(data, name="Live recording")
+        
+        # inspired by https://github.com/haesleinhuepf/napari-webcam 
+        @thread_worker
+        def yield_acquire_images_forever():
+            while True: # infinite loop, quit signal makes it stop
+                yield acquire(camera=self.camera)
+
+        if self.live_worker is None:
+            self.live_worker = yield_acquire_images_forever()
+            self.live_worker.yielded.connect(update_layer)
+
         if not self.is_live:
             self.camera_live_button.setText("Stop live recording")
             self.is_live = True
@@ -249,6 +260,7 @@ class LiveRecordingWidget(QWidget):
             self.camera_live_button.setText("Start live recording")
             self.is_live = False
             self.live_worker.quit()
+            self.live_worker = None
 
 @napari_hook_implementation
 def napari_experimental_provide_dock_widget():
