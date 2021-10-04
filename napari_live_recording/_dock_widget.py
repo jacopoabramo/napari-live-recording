@@ -1,8 +1,11 @@
-from napari._qt.qthreading import GeneratorWorker, WorkerBase
+# Plugin imports
+from napari._qt.qthreading import WorkerBase, WorkerBaseSignals
 from PyQt5.QtWidgets import QComboBox
 from napari_plugin_engine import napari_hook_implementation
 from qtpy.QtWidgets import QWidget, QGridLayout, QPushButton
+from qtpy.QtCore import Signal
 
+# Camera classes import
 from abc import ABC, abstractmethod
 import cv2
 from platform import system
@@ -71,6 +74,10 @@ class CameraOpenCV(Camera):
             exposure = self.exposure_dict[exposure]
         self.video_capture.set(cv2.CAP_PROP_EXPOSURE, exposure)
 
+class CameraXimea(Camera):
+    def __init__(self) -> None:
+        super().__init__()
+
 CAM_OPENCV = "Default Camera (OpenCV)"
 # todo: Add CameraXimea class
 # CAM_XIMEA  = "Ximea xiB-64"
@@ -79,26 +86,35 @@ supported_cameras = {
     CAM_OPENCV : CameraOpenCV,
 }
 
-def acquire(camera: Camera):
-    """
-    Acquires a grayscale image from the selected camera and returns it.
+class LiveWorkerSignals(WorkerBaseSignals):
+    yielded = Signal(object)
 
-    Parameters
-    ----------
-        camera (Camera) : polymorfic camera object
-
-    Returns
-    -------
-        2d numpy array / image
-    """
-    if camera is None:
-        return None
-    return camera.capture_image()
-
-
-class LiveWorker(GeneratorWorker):
+class LiveWorker(WorkerBase):
     def __init__(self, camera : Camera) -> None:
-        super().__init__(acquire, args=camera)
+        super().__init__(SignalsClass=LiveWorkerSignals)
+        self.camera = camera
+    
+    def work(self):
+        while not self.abort_requested:
+            yield self.camera.capture_image()
+
+    def _acquire(self):
+        """
+        Acquires a grayscale image from the selected camera and returns it.
+
+        Parameters
+        ----------
+            None
+
+        Returns
+        -------
+            2d numpy array / image
+        """
+        if self.camera is None:
+            return None
+        return self.camera.capture_image()
+
+
 
 class LiveRecordingWidget(QWidget):
     def __init__(self, napari_viewer) -> None:
