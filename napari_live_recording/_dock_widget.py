@@ -20,18 +20,22 @@ from ximea.xiapi import Image as XiImage
 CAM_OPENCV = "Default Camera (OpenCV)"
 CAM_XIMEA  = "Ximea xiB-64"
 
+class CameraError(Exception):
+    def __init__(self, error: str) -> None:
+        self.error_description = error
+    
+    def __str__(self) -> str:
+        return self.error_description
+
 class ICamera(ABC):
     @abstractmethod
     def __init__(self) -> None:
         super().__init__()
+        self.camera_name = "ICamera"
 
     @abstractmethod
     def __del__(self) -> None:
         pass
-
-    @abstractmethod
-    def __str__(self) -> str:
-        return "ICamera"
 
     @abstractmethod
     def open_device(self) -> bool:
@@ -49,11 +53,14 @@ class ICamera(ABC):
     def set_exposure(self, exposure) -> None:
         pass
 
+    def get_name(self) -> str:
+        return self.camera_name
+
 class CameraOpenCV(ICamera):
     def __init__(self) -> None:
         super().__init__()
         self.video_capture = cv2.VideoCapture(0, cv2.CAP_ANY)
-        self.system_name = system()
+        self.camera_name = CAM_OPENCV
 
         # Windows platforms support discrete exposure times
         # These are mapped using a dictionary
@@ -95,7 +102,7 @@ class CameraOpenCV(ICamera):
         return img
 
     def set_exposure(self, exposure) -> None:
-        if self.system_name == "Windows":
+        if system() == "Windows":
             exposure = self.exposure_dict[exposure]
         self.video_capture.set(cv2.CAP_PROP_EXPOSURE, exposure)
 
@@ -104,6 +111,7 @@ class CameraXimea(ICamera):
         super().__init__()
         self.camera = XiCamera()
         self.image = XiImage()
+        self.camera_name = CAM_XIMEA
     
     def __del__(self) -> None:
         self.close_device()
@@ -112,14 +120,11 @@ class CameraXimea(ICamera):
         return CAM_XIMEA
     
     def open_device(self) -> bool:
-        ret = False
         try:
             self.camera.open_device()
         except Xi_error:
-            ret = False
-        finally:
-            ret = True
-        return ret
+            return False
+        return True
 
     def close_device(self) -> None:
         try:
@@ -176,8 +181,6 @@ class LiveWorker(WorkerBase):
             return None
         return self.camera.capture_image()
 
-
-
 class LiveRecordingWidget(QWidget):
     def __init__(self, napari_viewer) -> None:
         super().__init__()
@@ -219,11 +222,11 @@ class LiveRecordingWidget(QWidget):
         self.camera_connect_button.setEnabled(bool(index))
         camera_name = self.camera_selection_combobox.currentText()
         try: 
-            camera_class = supported_cameras[camera_name]
-            self.camera = camera_class() # constructs object of class specified by camera_name
+            camera_type = supported_cameras[camera_name]
+            self.camera = camera_type() # constructs object of class specified by camera_name
         except KeyError:
-            print("Unknown camera selected.")
-            pass            
+            raise CameraError("Unsupported camera selected")
+                        
     
     def _on_connect_clicked(self):
         if not self.is_connect:
@@ -231,7 +234,7 @@ class LiveRecordingWidget(QWidget):
                 self.camera_connect_button.setText("Disconnect camera")
                 self.is_connect = True
             else:
-                print(f"Error in opening {str(self.camera.__str__)}")
+                raise CameraError(f"Error in opening {self.camera.get_name()}")
         else:
             self.camera_connect_button.setText("Connect camera")
             self.is_connect = False
