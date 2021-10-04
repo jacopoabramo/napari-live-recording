@@ -1,7 +1,9 @@
 # Plugin imports
+from typing import Any
 from napari._qt.qthreading import WorkerBase, WorkerBaseSignals
 from PyQt5.QtWidgets import QComboBox
 from napari_plugin_engine import napari_hook_implementation
+import numpy as np
 from qtpy.QtWidgets import QWidget, QGridLayout, QPushButton
 from qtpy.QtCore import Signal
 
@@ -10,24 +12,44 @@ from abc import ABC, abstractmethod
 import cv2
 from platform import system
 
-class Camera(ABC):
+# Ximea camera support only provided by downloading the Ximea Software package
+# see https://www.ximea.com/support/wiki/apis/APIs for more informations
+from ximea.xiapi import Camera as XiCamera, Xi_error
+from ximea.xiapi import Image as XiImage
+
+CAM_OPENCV = "Default Camera (OpenCV)"
+CAM_XIMEA  = "Ximea xiB-64"
+
+class ICamera(ABC):
     @abstractmethod
-    def open_device(self):
+    def __init__(self) -> None:
+        super().__init__()
+
+    @abstractmethod
+    def __del__(self) -> None:
+        pass
+
+    @abstractmethod
+    def __str__(self) -> str:
+        return "ICamera"
+
+    @abstractmethod
+    def open_device(self) -> bool:
         pass
     
     @abstractmethod
-    def close_device(self):
+    def close_device(self) -> None:
         pass
 
     @abstractmethod
-    def capture_image(self):
+    def capture_image(self) -> np.array:
         pass
 
     @abstractmethod
-    def set_exposure(self, exposure):
+    def set_exposure(self, exposure) -> None:
         pass
 
-class CameraOpenCV(Camera):
+class CameraOpenCV(ICamera):
     def __init__(self) -> None:
         super().__init__()
         self.video_capture = cv2.VideoCapture(0, cv2.CAP_ANY)
@@ -56,41 +78,81 @@ class CameraOpenCV(Camera):
         self.video_capture.release()
         del self.video_capture
     
-    def open_device(self):
-        if not self.video_capture.isOpened():
-            self.video_capture.open(0, cv2.CAP_ANY)
+    def __str__(self) -> str:
+        return CAM_OPENCV
     
-    def close_device(self):
+    def open_device(self) -> bool:
+        if not self.video_capture.isOpened():
+            return self.video_capture.open(0, cv2.CAP_ANY)
+    
+    def close_device(self) -> None:
         self.video_capture.release()
     
-    def capture_image(self):
+    def capture_image(self) -> np.array:
         _ , img = self.video_capture.read()
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         cv2.waitKey(1)
         return img
 
-    def set_exposure(self, exposure):
+    def set_exposure(self, exposure) -> None:
         if self.system_name == "Windows":
             exposure = self.exposure_dict[exposure]
         self.video_capture.set(cv2.CAP_PROP_EXPOSURE, exposure)
 
-class CameraXimea(Camera):
+class CameraXimea(ICamera):
     def __init__(self) -> None:
         super().__init__()
+        self.camera = XiCamera()
+        self.image = XiImage()
+    
+    def __del__(self) -> None:
+        self.close_device()
+    
+    def __str__(self) -> str:
+        return CAM_XIMEA
+    
+    def open_device(self) -> bool:
+        ret = False
+        try:
+            self.camera.open_device()
+        except Xi_error:
+            ret = False
+        finally:
+            ret = True
+        return ret
 
-CAM_OPENCV = "Default Camera (OpenCV)"
-# todo: Add CameraXimea class
-# CAM_XIMEA  = "Ximea xiB-64"
+    def close_device(self) -> None:
+        try:
+            self.camera.stop_acquisition()
+            self.camera.close_device()
+            del self.camera
+        except Xi_error: # Camera not connected or already closed
+            pass
+    
+    def capture_image(self) -> np.array:
+        try:
+            self.camera.get_image(self.image)
+            data = self.image.get_image_data_numpy()
+        except Xi_error:
+            data = None
+        return data
+
+    def set_exposure(self, exposure) -> None:
+        try:
+            self.camera.set_exposure(exposure)
+        except Xi_error:
+            pass
 
 supported_cameras = {
     CAM_OPENCV : CameraOpenCV,
+    CAM_XIMEA  : CameraXimea
 }
 
 class LiveWorkerSignals(WorkerBaseSignals):
     yielded = Signal(object)
 
 class LiveWorker(WorkerBase):
-    def __init__(self, camera : Camera) -> None:
+    def __init__(self, camera : ICamera) -> None:
         super().__init__(SignalsClass=LiveWorkerSignals)
         self.camera = camera
     
@@ -136,7 +198,8 @@ class LiveRecordingWidget(QWidget):
 
         self.camera_selection_combobox = QComboBox()
         self.camera_selection_combobox.addItem("Select camera")
-        self.camera_selection_combobox.addItems(supported_cameras)
+
+        self.camera_selection_combobox.addItems(list(supported_cameras.keys()))
         self.camera_selection_combobox.currentIndexChanged.connect(self._on_cam_type_changed)
 
         self.setLayout(QGridLayout(self))
@@ -164,9 +227,11 @@ class LiveRecordingWidget(QWidget):
     
     def _on_connect_clicked(self):
         if not self.is_connect:
-            self.camera_connect_button.setText("Disconnect camera")
-            self.is_connect = True
-            self.camera.open_device()
+            if self.camera.open_device():
+                self.camera_connect_button.setText("Disconnect camera")
+                self.is_connect = True
+            else:
+                print(f"Error in opening {str(self.camera.__str__)}")
         else:
             self.camera_connect_button.setText("Connect camera")
             self.is_connect = False

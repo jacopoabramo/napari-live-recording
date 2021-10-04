@@ -1,6 +1,6 @@
 # napari-live-recording
 
-[![License](https://img.shields.io/pypi/l/napari-live-recording.svg?color=green)](https://github.com/jethro33/napari-live-recording/raw/master/LICENSE)
+[![License](https://img.shields.io/pypi/l/napari-live-recording.svg?color=green)](https://github.com/jethro33/napari-live-recording/raw/main/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/napari-live-recording.svg?color=green)](https://pypi.org/project/napari-live-recording)
 [![Python Version](https://img.shields.io/pypi/pyversions/napari-live-recording.svg?color=green)](https://python.org)
 [![tests](https://github.com/jethro33/napari-live-recording/workflows/tests/badge.svg)](https://github.com/jethro33/napari-live-recording/actions)
