@@ -1,4 +1,4 @@
-from napari._qt.qthreading import WorkerBase
+from napari._qt.qthreading import GeneratorWorker, WorkerBase
 from PyQt5.QtWidgets import QComboBox
 from napari_plugin_engine import napari_hook_implementation
 from qtpy.QtWidgets import QWidget, QGridLayout, QPushButton
@@ -79,30 +79,26 @@ supported_cameras = {
     CAM_OPENCV : CameraOpenCV,
 }
 
-class LiveWorker(WorkerBase):
+def acquire(camera: Camera):
+    """
+    Acquires a grayscale image from the selected camera and returns it.
+
+    Parameters
+    ----------
+        camera (Camera) : polymorfic camera object
+
+    Returns
+    -------
+        2d numpy array / image
+    """
+    if camera is None:
+        return None
+    return camera.capture_image()
+
+
+class LiveWorker(GeneratorWorker):
     def __init__(self, camera : Camera) -> None:
-        super().__init__()
-        self.camera = camera
-
-    def work(self):
-        while not self.abort_requested:
-            yield self._acquire()
-
-    def _acquire(self):
-        """
-        Acquires a grayscale image from the selected camera and returns it.
-
-        Parameters
-        ----------
-            None
-
-        Returns
-        -------
-            2d numpy array / image
-        """
-        if self.camera is None:
-            return None
-        return self.camera.capture_image()
+        super().__init__(acquire, args=camera)
 
 class LiveRecordingWidget(QWidget):
     def __init__(self, napari_viewer) -> None:

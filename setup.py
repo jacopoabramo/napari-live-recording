@@ -1,5 +1,61 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from setuptools import setup
+import os
+import codecs
+from setuptools import setup, find_packages
 
-setup()
+
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
+def read(fname):
+    file_path = os.path.join(os.path.dirname(__file__), fname)
+    return codecs.open(file_path, encoding='utf-8').read()
+
+
+# Add your dependencies in requirements.txt
+# Note: you can add test-specific requirements in tox.ini
+requirements = []
+with open('requirements.txt') as f:
+    for line in f:
+        stripped = line.split("#")[0].strip()
+        if len(stripped) > 0:
+            requirements.append(stripped)
+
+
+# https://github.com/pypa/setuptools_scm
+use_scm = {"write_to": "napari_live_recording/_version.py"}
+
+setup(
+    name='napari_live_recording',
+    author='Jacopo Abramo',
+    author_email='jacopo.abramo@gmail.com',
+    license='MIT',
+    url='https://github.com/jethro33/napari-live-recording',
+    description='A napari plugin for live video recording with a generic camera device.',
+    long_description_content_type='text/markdown',
+    long_description=long_description,
+    packages=find_packages(),
+    python_requires='>=3.6',
+    install_requires=requirements,
+    version="0.1.0",
+    setup_requires=['setuptools_scm'],
+    classifiers=[
+        'Development Status :: 2 - Pre-Alpha',
+        'Intended Audience :: Developers',
+        'Framework :: napari',
+        'Topic :: Software Development :: Testing',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Operating System :: OS Independent',
+        'License :: OSI Approved :: MIT License'
+    ],
+    entry_points={
+        'napari.plugin': [
+            'napari-live-recording = napari_live_recording',
+        ],
+    },
+)
