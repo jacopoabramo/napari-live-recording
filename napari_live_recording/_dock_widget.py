@@ -1,14 +1,17 @@
 # Plugin imports
+from PyQt5 import QtGui
 from napari._qt.qthreading import thread_worker
-from PyQt5.QtWidgets import QComboBox, QLabel, QSpinBox
+from PyQt5.QtWidgets import QComboBox, QFileDialog, QLabel, QSpinBox
 from napari_plugin_engine import napari_hook_implementation
 import numpy as np
 from qtpy.QtWidgets import QWidget, QGridLayout, QPushButton
+from imageio import mimwrite
 
 # Camera classes import
 from abc import ABC, abstractmethod
 import cv2
 from platform import system
+from time import sleep
 
 # Ximea camera support only provided by downloading the Ximea Software package
 # see https://www.ximea.com/support/wiki/apis/APIs for more informations
@@ -31,6 +34,7 @@ class ICamera(ABC):
     def __init__(self) -> None:
         super().__init__()
         self.camera_name = "ICamera"
+        self.roi = []
 
     @abstractmethod
     def __del__(self) -> None:
@@ -56,6 +60,14 @@ class ICamera(ABC):
     def set_exposure(self, exposure) -> None:
         pass
 
+    @abstractmethod
+    def set_roi(self, roi : list) -> None:
+        self.roi = roi
+
+    @abstractmethod
+    def get_roi(self) -> list:
+        return self.roi
+
     def get_name(self) -> str:
         return self.camera_name
 
@@ -63,6 +75,7 @@ class TestCamera(ICamera):
     def __init__(self) -> None:
         super().__init__()
         self.camera_name = CAM_TEST
+        self.roi = [500, 500]
     
     def __del__(self) -> None:
         return super().__del__()
@@ -75,10 +88,17 @@ class TestCamera(ICamera):
         print("Dummy camera closed!")
     
     def capture_image(self) -> np.array:
-        return np.random.rand(3,3)
+        print("Acquiring dummy image!")
+        return np.random.randint(low=0, high=2**8, size=tuple(self.roi), dtype="uint8")
     
     def set_exposure(self, exposure) -> None:
         print(f"Dummy camera exposure set to {exposure}")
+
+    def set_roi(self, roi : list) -> None:
+        self.roi = roi
+    
+    def get_roi(self) -> list:
+        return self.roi
 
 class CameraOpenCV(ICamera):
     def __init__(self) -> None:
@@ -140,6 +160,7 @@ class CameraXimea(ICamera):
         self.camera = XiCamera()
         self.image = XiImage()
         self.camera_name = CAM_XIMEA
+        self.roi = [500, 500]
     
     def __del__(self) -> None:
         self.close_device()
@@ -150,6 +171,12 @@ class CameraXimea(ICamera):
     def open_device(self) -> bool:
         try:
             self.camera.open_device()
+            max_lut_idx = self.camera.get_LUTIndex_maximum()
+            for idx in range(0, max_lut_idx):
+                self.camera.set_LUTIndex(idx)
+                self.camera.set_LUTValue(idx)
+            self.camera.enable_LUTEnable()
+            self.camera.start_acquisition()
         except Xi_error:
             return False
         return True
@@ -168,6 +195,7 @@ class CameraXimea(ICamera):
             data = self.image.get_image_data_numpy()
         except Xi_error:
             data = None
+        sleep(0.01)
         return data
 
     def set_exposure(self, exposure) -> None:
@@ -175,6 +203,12 @@ class CameraXimea(ICamera):
             self.camera.set_exposure(exposure)
         except Xi_error:
             pass
+    
+    def set_roi(self, roi : list) -> None:
+        self.roi = roi
+
+    def get_roi(self) -> list:
+        return self.roi
 
 supported_cameras = {
     CAM_TEST   : TestCamera,
@@ -204,6 +238,7 @@ class LiveRecording(QWidget):
         self.viewer = napari_viewer
         self.camera = None
         self.live_worker = None
+        self.record_worker = None
 
         self.camera_connect_button = QPushButton("Connect camera", self)
         self.camera_connect_button.clicked.connect(self._on_connect_clicked)
@@ -231,7 +266,7 @@ class LiveRecording(QWidget):
         self.camera_record_spinbox = QSpinBox(self)
         self.camera_record_spinbox.setMaximum(10000)
         self.camera_record_spinbox.setMinimum(10)
-        self.camera_record_spinbox.setValue(4000)
+        self.camera_record_spinbox.setValue(10)
         self.camera_record_spinbox.setEnabled(False)
 
         self.setLayout(QGridLayout(self))
@@ -316,7 +351,6 @@ class LiveRecording(QWidget):
             self._set_widgets_enabled(False)
 
     def _on_live_clicked(self):
-        
         # inspired by https://github.com/haesleinhuepf/napari-webcam
         def update_layer(data):
                 if data is not None:
@@ -360,9 +394,30 @@ class LiveRecording(QWidget):
                 print("Dummy self record stopped!")
 
     def _on_exposure_changed(self, exposure):
-        self.camera.set_exposure(exposure)
+        if self.is_live:
+            self.live_worker.pause()
+            self.camera.set_exposure(exposure)
+            self.live_worker.resume()
+        else:
+            self.camera.set_exposure(exposure)
 
     def _on_record_clicked(self):
+        @thread_worker
+        def acquire_stack_images(stack_size, file_path):
+            stack = [None] * stack_size
+            for idx in range(0, stack_size):
+                stack[idx] = self.camera.capture_image()
+            mimwrite(file_path, stack)
+
+        dlg = QFileDialog(self)
+        dlg.setDefaultSuffix(".tiff")
+        video_name = dlg.getSaveFileName(self, caption="Save video", filter="TIFF stack (.tif)")[0]
+        if video_name != "":
+            video_name += ".tiff" if not video_name.endswith('.tiff') else ""
+            self.record_worker = acquire_stack_images(self.camera_record_spinbox.value(), video_name)
+            self.record_worker.start()
+        else:
+            print("No file name specified!")
         pass
 
 @napari_hook_implementation
