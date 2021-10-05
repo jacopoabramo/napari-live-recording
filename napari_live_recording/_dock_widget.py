@@ -1,5 +1,4 @@
 # Plugin imports
-from PyQt5 import QtGui
 from napari._qt.qthreading import thread_worker
 from PyQt5.QtWidgets import QComboBox, QFileDialog, QLabel, QSpinBox
 from napari_plugin_engine import napari_hook_implementation
