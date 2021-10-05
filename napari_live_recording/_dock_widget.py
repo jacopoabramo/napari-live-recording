@@ -15,6 +15,7 @@ from platform import system
 from ximea.xiapi import Camera as XiCamera, Xi_error
 from ximea.xiapi import Image as XiImage
 
+CAM_TEST   = "Widget dummy camera"
 CAM_OPENCV = "Default Camera (OpenCV)"
 CAM_XIMEA  = "Ximea xiB-64"
 
@@ -30,6 +31,10 @@ class ICamera(ABC):
     def __init__(self) -> None:
         super().__init__()
         self.camera_name = "ICamera"
+
+    @abstractmethod
+    def __del__(self) -> None:
+        return super().__del__()
 
     @abstractmethod
     def __del__(self) -> None:
@@ -53,6 +58,27 @@ class ICamera(ABC):
 
     def get_name(self) -> str:
         return self.camera_name
+
+class TestCamera(ICamera):
+    def __init__(self) -> None:
+        super().__init__()
+        self.camera_name = CAM_TEST
+    
+    def __del__(self) -> None:
+        return super().__del__()
+
+    def open_device(self) -> bool:
+        print("Dummy camera opened!")
+        return True
+    
+    def close_device(self) -> None:
+        print("Dummy camera closed!")
+    
+    def capture_image(self) -> np.array:
+        return np.random.rand(3,3)
+    
+    def set_exposure(self, exposure) -> None:
+        print(f"Dummy camera exposure set to {exposure}")
 
 class CameraOpenCV(ICamera):
     def __init__(self) -> None:
@@ -151,6 +177,7 @@ class CameraXimea(ICamera):
             pass
 
 supported_cameras = {
+    CAM_TEST   : TestCamera,
     CAM_OPENCV : CameraOpenCV,
     CAM_XIMEA  : CameraXimea
 }
@@ -196,65 +223,97 @@ class LiveRecording(QWidget):
         self.camera_exposure_label  = None
         self.camera_exposure_widget = None
 
+        self.camera_record_button = QPushButton("Record video", self)
+        self.camera_record_button.clicked.connect(self._on_record_clicked)
+        self.camera_record_button.setEnabled(False)
+
+        self.camera_record_buffer_label = QLabel("Frame buffer size", self)
+        self.camera_record_spinbox = QSpinBox(self)
+        self.camera_record_spinbox.setMaximum(10000)
+        self.camera_record_spinbox.setMinimum(10)
+        self.camera_record_spinbox.setValue(4000)
+        self.camera_record_spinbox.setEnabled(False)
+
         self.setLayout(QGridLayout(self))
         self.layout().addWidget(self.camera_selection_combobox, 0, 0)
         self.layout().addWidget(self.camera_connect_button, 1, 0)
         self.layout().addWidget(self.camera_live_button, 1, 1)
+        self.layout().addWidget(self.camera_record_button, 2, 0, 1, 2)
+        self.layout().addWidget(self.camera_record_buffer_label, 3, 0)
+        self.layout().addWidget(self.camera_record_spinbox, 3, 1)
     
     def _on_cam_type_changed(self, index):
         self.camera_connect_button.setEnabled(bool(index))
         camera_name = self.camera_selection_combobox.currentText()
-        try: 
+        try:
             camera_type = supported_cameras[camera_name]
             self.camera = camera_type() # constructs object of class specified by camera_name
-            self.camera_exposure_label = QLabel("Exposure", self)
-            self.layout().addWidget(self.camera_exposure_label, 2, 0)
             if isinstance(self.camera, CameraOpenCV):
                 self._add_opencv_exposure()
             else:
                 self._add_camera_exposure()
-        except KeyError:
-            if index > 0:
+        except KeyError: # unsupported camera found
+            if self.camera_exposure_label is not None:
+                self._delete_exposure_widget()
+                self.layout().removeWidget(self.camera_exposure_label)
+                self.camera_exposure_label.deleteLater()
+                self.camera_exposure_label = None
+            if index > 0: # skipping indexes of selection string
                 raise CameraError("Unsupported camera selected")
-            self._delete_exposure_widget()
-            self.layout().removeWidget(self.camera_exposure_label)
-            self.camera_exposure_label.deleteLater()
-            self.camera_exposure_label = None
     
     def _delete_exposure_widget(self):
+        if self.camera_exposure_label is not None:
+            self.layout().removeWidget(self.camera_exposure_label)
+            self.camera_exposure_widget.deleteLater()
+            self.camera_exposure_widget = None
         if self.camera_exposure_widget is not None:
+            if isinstance(self.camera_exposure_widget, QComboBox):
+                self.camera_exposure_widget.currentTextChanged.disconnect(self._on_exposure_changed)
+            else:
+                self.camera_exposure_widget.valueChanged.disconnect(self._on_exposure_changed)
             self.layout().removeWidget(self.camera_exposure_widget)
             self.camera_exposure_widget.deleteLater()
             self.camera_exposure_widget = None
+    
+    def _set_widgets_enabled(self, enabled : bool):
+        self.camera_live_button.setEnabled(enabled)
+        self.camera_record_button.setEnabled(enabled)
+        self.camera_record_spinbox.setEnabled(enabled)
 
     def _add_opencv_exposure(self):
         self._delete_exposure_widget()
+        self.camera_exposure_label = QLabel("Exposure", self)
+        self.layout().addWidget(self.camera_exposure_label, 4, 0)
         self.camera_exposure_widget = QComboBox(self)
         self.camera_exposure_widget.addItems(list(self.camera.exposure_dict.keys()))
-        self.layout().addWidget(self.camera_exposure_widget, 2, 1)
+        self.camera_exposure_widget.currentTextChanged.connect(self._on_exposure_changed)
+        self.layout().addWidget(self.camera_exposure_widget, 4, 1)
 
 
     def _add_camera_exposure(self):
         self._delete_exposure_widget()
+        self.camera_exposure_label = QLabel("Exposure (\u03BCs)", self)
+        self.layout().addWidget(self.camera_exposure_label, 4, 0)
         self.camera_exposure_widget = QSpinBox(self)
         self.camera_exposure_widget.setMaximum(5000)
         self.camera_exposure_widget.setMinimum(20)
         self.camera_exposure_widget.setValue(200)
-        self.layout().addWidget(self.camera_exposure_widget, 2, 1)
+        self.camera_exposure_widget.valueChanged.connect(self._on_exposure_changed)
+        self.layout().addWidget(self.camera_exposure_widget, 4, 1)
     
     def _on_connect_clicked(self):
         if not self.is_connect:
             if self.camera.open_device():
                 self.camera_connect_button.setText("Disconnect camera")
                 self.is_connect = True
-                self.camera_live_button.setEnabled(True)
+                self._set_widgets_enabled(True)
             else:
                 raise CameraError(f"Error in opening {self.camera.get_name()}")
         else:
+            self.camera.close_device()
             self.camera_connect_button.setText("Connect camera")
             self.is_connect = False
-            self.camera.close_device()
-            self.camera_live_button.setEnabled(False)
+            self._set_widgets_enabled(False)
 
     def _on_live_clicked(self):
         
@@ -265,6 +324,7 @@ class LiveRecording(QWidget):
                         # replace layer if it exists already
                         self.viewer.layers["Live recording"].data = data
                     except KeyError:
+                        # add missing layer (only needed on first acquisition)
                         self.viewer.add_image(data, name="Live recording")
         
         # inspired by https://github.com/haesleinhuepf/napari-webcam 
@@ -273,20 +333,37 @@ class LiveRecording(QWidget):
             while True: # infinite loop, quit signal makes it stop
                 yield acquire(camera=self.camera)
 
-        if self.live_worker is None:
-            self.live_worker = yield_acquire_images_forever()
-            self.live_worker.yielded.connect(update_layer)
+        if not isinstance(self.camera, TestCamera):
+            if self.live_worker is None:
+                self.live_worker = yield_acquire_images_forever()
+                self.live_worker.yielded.connect(update_layer)
 
-        if not self.is_live:
-            self.camera_live_button.setText("Stop live recording")
-            self.is_live = True
-            self.live_worker.start()
+            if not self.is_live:
+                self.camera_live_button.setText("Stop live recording")
+                self.is_live = True
+                self.live_worker.start()
+            else:
+                self.camera_live_button.setText("Start live recording")
+                self.is_live = False
+                self.live_worker.quit()
+                self.live_worker.yielded.disconnect(update_layer)
+                del self.live_worker
+                self.live_worker = None
         else:
-            self.camera_live_button.setText("Start live recording")
-            self.is_live = False
-            self.live_worker.quit()
-            del self.live_worker
-            self.live_worker = None
+            if not self.is_live:
+                self.camera_live_button.setText("Stop live recording")
+                self.is_live = True
+                print("Dummy self record started!")
+            else:
+                self.camera_live_button.setText("Start live recording")
+                self.is_live = False
+                print("Dummy self record stopped!")
+
+    def _on_exposure_changed(self, exposure):
+        self.camera.set_exposure(exposure)
+
+    def _on_record_clicked(self):
+        pass
 
 @napari_hook_implementation
 def napari_experimental_provide_dock_widget():
