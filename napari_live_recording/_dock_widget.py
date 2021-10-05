@@ -362,7 +362,7 @@ class LiveRecording(QWidget):
                         self.viewer.add_image(data, name="Live recording")
         
         # inspired by https://github.com/haesleinhuepf/napari-webcam 
-        @thread_worker
+        @thread_worker(connect={"yielded" : update_layer})
         def yield_acquire_images_forever():
             while True: # infinite loop, quit signal makes it stop
                 yield acquire(camera=self.camera)
@@ -370,17 +370,14 @@ class LiveRecording(QWidget):
         if not isinstance(self.camera, TestCamera):
             if self.live_worker is None:
                 self.live_worker = yield_acquire_images_forever()
-                self.live_worker.yielded.connect(update_layer)
 
             if not self.is_live:
                 self.camera_live_button.setText("Stop live recording")
                 self.is_live = True
-                self.live_worker.start()
             else:
                 self.camera_live_button.setText("Start live recording")
                 self.is_live = False
                 self.live_worker.quit()
-                self.live_worker.yielded.disconnect(update_layer)
                 del self.live_worker
                 self.live_worker = None
         else:
