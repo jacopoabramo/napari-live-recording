@@ -5,7 +5,7 @@ from napari_plugin_engine import napari_hook_implementation
 from qtpy.QtWidgets import QWidget, QGridLayout, QPushButton
 from imageio import mimwrite
 from napari_live_recording.Cameras import *
-from napari_live_recording.functions import *
+from napari_live_recording.Functions import *
 
 class LiveRecording(QWidget):
     def __init__(self, napari_viewer) -> None:
