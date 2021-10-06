@@ -1,7 +1,7 @@
-from napari_live_recording.Cameras.ICamera import ICamera, CameraError
-from napari_live_recording.Cameras.TestCamera import TestCamera, CAM_TEST
-from napari_live_recording.Cameras.CameraOpenCV import CameraOpenCV, CAM_OPENCV
-from napari_live_recording.Cameras.CameraXimea import CameraXimea, CAM_XIMEA
+from .ICamera import ICamera, CameraError
+from .TestCamera import TestCamera, CAM_TEST
+from .CameraOpenCV import CameraOpenCV, CAM_OPENCV
+from .CameraXimea import CameraXimea, CAM_XIMEA
 
 supported_cameras = {
     CAM_TEST   : TestCamera,

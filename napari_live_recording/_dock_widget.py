@@ -5,22 +5,7 @@ from napari_plugin_engine import napari_hook_implementation
 from qtpy.QtWidgets import QWidget, QGridLayout, QPushButton
 from imageio import mimwrite
 from napari_live_recording.Cameras import *
-
-def acquire(camera : ICamera):
-    """
-    Acquires a grayscale image from the selected camera and returns it.
-        
-    Parameters
-    ----------
-        camera (ICamera) : interface camera object
-
-    Returns
-    -------
-        2d numpy array / image
-    """
-    if camera is None:
-        return None
-    return camera.capture_image()
+from napari_live_recording.functions import *
 
 class LiveRecording(QWidget):
     def __init__(self, napari_viewer) -> None:

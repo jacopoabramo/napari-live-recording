@@ -16,6 +16,7 @@ class CameraXimea(ICamera):
         self.image = XiImage()
         self.camera_name = CAM_XIMEA
         self.roi = [500, 500]
+        self.frame_rate = 0.01
     
     def __del__(self) -> None:
         self.close_device()
@@ -56,10 +57,12 @@ class CameraXimea(ICamera):
     def set_exposure(self, exposure) -> None:
         try:
             self.camera.set_exposure(exposure)
+            self.frame_rate = float(1.0 / exposure)
         except Xi_error:
             pass
     
     def set_roi(self, roi : list) -> None:
+        # todo: needs implementation using Ximea APIs
         self.roi = roi
 
     def get_roi(self) -> list:
