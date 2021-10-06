@@ -1,4 +1,4 @@
-from napari_live_recording.Cameras.ICamera import ICamera
+from .ICamera import ICamera
 from platform import system
 import cv2
 import numpy as np

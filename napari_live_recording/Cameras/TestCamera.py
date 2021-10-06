@@ -1,4 +1,4 @@
-from napari_live_recording.Cameras.ICamera import ICamera
+from .ICamera import ICamera
 import numpy as np
 
 CAM_TEST = "Widget dummy camera"
