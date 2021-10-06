@@ -1,4 +1,4 @@
-from .functions import acquire
+from .Functions import acquire
 
 __all__ = [
     "acquire"
