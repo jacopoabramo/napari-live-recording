@@ -1,5 +1,11 @@
-from .Functions import acquire
+from .Functions import *
+
+special_functions = {
+    "Stack average" : average_image_stack
+}
 
 __all__ = [
-    "acquire"
+    "acquire",
+    "average_image_stack",
+    "special_functions"
 ]
