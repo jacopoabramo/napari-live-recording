@@ -2,7 +2,6 @@
 from napari._qt.qthreading import thread_worker
 from PyQt5.QtWidgets import QComboBox, QFileDialog, QLabel, QSpinBox
 from napari_plugin_engine import napari_hook_implementation
-import numpy as np
 from qtpy.QtWidgets import QWidget, QGridLayout, QPushButton
 from imageio import mimwrite
 from napari_live_recording.Cameras import *
