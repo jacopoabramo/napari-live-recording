@@ -50,6 +50,27 @@ class LiveRecording(QWidget):
         self.special_function_combobox = QComboBox(self)
         self.special_function_combobox.currentTextChanged.connect(self._on_special_function_changed)
 
+        self.camera_roi_x_offset_label = QLabel("Offset X (px)", self)
+        self.camera_roi_x_offset_spinbox = QSpinBox(self)
+        self.camera_roi_x_offset_spinbox.setMinimum(32)
+        self.camera_roi_x_offset_spinbox.setMaximum(1280)
+
+        self.camera_roi_y_offset_label = QLabel("Offset Y (px)", self)
+        self.camera_roi_y_offset_spinbox = QSpinBox(self)
+        self.camera_roi_y_offset_spinbox.setMinimum(4)
+        self.camera_roi_y_offset_spinbox.setMaximum(64)
+
+
+        self.camera_roi_width_label = QLabel("Width (px)", self)
+        self.camera_roi_width_spinbox = QSpinBox(self)
+        self.camera_roi_width_spinbox.setMinimum(32)
+        self.camera_roi_width_spinbox.setMaximum(1280)
+        
+        self.camera_roi_height_label = QLabel("Height (px)", self)
+        self.camera_roi_height_spinbox = QSpinBox(self)
+        self.camera_roi_height_spinbox.setMinimum(4)
+        self.camera_roi_height_spinbox.setMaximum(64)
+
         self.setLayout(QGridLayout(self))
         self.layout().addWidget(self.camera_selection_combobox, 0, 0)
         self.layout().addWidget(self.camera_connect_button, 1, 0)
@@ -59,6 +80,21 @@ class LiveRecording(QWidget):
         self.layout().addWidget(self.camera_record_spinbox, 3, 1)
         self.layout().addWidget(self.special_function_checkbox, 4, 0)
         self.layout().addWidget(self.special_function_combobox, 4, 1)
+        self.layout().addWidget(self.camera_roi_x_offset_label, 6, 0)
+        self.layout().addWidget(self.camera_roi_x_offset_spinbox, 6, 1)
+        self.layout().addWidget(self.camera_roi_y_offset_label, 7, 0)
+        self.layout().addWidget(self.camera_roi_y_offset_spinbox, 7, 1)
+        self.layout().addWidget(self.camera_roi_width_label, 8, 0)
+        self.layout().addWidget(self.camera_roi_width_spinbox, 8, 1)
+        self.layout().addWidget(self.camera_roi_height_label, 9, 0)
+        self.layout().addWidget(self.camera_roi_height_spinbox, 9, 1)
+
+        self.roi = [
+            self.camera_roi_x_offset_spinbox.value(), # 0: offset x
+            self.camera_roi_y_offset_spinbox.value(), # 1: offset y
+            self.camera_roi_width_spinbox.value(),    # 2: width
+            self.camera_roi_height_spinbox.value()    # 3: height
+        ]
     
     def _on_cam_type_changed(self, index):
         if self.is_connect:
@@ -215,6 +251,27 @@ class LiveRecording(QWidget):
     def _on_special_function_changed(self, function):
         if function != "":
             self.special_function = special_functions[function]
+    
+    def _on_offset_x_changed(self, offset):
+        self.roi[0] = offset
+        if self.camera is not None:
+            self.camera.set_roi(self.roi)
+
+    def _on_offset_y_changed(self, offset):
+        self.roi[1] = offset
+        if self.camera is not None:
+            self.camera.set_roi(self.roi)
+
+    def _on_width_changed(self, width):
+        self.roi[2] = width
+        if self.camera is not None:
+            self.camera.set_roi(self.roi)
+
+    def _on_height_changed(self, height):
+        self.roi[3] = height
+        if self.camera is not None:
+            self.camera.set_roi(self.roi)
+        pass
 
 @napari_hook_implementation
 def napari_experimental_provide_dock_widget():

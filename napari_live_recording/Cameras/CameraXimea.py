@@ -15,8 +15,8 @@ class CameraXimea(ICamera):
         self.camera = XiCamera()
         self.image = XiImage()
         self.camera_name = CAM_XIMEA
-        self.roi = [500, 500]
-        self.frame_rate = 0.01
+        self.roi = [4, 32, 500, 500]
+        self.frame_rate = float(1/200) # default exposure
     
     def __del__(self) -> None:
         self.close_device()
@@ -33,6 +33,7 @@ class CameraXimea(ICamera):
                 self.camera.set_LUTValue(idx)
             self.camera.enable_LUTEnable()
             self.camera.start_acquisition()
+            self.camera.set_exposure(200)
         except Xi_error:
             return False
         return True
@@ -62,7 +63,14 @@ class CameraXimea(ICamera):
             pass
     
     def set_roi(self, roi : list) -> None:
-        # todo: needs implementation using Ximea APIs
+        if self.roi[0] != roi[0]:
+            self.camera.set_offsetX(roi[0])
+        if self.roi[1] != roi[1]:
+            self.camera.set_offsetY(roi[1])
+        if self.roi[2] != roi[2]:
+            self.camera.set_width(roi[2])
+        if self.roi[3] != roi[3]:
+            self.camera.set_height(roi[3])
         self.roi = roi
 
     def get_roi(self) -> list:
