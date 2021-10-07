@@ -14,7 +14,7 @@ URL = 'https://github.com/jethro33/napari-live-recording'
 EMAIL = 'jacopo.abramo@gmail.com'
 AUTHOR = 'Jacopo Abramo'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '0.1.0'
+VERSION = '0.1.1'
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -91,14 +91,18 @@ setup(
     python_requires=REQUIRES_PYTHON,
     install_requires=requirements,
     include_package_data=True,
-    version="0.1.0",
+    version=VERSION,
     setup_requires=['setuptools_scm'],
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
         'Framework :: napari',
         'Topic :: Software Development :: Testing',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Operating System :: OS Independent',
         'License :: OSI Approved :: MIT License'

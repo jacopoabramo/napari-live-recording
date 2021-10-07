@@ -3,20 +3,23 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to napari-live-recording's documentation!
-===============================================================
+napari-live-recording
+======================
 
-Contents:
+A napari plugin for live video recording with a generic camera device and generate a stack of TIFF images from said device.
+
+This plugin has been intended as a way of scientists and developers to test small setups, or prototyping new cameras.
+It also allows to integrate some post-processing functionalities depending on the users needs.
 
 .. toctree::
    :maxdepth: 2
 
+   camera/index
+   postprocessing/index
+   napari_live_recording/modules
+   changelog/changelog
 
+.. note::
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   This project is under active development.
 

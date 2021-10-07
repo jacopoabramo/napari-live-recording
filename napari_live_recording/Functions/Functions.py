@@ -1,34 +1,13 @@
 from napari_live_recording.Cameras.ICamera import ICamera
 import numpy as np
 
-def acquire(camera : ICamera):
-    """Acquires a grayscale image from the selected camera and returns it.
-        
-    Arguments
-    ----------
-        camera (ICamera) : interface camera object
-
-    Returns
-    -------
-        2D numpy array (captured image)
-    """
-    # checking if camera object actually exists
-    # if not making this check and an error occurs
-    # no image will be returned
-    if camera is None:
-        return None
-    return camera.capture_image()
-
 def average_image_stack(stack : list) -> np.array:
-    """Calculates the average of a stack of sequential images
+    """Calculates the average of a stack of images
 
-    Arguments
-    ----------
-        stack (list) : stack of captured images
-
-    Returns
-    -------
-        2D numpy array (average of image stack)
+    :param stack: input image stack
+    :type stack: list
+    :return: image representing the average of the stack
+    :rtype: numpy.array
     """
     # sum all averaged images into an accumulator
     accumulator = np.zeros(stack[0].shape, np.float)

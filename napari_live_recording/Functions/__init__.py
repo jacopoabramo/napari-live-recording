@@ -5,7 +5,9 @@ special_functions = {
 }
 
 __all__ = [
-    "acquire",
+    # post-processing functions added below
     "average_image_stack",
+    
+    # post processing functions added above
     "special_functions"
 ]

@@ -157,7 +157,7 @@ class LiveRecording(QWidget):
         @thread_worker(connect={"yielded" : update_layer})
         def yield_acquire_images_forever():
             while True: # infinite loop, quit signal makes it stop
-                yield acquire(camera=self.camera)
+                yield self.camera.capture_image()
         
         if not self.is_live:
             self.live_worker = yield_acquire_images_forever()

@@ -1,51 +1,85 @@
+"""Generic Camera interface
+"""
+
 from abc import ABC, abstractmethod
 import numpy as np
 
-class CameraError(Exception):
-    def __init__(self, error: str) -> None:
-        self.error_description = error
-    
-    def __str__(self) -> str:
-        return self.error_description
-
 class ICamera(ABC):
+    """Abstract class representing the camera device interface.
+    Gives access to a series of functionality differently supported by each device.
+
+    :param ABC: abstract metaclass
+    :type ABC: ABC
+    """
+
     @abstractmethod
     def __init__(self) -> None:
+        """Abstract constructor method
+        """
         super().__init__()
         self.camera_name = "ICamera"
         self.roi = []
 
     @abstractmethod
     def __del__(self) -> None:
-        return super().__del__()
-
-    @abstractmethod
-    def __del__(self) -> None:
-        pass
+        """Abstract destructor method"""
+        raise NotImplementedError
 
     @abstractmethod
     def open_device(self) -> bool:
-        pass
+        """Opens the device, enabling acquisition.
+
+        :return: True if device has been started, otherwise False.
+        :rtype: bool
+        """
+        raise NotImplementedError
     
     @abstractmethod
     def close_device(self) -> None:
-        pass
+        """Closes device, disabling acquisition
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def capture_image(self) -> np.array:
-        pass
+        """Captures a single image.
+
+        :return: a 2D numpy array (grayscale 8 bits by default)
+        :rtype: numpy.array
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def set_exposure(self, exposure) -> None:
+        """Sets the exposure time for the current device.
+
+        :param exposure: the new exposure time (for OpenCV time scale is fixed, for other devices is microseconds)
+        :type exposure: int, string
+        """
         pass
 
     @abstractmethod
     def set_roi(self, roi : list) -> None:
+        """Sets a ROI for the current device.
+
+        :param roi: list of integers indicating the new ROI (this is still not supported)
+        :type roi: list
+        """
         self.roi = roi
 
     @abstractmethod
     def get_roi(self) -> list:
+        """Returns the current set ROI.
+
+        :return: list of current ROI.
+        :rtype: list
+        """
         return self.roi
 
     def get_name(self) -> str:
+        """Returns the camera name specified by camera_name
+
+        :return: the camera name
+        :rtype: str
+        """
         return self.camera_name

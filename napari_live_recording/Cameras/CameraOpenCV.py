@@ -6,6 +6,12 @@ import numpy as np
 CAM_OPENCV = "Default Camera (OpenCV)"
 
 class CameraOpenCV(ICamera):
+    """Generic OpenCV camera handler
+
+    :param ICamera: [description]
+    :type ICamera: [type]
+    """
+
     def __init__(self) -> None:
         super().__init__()
         self.camera_idx = 0

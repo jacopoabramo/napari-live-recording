@@ -1,3 +1,6 @@
+# Visual Studio Code settings folder
+.vscode/
+
 # Test images / Test folder
 test/
 *.tiff

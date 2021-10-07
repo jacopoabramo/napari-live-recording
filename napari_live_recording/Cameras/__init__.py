@@ -1,4 +1,5 @@
 from .ICamera import *
+from .CameraError import *
 from .TestCamera import *
 from .CameraOpenCV import *
 from .CameraXimea import *
