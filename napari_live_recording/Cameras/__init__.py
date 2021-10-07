@@ -1,7 +1,7 @@
-from .ICamera import ICamera, CameraError
-from .TestCamera import TestCamera, CAM_TEST
-from .CameraOpenCV import CameraOpenCV, CAM_OPENCV
-from .CameraXimea import CameraXimea, CAM_XIMEA
+from .ICamera import *
+from .TestCamera import *
+from .CameraOpenCV import *
+from .CameraXimea import *
 
 supported_cameras = {
     CAM_TEST   : TestCamera,
@@ -12,11 +12,10 @@ supported_cameras = {
 __all__ = [
     "ICamera",
     "CameraError",
+    # list of supported cameras below
     "TestCamera",
     "CameraOpenCV",
     "CameraXimea",
-    # insert new cameras below
-
-    # insert new cameras above
+    # list of supported cameras above
     "supported_cameras",
 ]

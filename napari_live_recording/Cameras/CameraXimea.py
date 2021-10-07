@@ -1,4 +1,4 @@
-from napari_live_recording.Cameras.ICamera import ICamera
+from .ICamera import ICamera
 
 # Ximea camera support only provided by downloading the Ximea Software package
 # see https://www.ximea.com/support/wiki/apis/APIs for more informations
