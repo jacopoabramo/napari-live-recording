@@ -12,6 +12,7 @@ class CameraOpenCV(ICamera):
         self.camera_api = cv2.CAP_ANY
         self.camera = None
         self.camera_name = CAM_OPENCV
+        self.roi = [500, 500]
 
         # Windows platforms support discrete exposure times
         # These are mapped using a dictionary
@@ -58,3 +59,9 @@ class CameraOpenCV(ICamera):
         if system() == "Windows":
             exposure = self.exposure_dict[exposure]
         self.camera.set(cv2.CAP_PROP_EXPOSURE, exposure)
+    
+    def set_roi(self, roi : list) -> None:
+        self.roi = roi
+    
+    def get_roi(self) -> list:
+        return self.roi

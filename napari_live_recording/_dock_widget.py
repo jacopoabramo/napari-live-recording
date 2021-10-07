@@ -61,6 +61,15 @@ class LiveRecording(QWidget):
         self.layout().addWidget(self.special_function_combobox, 4, 1)
     
     def _on_cam_type_changed(self, index):
+        if self.is_connect:
+            if self.is_live:
+                self.camera_live_button.setText("Start live recording")
+                self.is_live = False
+                self.live_worker.quit()
+            self.camera.close_device()
+            self.camera_connect_button.setText("Connect camera")
+            self.is_connect = False
+            self._set_widgets_enabled(False)
         self.camera_connect_button.setEnabled(bool(index))
         camera_name = self.camera_selection_combobox.currentText()
         try:
