@@ -1,11 +1,12 @@
 from PyQt5 import QtCore
 from napari._qt.qthreading import thread_worker
-from PyQt5.QtWidgets import QCheckBox, QComboBox, QFileDialog, QLabel, QSpinBox, QVBoxLayout
+from PyQt5.QtWidgets import QCheckBox, QComboBox, QFileDialog, QLabel, QLineEdit, QSpinBox, QVBoxLayout
 from napari_plugin_engine import napari_hook_implementation
 from qtpy.QtWidgets import QWidget, QGridLayout, QPushButton
 from imageio import mimwrite, imwrite
 from napari_live_recording.Cameras import *
 from napari_live_recording.Functions import *
+from time import time
 
 class LiveRecording(QWidget):
     def __init__(self, napari_viewer) -> None:
@@ -45,7 +46,7 @@ class LiveRecording(QWidget):
         self.camera_record_spinbox = QSpinBox(self)
         self.camera_record_spinbox.setMaximum(10000)
         self.camera_record_spinbox.setMinimum(10)
-        self.camera_record_spinbox.setValue(10)
+        self.camera_record_spinbox.setValue(2000)
         self.camera_record_spinbox.setEnabled(False)
 
         self.special_function_checkbox = QCheckBox("Special function", self)
@@ -55,6 +56,12 @@ class LiveRecording(QWidget):
         self.special_function_combobox = QComboBox(self)
         self.special_function_combobox.currentTextChanged.connect(self._on_special_function_changed)
 
+        self.frames_per_second_label = QLabel("Frames Per Second (FPS)", self)
+        self.frames_per_second_label.setAlignment(QtCore.Qt.AlignCenter)
+
+        self.frames_per_second_line_edit = QLabel(self)
+        self.frames_per_second_line_edit.setAlignment(QtCore.Qt.AlignCenter)
+
         self.options_layout.addWidget(self.camera_selection_combobox, 0, 0)
         self.options_layout.addWidget(self.camera_connect_button, 1, 0)
         self.options_layout.addWidget(self.camera_live_button, 1, 1)
@@ -63,22 +70,24 @@ class LiveRecording(QWidget):
         self.options_layout.addWidget(self.camera_record_spinbox, 3, 1)
         self.options_layout.addWidget(self.special_function_checkbox, 4, 0)
         self.options_layout.addWidget(self.special_function_combobox, 4, 1)
+        self.options_layout.addWidget(self.frames_per_second_label, 5, 0)
+        self.options_layout.addWidget(self.frames_per_second_line_edit, 5, 1)
 
         self.camera_roi_x_offset_label = QLabel("Offset X (px)", self)
         self.camera_roi_x_offset_label.setAlignment(QtCore.Qt.AlignCenter)
 
         self.camera_roi_x_offset_spinbox = QSpinBox(self)
-        self.camera_roi_x_offset_spinbox.setRange(32, 1280)
+        self.camera_roi_x_offset_spinbox.setRange(0, 1280)
         self.camera_roi_x_offset_spinbox.setSingleStep(32)
-        self.camera_roi_x_offset_spinbox.setValue(640)
+        self.camera_roi_x_offset_spinbox.setValue(0)
 
         self.camera_roi_y_offset_label = QLabel("Offset Y (px)", self)
         self.camera_roi_y_offset_label.setAlignment(QtCore.Qt.AlignCenter)
 
         self.camera_roi_y_offset_spinbox = QSpinBox(self)
-        self.camera_roi_y_offset_spinbox.setRange(4, 64)
+        self.camera_roi_y_offset_spinbox.setRange(0, 64)
         self.camera_roi_y_offset_spinbox.setSingleStep(4)
-        self.camera_roi_y_offset_spinbox.setValue(32)
+        self.camera_roi_y_offset_spinbox.setValue(0)
 
         self.camera_roi_width_label = QLabel("Width (px)", self)
         self.camera_roi_width_label.setAlignment(QtCore.Qt.AlignCenter)
@@ -86,15 +95,15 @@ class LiveRecording(QWidget):
         self.camera_roi_width_spinbox = QSpinBox(self)
         self.camera_roi_width_spinbox.setRange(32, 1280)
         self.camera_roi_width_spinbox.setSingleStep(32)
-        self.camera_roi_width_spinbox.setValue(640)
+        self.camera_roi_width_spinbox.setValue(1280)
         
         self.camera_roi_height_label = QLabel("Height (px)", self)
         self.camera_roi_height_label.setAlignment(QtCore.Qt.AlignCenter)
 
         self.camera_roi_height_spinbox = QSpinBox(self)
-        self.camera_roi_height_spinbox.setRange(4, 64)
+        self.camera_roi_height_spinbox.setRange(4, 864)
         self.camera_roi_height_spinbox.setSingleStep(4)
-        self.camera_roi_height_spinbox.setValue(32)
+        self.camera_roi_height_spinbox.setValue(864)
 
         self.camera_roi_change_button = QPushButton("Set ROI", self)
         self.camera_roi_change_button.clicked.connect(self._on_roi_change_requested)
@@ -175,23 +184,22 @@ class LiveRecording(QWidget):
     def _add_opencv_exposure(self):
         self._delete_exposure_widget()
         self.camera_exposure_label = QLabel("Exposure", self)
-        self.options_layout.addWidget(self.camera_exposure_label, 5, 0)
+        self.options_layout.addWidget(self.camera_exposure_label, 6, 0)
         self.camera_exposure_widget = QComboBox(self)
         self.camera_exposure_widget.addItems(list(self.camera.exposure_dict.keys()))
         self.camera_exposure_widget.currentTextChanged.connect(self._on_exposure_changed)
-        self.options_layout.addWidget(self.camera_exposure_widget, 5, 1)
+        self.options_layout.addWidget(self.camera_exposure_widget, 6, 1)
 
 
     def _add_camera_exposure(self):
         self._delete_exposure_widget()
-        self.camera_exposure_label = QLabel("Exposure (\u03BCs)", self)
-        self.options_layout.addWidget(self.camera_exposure_label, 5, 0)
+        self.camera_exposure_label = QLabel("Exposure (ms)", self)
+        self.options_layout.addWidget(self.camera_exposure_label, 6, 0)
         self.camera_exposure_widget = QSpinBox(self)
-        self.camera_exposure_widget.setMaximum(5000)
-        self.camera_exposure_widget.setMinimum(20)
-        self.camera_exposure_widget.setValue(200)
+        self.camera_exposure_widget.setRange(10, 1000)
+        self.camera_exposure_widget.setValue(10)
         self.camera_exposure_widget.valueChanged.connect(self._on_exposure_changed)
-        self.options_layout.addWidget(self.camera_exposure_widget, 5, 1)
+        self.options_layout.addWidget(self.camera_exposure_widget, 6, 1)
     
     def _on_connect_clicked(self):
         if not self.is_connect:
@@ -208,7 +216,6 @@ class LiveRecording(QWidget):
             self._set_widgets_enabled(False)
 
     def _on_live_clicked(self):
-
         # inspired by https://github.com/haesleinhuepf/napari-webcam
         def update_layer(data):
                 if data is not None:
@@ -222,8 +229,16 @@ class LiveRecording(QWidget):
         # inspired by https://github.com/haesleinhuepf/napari-webcam 
         @thread_worker(connect={"yielded" : update_layer})
         def yield_acquire_images_forever():
+            prev_frame_time = 0.01
             while True: # infinite loop, quit signal makes it stop
                 yield self.camera.capture_image()
+                new_frame_time = time()
+                try:
+                    self.frames_per_second_line_edit.setText(str(round(1/(new_frame_time-prev_frame_time), 2)))
+                except ZeroDivisionError:
+                    pass
+                prev_frame_time = new_frame_time
+                
         
         if not self.is_live:
             self.live_worker = yield_acquire_images_forever()
@@ -235,12 +250,7 @@ class LiveRecording(QWidget):
             self.live_worker.quit()
 
     def _on_exposure_changed(self, exposure):
-        if self.is_live:
-            self.live_worker.pause()
-            self.camera.set_exposure(exposure)
-            self.live_worker.resume()
-        else:
-            self.camera.set_exposure(exposure)
+        self.camera.set_exposure(exposure)
 
     def _on_record_clicked(self):
 

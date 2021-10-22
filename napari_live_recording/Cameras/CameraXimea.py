@@ -9,15 +9,20 @@ import numpy as np
 
 CAM_XIMEA = "Ximea xiB-64"
 
+
+
+CONVERSION_FACTOR = 1000
+
 class CameraXimea(ICamera):
+
     def __init__(self) -> None:
         super().__init__()
         self.camera = XiCamera()
         self.image = XiImage()
         self.camera_name = CAM_XIMEA
-        self.roi = [4, 32, 500, 500]
-        self.exposure = 200
-        self.sleep_time = self.exposure * 10e-6
+        self.roi = [0, 0, 1280, 864]
+        self.exposure = 10 * CONVERSION_FACTOR    # ms, default exposure
+        self.sleep_time = 10 / CONVERSION_FACTOR  # ms
     
     def __del__(self) -> None:
         self.close_device()
@@ -53,18 +58,21 @@ class CameraXimea(ICamera):
             data = self.image.get_image_data_numpy()
         except Xi_error:
             data = None
-        sleep(self.sleep_time)
+        # sleep(self.sleep_time)
         return data
 
     def set_exposure(self, exposure) -> None:
         try:
-            self.camera.set_exposure(exposure)
-            self.exposure = exposure
-            self.sleep_time = exposure * 10e-6
+            self.exposure = exposure * CONVERSION_FACTOR
+            self.sleep_time = exposure / CONVERSION_FACTOR
+            self.camera.set_exposure(self.exposure)
         except Xi_error:
             pass
     
     def set_roi(self, roi : list) -> None:
+        print("Setting new ROI:")
+        print(f"Offset X: {roi[0]} - Offset Y: {roi[1]}")
+        print(f"Width: {roi[2]} - Height: {roi[3]}")
         if self.roi[0] != roi[0]:
             self.camera.set_offsetX(roi[0])
         if self.roi[1] != roi[1]:
