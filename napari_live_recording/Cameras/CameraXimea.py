@@ -16,7 +16,8 @@ class CameraXimea(ICamera):
         self.image = XiImage()
         self.camera_name = CAM_XIMEA
         self.roi = [4, 32, 500, 500]
-        self.frame_rate = float(1/200) # default exposure
+        self.exposure = 200
+        self.sleep_time = self.exposure * 10e-6
     
     def __del__(self) -> None:
         self.close_device()
@@ -33,7 +34,7 @@ class CameraXimea(ICamera):
                 self.camera.set_LUTValue(idx)
             self.camera.enable_LUTEnable()
             self.camera.start_acquisition()
-            self.camera.set_exposure(200)
+            self.camera.set_exposure(self.exposure)
         except Xi_error:
             return False
         return True
@@ -52,13 +53,14 @@ class CameraXimea(ICamera):
             data = self.image.get_image_data_numpy()
         except Xi_error:
             data = None
-        sleep(0.01)
+        sleep(self.sleep_time)
         return data
 
     def set_exposure(self, exposure) -> None:
         try:
             self.camera.set_exposure(exposure)
-            self.frame_rate = float(1.0 / exposure)
+            self.exposure = exposure
+            self.sleep_time = exposure * 10e-6
         except Xi_error:
             pass
     

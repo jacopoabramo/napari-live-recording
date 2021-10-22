@@ -1,5 +1,6 @@
+from PyQt5 import QtCore
 from napari._qt.qthreading import thread_worker
-from PyQt5.QtWidgets import QCheckBox, QComboBox, QFileDialog, QLabel, QSpinBox
+from PyQt5.QtWidgets import QCheckBox, QComboBox, QFileDialog, QLabel, QSpinBox, QVBoxLayout
 from napari_plugin_engine import napari_hook_implementation
 from qtpy.QtWidgets import QWidget, QGridLayout, QPushButton
 from imageio import mimwrite, imwrite
@@ -13,6 +14,10 @@ class LiveRecording(QWidget):
         self.camera = None
         self.live_worker = None
         self.record_worker = None
+
+        self.outer_layout = QVBoxLayout()
+        self.options_layout = QGridLayout()
+        self.roi_layout = QGridLayout()
 
         self.camera_connect_button = QPushButton("Connect camera", self)
         self.camera_connect_button.clicked.connect(self._on_connect_clicked)
@@ -50,44 +55,68 @@ class LiveRecording(QWidget):
         self.special_function_combobox = QComboBox(self)
         self.special_function_combobox.currentTextChanged.connect(self._on_special_function_changed)
 
+        self.options_layout.addWidget(self.camera_selection_combobox, 0, 0)
+        self.options_layout.addWidget(self.camera_connect_button, 1, 0)
+        self.options_layout.addWidget(self.camera_live_button, 1, 1)
+        self.options_layout.addWidget(self.camera_record_button, 2, 0, 1, 2)
+        self.options_layout.addWidget(self.camera_record_buffer_label, 3, 0)
+        self.options_layout.addWidget(self.camera_record_spinbox, 3, 1)
+        self.options_layout.addWidget(self.special_function_checkbox, 4, 0)
+        self.options_layout.addWidget(self.special_function_combobox, 4, 1)
+
         self.camera_roi_x_offset_label = QLabel("Offset X (px)", self)
+        self.camera_roi_x_offset_label.setAlignment(QtCore.Qt.AlignCenter)
+
         self.camera_roi_x_offset_spinbox = QSpinBox(self)
-        self.camera_roi_x_offset_spinbox.setMinimum(32)
-        self.camera_roi_x_offset_spinbox.setMaximum(1280)
+        self.camera_roi_x_offset_spinbox.setRange(32, 1280)
+        self.camera_roi_x_offset_spinbox.setSingleStep(32)
+        self.camera_roi_x_offset_spinbox.setValue(640)
 
         self.camera_roi_y_offset_label = QLabel("Offset Y (px)", self)
-        self.camera_roi_y_offset_spinbox = QSpinBox(self)
-        self.camera_roi_y_offset_spinbox.setMinimum(4)
-        self.camera_roi_y_offset_spinbox.setMaximum(64)
+        self.camera_roi_y_offset_label.setAlignment(QtCore.Qt.AlignCenter)
 
+        self.camera_roi_y_offset_spinbox = QSpinBox(self)
+        self.camera_roi_y_offset_spinbox.setRange(4, 64)
+        self.camera_roi_y_offset_spinbox.setSingleStep(4)
+        self.camera_roi_y_offset_spinbox.setValue(32)
 
         self.camera_roi_width_label = QLabel("Width (px)", self)
+        self.camera_roi_width_label.setAlignment(QtCore.Qt.AlignCenter)
+
         self.camera_roi_width_spinbox = QSpinBox(self)
-        self.camera_roi_width_spinbox.setMinimum(32)
-        self.camera_roi_width_spinbox.setMaximum(1280)
+        self.camera_roi_width_spinbox.setRange(32, 1280)
+        self.camera_roi_width_spinbox.setSingleStep(32)
+        self.camera_roi_width_spinbox.setValue(640)
         
         self.camera_roi_height_label = QLabel("Height (px)", self)
-        self.camera_roi_height_spinbox = QSpinBox(self)
-        self.camera_roi_height_spinbox.setMinimum(4)
-        self.camera_roi_height_spinbox.setMaximum(64)
+        self.camera_roi_height_label.setAlignment(QtCore.Qt.AlignCenter)
 
-        self.setLayout(QGridLayout(self))
-        self.layout().addWidget(self.camera_selection_combobox, 0, 0)
-        self.layout().addWidget(self.camera_connect_button, 1, 0)
-        self.layout().addWidget(self.camera_live_button, 1, 1)
-        self.layout().addWidget(self.camera_record_button, 2, 0, 1, 2)
-        self.layout().addWidget(self.camera_record_buffer_label, 3, 0)
-        self.layout().addWidget(self.camera_record_spinbox, 3, 1)
-        self.layout().addWidget(self.special_function_checkbox, 4, 0)
-        self.layout().addWidget(self.special_function_combobox, 4, 1)
-        self.layout().addWidget(self.camera_roi_x_offset_label, 6, 0)
-        self.layout().addWidget(self.camera_roi_x_offset_spinbox, 6, 1)
-        self.layout().addWidget(self.camera_roi_y_offset_label, 7, 0)
-        self.layout().addWidget(self.camera_roi_y_offset_spinbox, 7, 1)
-        self.layout().addWidget(self.camera_roi_width_label, 8, 0)
-        self.layout().addWidget(self.camera_roi_width_spinbox, 8, 1)
-        self.layout().addWidget(self.camera_roi_height_label, 9, 0)
-        self.layout().addWidget(self.camera_roi_height_spinbox, 9, 1)
+        self.camera_roi_height_spinbox = QSpinBox(self)
+        self.camera_roi_height_spinbox.setRange(4, 64)
+        self.camera_roi_height_spinbox.setSingleStep(4)
+        self.camera_roi_height_spinbox.setValue(32)
+
+        self.camera_roi_change_button = QPushButton("Set ROI", self)
+        self.camera_roi_change_button.clicked.connect(self._on_roi_change_requested)
+        self.camera_roi_change_button.setEnabled(False)
+
+        self.roi_layout.addWidget(self.camera_roi_x_offset_label, 0, 0)
+        self.roi_layout.addWidget(self.camera_roi_x_offset_spinbox, 0, 1)
+        self.roi_layout.addWidget(self.camera_roi_y_offset_spinbox, 0, 2)
+        self.roi_layout.addWidget(self.camera_roi_y_offset_label, 0, 3)
+
+        self.roi_layout.addWidget(self.camera_roi_width_label, 1, 0)
+        self.roi_layout.addWidget(self.camera_roi_width_spinbox, 1, 1)
+        self.roi_layout.addWidget(self.camera_roi_height_spinbox, 1, 2)
+        self.roi_layout.addWidget(self.camera_roi_height_label, 1, 3)
+        self.roi_layout.addWidget(self.camera_roi_change_button, 2, 0, 1, 4)
+        
+        self.options_layout.setAlignment(QtCore.Qt.AlignTop)
+        self.roi_layout.setAlignment(QtCore.Qt.AlignBottom)
+
+        self.outer_layout.addLayout(self.options_layout)
+        self.outer_layout.addLayout(self.roi_layout)
+        self.setLayout(self.outer_layout)
 
         self.roi = [
             self.camera_roi_x_offset_spinbox.value(), # 0: offset x
@@ -125,7 +154,7 @@ class LiveRecording(QWidget):
     
     def _delete_exposure_widget(self):
         if self.camera_exposure_label is not None:
-            self.layout().removeWidget(self.camera_exposure_label)
+            self.options_layout.removeWidget(self.camera_exposure_label)
             self.camera_exposure_widget.deleteLater()
             self.camera_exposure_widget = None
         if self.camera_exposure_widget is not None:
@@ -133,7 +162,7 @@ class LiveRecording(QWidget):
                 self.camera_exposure_widget.currentTextChanged.disconnect(self._on_exposure_changed)
             else:
                 self.camera_exposure_widget.valueChanged.disconnect(self._on_exposure_changed)
-            self.layout().removeWidget(self.camera_exposure_widget)
+            self.options_layout.layout().removeWidget(self.camera_exposure_widget)
             self.camera_exposure_widget.deleteLater()
             self.camera_exposure_widget = None
     
@@ -141,27 +170,28 @@ class LiveRecording(QWidget):
         self.camera_live_button.setEnabled(enabled)
         self.camera_record_button.setEnabled(enabled)
         self.camera_record_spinbox.setEnabled(enabled)
+        self.camera_roi_change_button.setEnabled(enabled)
 
     def _add_opencv_exposure(self):
         self._delete_exposure_widget()
         self.camera_exposure_label = QLabel("Exposure", self)
-        self.layout().addWidget(self.camera_exposure_label, 5, 0)
+        self.options_layout.addWidget(self.camera_exposure_label, 5, 0)
         self.camera_exposure_widget = QComboBox(self)
         self.camera_exposure_widget.addItems(list(self.camera.exposure_dict.keys()))
         self.camera_exposure_widget.currentTextChanged.connect(self._on_exposure_changed)
-        self.layout().addWidget(self.camera_exposure_widget, 5, 1)
+        self.options_layout.addWidget(self.camera_exposure_widget, 5, 1)
 
 
     def _add_camera_exposure(self):
         self._delete_exposure_widget()
         self.camera_exposure_label = QLabel("Exposure (\u03BCs)", self)
-        self.layout().addWidget(self.camera_exposure_label, 5, 0)
+        self.options_layout.addWidget(self.camera_exposure_label, 5, 0)
         self.camera_exposure_widget = QSpinBox(self)
         self.camera_exposure_widget.setMaximum(5000)
         self.camera_exposure_widget.setMinimum(20)
         self.camera_exposure_widget.setValue(200)
         self.camera_exposure_widget.valueChanged.connect(self._on_exposure_changed)
-        self.layout().addWidget(self.camera_exposure_widget, 5, 1)
+        self.options_layout.addWidget(self.camera_exposure_widget, 5, 1)
     
     def _on_connect_clicked(self):
         if not self.is_connect:
@@ -254,24 +284,19 @@ class LiveRecording(QWidget):
     
     def _on_offset_x_changed(self, offset):
         self.roi[0] = offset
-        if self.camera is not None:
-            self.camera.set_roi(self.roi)
 
     def _on_offset_y_changed(self, offset):
         self.roi[1] = offset
-        if self.camera is not None:
-            self.camera.set_roi(self.roi)
 
     def _on_width_changed(self, width):
         self.roi[2] = width
-        if self.camera is not None:
-            self.camera.set_roi(self.roi)
 
     def _on_height_changed(self, height):
         self.roi[3] = height
+    
+    def _on_roi_change_requested(self):
         if self.camera is not None:
             self.camera.set_roi(self.roi)
-        pass
 
 @napari_hook_implementation
 def napari_experimental_provide_dock_widget():
