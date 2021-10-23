@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.1.3
+-----
+
+- Added ReadTheDocs documentation.
+
 0.1.2
 -----
 
