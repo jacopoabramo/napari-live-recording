@@ -19,8 +19,6 @@ These are the steps required to integrate in the plugin new devices.
   - the name of your camera as key,
   - the class of your camera as value (don't forget to include the class in ``__init__.py``);
 
-- Finally, append the name of your class as a string object in the ``__all__`` list.
-
 To test the newly added camera, install the plugin by navigating inside the ``napari_live_recording``:
 
 .. code-block::
