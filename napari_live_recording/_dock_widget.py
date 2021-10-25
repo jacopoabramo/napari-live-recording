@@ -1,11 +1,12 @@
 from PyQt5 import QtCore
 from napari._qt.qthreading import thread_worker
-from PyQt5.QtWidgets import QCheckBox, QComboBox, QFileDialog, QLabel, QLineEdit, QSpinBox, QVBoxLayout
+from PyQt5.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog, QLabel, QSpinBox, QVBoxLayout
 from napari_plugin_engine import napari_hook_implementation
 from qtpy.QtWidgets import QWidget, QGridLayout, QPushButton
 from imageio import mimwrite, imwrite
 from napari_live_recording.Cameras import *
 from napari_live_recording.Functions import *
+from collections import deque
 from time import time
 
 class LiveRecording(QWidget):
@@ -14,6 +15,7 @@ class LiveRecording(QWidget):
         self.viewer = napari_viewer
         self.camera = None
         self.live_worker = None
+        self.live_image_buffer = deque([], maxlen=10000)
         self.record_worker = None
 
         self.outer_layout = QVBoxLayout()
@@ -195,8 +197,8 @@ class LiveRecording(QWidget):
         self._delete_exposure_widget()
         self.camera_exposure_label = QLabel("Exposure (ms)", self)
         self.options_layout.addWidget(self.camera_exposure_label, 6, 0)
-        self.camera_exposure_widget = QSpinBox(self)
-        self.camera_exposure_widget.setRange(10, 1000)
+        self.camera_exposure_widget = QDoubleSpinBox(self)
+        self.camera_exposure_widget.setRange(0.1, 1000)
         self.camera_exposure_widget.setValue(10)
         self.camera_exposure_widget.valueChanged.connect(self._on_exposure_changed)
         self.options_layout.addWidget(self.camera_exposure_widget, 6, 1)
@@ -230,24 +232,30 @@ class LiveRecording(QWidget):
         @thread_worker(connect={"yielded" : update_layer})
         def yield_acquire_images_forever():
             prev_frame_time = 0.01
+            view_time = time()
             while True: # infinite loop, quit signal makes it stop
-                yield self.camera.capture_image()
+                img = self.camera.capture_image()
+                (self.live_image_buffer.append(img) if img is not None else None)
                 new_frame_time = time()
                 try:
-                    self.frames_per_second_line_edit.setText(str(round(1/(new_frame_time-prev_frame_time), 2)))
+                    self.frames_per_second_line_edit.setText(str(round(1/(new_frame_time-prev_frame_time))))
                 except ZeroDivisionError:
                     pass
                 prev_frame_time = new_frame_time
-                
+                if(new_frame_time - view_time > (1/60)):
+                    yield self.live_image_buffer.pop()
+                    view_time = time()
+                    
         
         if not self.is_live:
             self.live_worker = yield_acquire_images_forever()
             self.camera_live_button.setText("Stop live recording")
             self.is_live = True
         else:
-            self.camera_live_button.setText("Start live recording")
             self.is_live = False
             self.live_worker.quit()
+            self.live_image_buffer.clear()
+            self.camera_live_button.setText("Start live recording")
 
     def _on_exposure_changed(self, exposure):
         self.camera.set_exposure(exposure)

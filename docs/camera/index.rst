@@ -8,3 +8,4 @@ This document describes the napari-live-recording camera interface structure and
 
    camera_interface
    new_camera
+   list_of_cameras

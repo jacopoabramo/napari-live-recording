@@ -18,12 +18,11 @@ class ICamera(ABC):
         """
         super().__init__()
         self.camera_name = "ICamera"
-        self.roi = []
 
     @abstractmethod
     def __del__(self) -> None:
         """Abstract destructor method"""
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def open_device(self) -> bool:
@@ -32,13 +31,13 @@ class ICamera(ABC):
         :return: True if device has been started, otherwise False.
         :rtype: bool
         """
-        raise NotImplementedError
+        pass
     
     @abstractmethod
     def close_device(self) -> None:
         """Closes device, disabling acquisition
         """
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def capture_image(self) -> np.array:
@@ -47,7 +46,7 @@ class ICamera(ABC):
         :return: a 2D numpy array (grayscale 8 bits by default)
         :rtype: numpy.array
         """
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def set_exposure(self, exposure) -> None:
@@ -65,7 +64,7 @@ class ICamera(ABC):
         :param roi: list of integers indicating the new ROI (this is still not supported)
         :type roi: list
         """
-        self.roi = roi
+        pass
 
     @abstractmethod
     def get_roi(self) -> list:
@@ -74,8 +73,8 @@ class ICamera(ABC):
         :return: list of current ROI.
         :rtype: list
         """
-        return self.roi
-
+        pass
+    
     def get_name(self) -> str:
         """Returns the camera name specified by camera_name
 

@@ -1,22 +1,21 @@
-from .ICamera import *
-from .CameraError import *
-from .TestCamera import *
-from .CameraOpenCV import *
-from .CameraXimea import *
+supported_cameras = {}
 
-supported_cameras = {
-    CAM_TEST   : TestCamera,
-    CAM_OPENCV : CameraOpenCV,
-    CAM_XIMEA  : CameraXimea
-}
+from .ICamera import ICamera
+from .CameraError import CameraError
 
-__all__ = [
-    "ICamera",
-    "CameraError",
-    # list of supported cameras below
-    "TestCamera",
-    "CameraOpenCV",
-    "CameraXimea",
-    # list of supported cameras above
-    "supported_cameras",
-]
+from .TestCamera import TestCamera, CAM_TEST
+supported_cameras[CAM_TEST] = TestCamera
+
+try:
+    from .CameraOpenCV import CameraOpenCV, CAM_OPENCV
+except ImportError:
+    pass
+else:
+    supported_cameras[CAM_OPENCV] = CameraOpenCV
+
+try:
+    from .CameraXimea import CameraXimea, CAM_XIMEA
+except ImportError:
+    pass
+else:
+    supported_cameras[CAM_XIMEA] = CameraXimea
