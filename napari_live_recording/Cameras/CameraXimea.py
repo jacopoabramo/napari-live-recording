@@ -5,19 +5,25 @@ from .ICamera import ICamera
 try:
     from ximea.xiapi import Camera as XiCamera, Xi_error
     from ximea.xiapi import Image as XiImage
-    from time import sleep
     import numpy as np
 
     CAM_XIMEA = "Ximea xiB-64"
+    CONVERSION_FACTOR = 1000
 
     class CameraXimea(ICamera):
+
         def __init__(self) -> None:
             super().__init__()
             self.camera = XiCamera()
             self.image = XiImage()
             self.camera_name = CAM_XIMEA
-            self.roi = [500, 500]
-            self.frame_rate = 0.01
+            self.roi = [0, 0, 1280, 864]
+            self.exposure = 10 * CONVERSION_FACTOR    # ms, default exposure
+            self.sleep_time = 10 / CONVERSION_FACTOR  # ms
+            self.pixel_formats = {
+                "8-bit gray"  : "XI_MONO8",
+                "16-bit gray" : "XI_MONO16"
+            }
         
         def __del__(self) -> None:
             self.close_device()
@@ -33,6 +39,7 @@ try:
                     self.camera.set_LUTIndex(idx)
                     self.camera.set_LUTValue(idx)
                 self.camera.enable_LUTEnable()
+                self.camera.set_exposure(self.exposure)
                 self.camera.start_acquisition()
             except Xi_error:
                 return False
@@ -52,18 +59,25 @@ try:
                 data = self.image.get_image_data_numpy()
             except Xi_error:
                 data = None
-            sleep(0.01)
             return data
 
         def set_exposure(self, exposure) -> None:
             try:
-                self.camera.set_exposure(exposure)
-                self.frame_rate = float(1.0 / exposure)
+                self.exposure = exposure * CONVERSION_FACTOR
+                self.sleep_time = exposure / CONVERSION_FACTOR
+                self.camera.set_exposure(self.exposure)
             except Xi_error:
                 pass
         
         def set_roi(self, roi : list) -> None:
-            # todo: needs implementation using Ximea APIs
+            if self.roi[0] != roi[0]:
+                self.camera.set_offsetX(roi[0])
+            if self.roi[1] != roi[1]:
+                self.camera.set_offsetY(roi[1])
+            if self.roi[2] != roi[2]:
+                self.camera.set_width(roi[2])
+            if self.roi[3] != roi[3]:
+                self.camera.set_height(roi[3])
             self.roi = roi
 
         def get_roi(self) -> list:

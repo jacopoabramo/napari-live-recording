@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.1.4
+-----
+
+- Added ROI handling
+
 0.1.3
 -----
 

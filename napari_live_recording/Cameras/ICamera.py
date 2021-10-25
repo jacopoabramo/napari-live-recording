@@ -18,7 +18,6 @@ class ICamera(ABC):
         """
         super().__init__()
         self.camera_name = "ICamera"
-        self.roi = []
 
     @abstractmethod
     def __del__(self) -> None:
@@ -75,7 +74,7 @@ class ICamera(ABC):
         :rtype: list
         """
         pass
-
+    
     def get_name(self) -> str:
         """Returns the camera name specified by camera_name
 
