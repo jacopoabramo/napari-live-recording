@@ -39,6 +39,8 @@ class CameraOpenCV(ICamera):
             "122.1 us" : -13
         }
 
+        self.frame_counter = 0
+
     def __del__(self) -> None:
         if self.camera is not None:
             self.camera.release()
@@ -59,6 +61,7 @@ class CameraOpenCV(ICamera):
         _ , img = self.camera.read()
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         cv2.waitKey(1)
+        self.frame_counter += 1
         return img
 
     def set_exposure(self, exposure) -> None:
@@ -81,3 +84,8 @@ class CameraOpenCV(ICamera):
             self.camera = cv2.VideoCapture(self.camera_idx, self.camera_api)
         else:
             self.camera.release()
+    
+    def get_frames_per_second(self) -> int:
+        frames = self.frame_counter
+        self.frame_counter = 0
+        return frames
