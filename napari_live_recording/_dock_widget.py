@@ -8,7 +8,6 @@ from imageio import mimwrite, imwrite
 from napari_live_recording.Cameras import *
 from napari_live_recording.Functions import *
 from collections import deque
-from time import time
 
 class LiveRecording(QWidget):
     def __init__(self, napari_viewer) -> None:
