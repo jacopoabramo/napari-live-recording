@@ -67,7 +67,17 @@ class CameraOpenCV(ICamera):
         self.camera.set(cv2.CAP_PROP_EXPOSURE, exposure)
     
     def set_roi(self, roi : list) -> None:
+        # todo: implement actual ROI
         self.roi = roi
     
     def get_roi(self) -> list:
         return self.roi
+
+    def get_acquisition(self) -> bool:
+        return self.camera.isOpened()
+    
+    def set_acquisition(self, is_enabled) -> None:
+        if is_enabled:
+            self.camera = cv2.VideoCapture(self.camera_idx, self.camera_api)
+        else:
+            self.camera.release()

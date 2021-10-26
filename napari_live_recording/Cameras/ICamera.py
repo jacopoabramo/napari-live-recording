@@ -74,6 +74,33 @@ class ICamera(ABC):
         :rtype: list
         """
         pass
+
+    @abstractmethod
+    def get_acquisition(self) -> bool:
+        """Returns current acquisition status.
+
+        :return: True if camera is enabled, otherwise False.
+        :rtype: bool
+        """
+        pass
+    
+    @abstractmethod
+    def set_acquisition(self, is_enabled) -> None:
+        """Sets current acquisition status.
+
+        :param is_enabled: new acquisition status
+        :type exposure: bool
+        """
+        pass
+
+    @abstractmethod
+    def get_frames_per_second(self) -> int:
+        """Returns the current FPS of a given device.
+
+        :return: the currently calculated FPS
+        :rtype: int
+        """
+        pass
     
     def get_name(self) -> str:
         """Returns the camera name specified by camera_name
