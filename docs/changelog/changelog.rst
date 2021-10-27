@@ -1,6 +1,13 @@
 Changelog
 =========
 
+0.1.5
+-----
+
+- Added live frame per second count (still imprecise)
+- Added Album mode (each manually acquired image showed on same layer)
+- Fixed ROI handling with more meaningful syntax
+
 0.1.4
 -----
 
