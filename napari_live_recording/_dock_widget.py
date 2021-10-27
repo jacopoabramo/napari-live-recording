@@ -184,11 +184,10 @@ class LiveRecording(QWidget):
             self.album_image_buffer.clear()
 
     def _on_album_clicked(self):
-        self.album_image_buffer.append(self.camera.capture_image())
         try:
-            self.viewer.layers["Album"].data = np.stack(self.album_image_buffer)
+            self.viewer.layers["Album"].data = np.stack(self.album_image_buffer.append(self.camera.capture_image()))
         except KeyError:
-            self.viewer.add_image(np.stack(self.album_image_buffer), name="Album")
+            self.viewer.add_image(np.stack(self.album_image_buffer.append(self.camera.capture_image())), name="Album")
 
     def _on_cam_type_changed(self, index):
         if self.is_connect:
