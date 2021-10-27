@@ -1,6 +1,6 @@
 supported_cameras = {}
 
-from .ICamera import ICamera
+from .ICamera import ICamera, CameraROI
 from .CameraError import CameraError
 
 from .TestCamera import TestCamera, CAM_TEST

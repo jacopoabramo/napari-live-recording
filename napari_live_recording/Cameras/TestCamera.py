@@ -1,4 +1,4 @@
-from .ICamera import ICamera
+from .ICamera import CameraROI, ICamera
 import numpy as np
 from time import sleep
 
@@ -8,7 +8,7 @@ class TestCamera(ICamera):
     def __init__(self) -> None:
         super().__init__()
         self.camera_name = CAM_TEST
-        self.roi = [500, 500]
+        self.roi = CameraROI(0, 0, 500, 500)
         self.fill_value = 0
         self.increase_factor = 1
         self.is_enabled = False
@@ -28,7 +28,7 @@ class TestCamera(ICamera):
         return self.is_enabled
     
     def capture_image(self) -> np.array:
-        img = np.full(shape=tuple(self.roi), fill_value = self.fill_value, dtype="uint8")
+        img = np.full(shape=(self.roi.width, self.roi.height), fill_value = self.fill_value, dtype="uint8")
         if self.increase_factor > 0:
             if self.fill_value == 255:
                 self.increase_factor = -1
@@ -43,11 +43,14 @@ class TestCamera(ICamera):
     def set_exposure(self, exposure) -> None:
         print(f"Dummy camera exposure set to {exposure}")
 
-    def set_roi(self, roi : list) -> None:
+    def set_roi(self, roi : CameraROI) -> None:
         self.roi = roi
     
-    def get_roi(self) -> list:
+    def get_roi(self) -> CameraROI:
         return self.roi
+    
+    def set_full_frame(self) -> None:
+        self.roi = CameraROI(0, 0, 500, 500)
     
     def get_acquisition(self) -> bool:
         return self.is_enabled

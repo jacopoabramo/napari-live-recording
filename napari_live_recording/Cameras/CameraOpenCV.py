@@ -1,4 +1,4 @@
-from .ICamera import ICamera
+from .ICamera import CameraROI, ICamera
 from platform import system
 import cv2
 import numpy as np
@@ -18,7 +18,7 @@ class CameraOpenCV(ICamera):
         self.camera_api = cv2.CAP_ANY
         self.camera = None
         self.camera_name = CAM_OPENCV
-        self.roi = [500, 500]
+        self.roi = CameraROI(0, 0, 500, 500)
 
         # Windows platforms support discrete exposure times
         # These are mapped using a dictionary
@@ -69,12 +69,15 @@ class CameraOpenCV(ICamera):
             exposure = self.exposure_dict[exposure]
         self.camera.set(cv2.CAP_PROP_EXPOSURE, exposure)
     
-    def set_roi(self, roi : list) -> None:
+    def set_roi(self, roi : CameraROI) -> None:
         # todo: implement actual ROI
         self.roi = roi
     
-    def get_roi(self) -> list:
+    def get_roi(self) -> CameraROI:
         return self.roi
+    
+    def set_full_frame(self) -> None:
+        self.roi = CameraROI(0, 0, 500, 500)
 
     def get_acquisition(self) -> bool:
         return self.camera.isOpened()

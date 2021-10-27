@@ -1,4 +1,4 @@
-from .ICamera import ICamera
+from .ICamera import CameraROI, ICamera
 
 # Ximea camera support only provided by downloading the Ximea Software package
 # see https://www.ximea.com/support/wiki/apis/APIs for more informations
@@ -6,7 +6,6 @@ try:
     from ximea.xiapi import Camera as XiCamera, Xi_error
     from ximea.xiapi import Image as XiImage
     from contextlib import contextmanager
-    from time import time
     import numpy as np
 
     CAM_XIMEA = "Ximea xiB-64"
@@ -31,16 +30,14 @@ try:
             self.camera = XiCamera()
             self.image = XiImage()
             self.camera_name = CAM_XIMEA
-            self.roi = [0, 0, 1280, 864]
             self.exposure = 1 * CONVERSION_FACTOR    # ms, default exposure
             self.sleep_time = 1 / CONVERSION_FACTOR  # ms
             self.pixel_formats = {
                 "8-bit gray": "XI_MONO8",
                 "16-bit gray": "XI_MONO16"
             }
-            self.sensor_shape = (1280, 864)
+            self.roi = CameraROI(0, 0, 1280, 864)
             self.frame_counter = 0
-            self.delta_time = 0
 
         def __del__(self) -> None:
             self.close_device()
@@ -87,22 +84,30 @@ try:
             except Xi_error:
                 pass
 
-        def set_roi(self, roi: list) -> None:
+        def set_roi(self, roi: CameraROI) -> None:
             # inspired from https://github.com/python-microscope/microscope/blob/master/microscope/cameras/ximea.py
-            if ((roi[0] + roi[2] > self.sensor_shape[0]) or (roi[1] + roi[3]) > self.sensor_shape[1]):
+            if ((roi.width + roi.offset_x > self.roi.width) or (self.roi.height + self.roi.offset_y) > self.roi.height):
                 raise ValueError("ROI outside sensor boundaries")
 
             with _camera_disabled(self):
                 self.camera.set_offsetX(0)            
                 self.camera.set_offsetY(0)
-                self.camera.set_width(roi[0])        
-                self.camera.set_height(roi[1])
-                self.camera.set_offsetX(roi[2])            
-                self.camera.set_offsetY(roi[3])
+                self.camera.set_width(roi.width)        
+                self.camera.set_height(roi.height)
+                self.camera.set_offsetX(roi.offset_x)            
+                self.camera.set_offsetY(roi.offset_y)
                 self.roi = roi
 
-        def get_roi(self) -> list:
+        def get_roi(self) -> CameraROI:
             return self.roi
+        
+        def set_full_frame(self) -> None:
+            with _camera_disabled(self):
+                self.roi = CameraROI(0, 0, 1280, 864)
+                self.camera.set_offsetX(self.roi.offset_x)            
+                self.camera.set_offsetY(self.roi.offset_y)
+                self.camera.set_width(self.roi.width)        
+                self.camera.set_height(self.roi.height)
 
         def get_acquisition(self) -> bool:
             return self.camera.get_acquisition_status()

@@ -2,7 +2,15 @@
 """
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 import numpy as np
+
+@dataclass
+class CameraROI():
+    offset_x : int
+    offset_y : int
+    height   : int
+    width    : int
 
 class ICamera(ABC):
     """Abstract class representing the camera device interface.
@@ -58,20 +66,26 @@ class ICamera(ABC):
         pass
 
     @abstractmethod
-    def set_roi(self, roi : list) -> None:
+    def set_roi(self, roi : CameraROI) -> None:
         """Sets a ROI for the current device.
 
-        :param roi: list of integers indicating the new ROI (this is still not supported)
-        :type roi: list
+        :param roi: tuple indicating the new ROI
+        :type roi: CameraROI
         """
         pass
 
     @abstractmethod
-    def get_roi(self) -> list:
+    def get_roi(self) -> CameraROI:
         """Returns the current set ROI.
 
-        :return: list of current ROI.
-        :rtype: list
+        :return: tuple of current ROI.
+        :rtype: CameraROI
+        """
+        pass
+    
+    @abstractmethod
+    def set_full_frame(self) -> None:
+        """Sets ROI to full frame.
         """
         pass
 
