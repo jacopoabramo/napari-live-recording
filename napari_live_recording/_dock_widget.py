@@ -184,7 +184,7 @@ class LiveRecording(QWidget):
             self.album_image_buffer.clear()
 
     def _on_album_clicked(self):
-        self.album_image_buffer.append(self.camera.capture_image())
+        self.album_image_buffer.insert(0, self.camera.capture_image())
         try:
             self.viewer.layers["Album"].data = np.stack(self.album_image_buffer)
         except KeyError:
