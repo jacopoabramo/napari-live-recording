@@ -327,11 +327,12 @@ class LiveRecording(QWidget):
 
         @thread_worker(connect={"yielded" : add_recording_layer})
         def acquire_stack_images(stack_size : int, file_path : str):
-            stack = np.stack([self.camera.capture_image() for idx in range(0, stack_size)])
+            stack = [self.camera.capture_image() for idx in range(0, stack_size)]
             processed = process_stack_images(self.special_function_checkbox.isChecked(), stack)
+            processed = np.stack(processed)
             file_path.replace(".tiff", ".ome.tiff")
             with tifffile.TiffWriter(file_path, append=True) as writer:
-                writer.save(stack, photometric='minisblack', metadata={'axes': 'ZYX'})
+                writer.save(processed, photometric='minisblack', metadata={'axes': 'ZYX'})
             yield file_path
 
         dlg = QFileDialog(self)
