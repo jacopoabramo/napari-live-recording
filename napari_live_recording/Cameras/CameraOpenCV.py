@@ -18,7 +18,7 @@ class CameraOpenCV(ICamera):
         self.camera_api = cv2.CAP_ANY
         self.camera = None
         self.camera_name = CAM_OPENCV
-        self.roi = CameraROI(0, 0, 500, 500)
+        self.roi = CameraROI()
 
         # Windows platforms support discrete exposure times
         # These are mapped using a dictionary

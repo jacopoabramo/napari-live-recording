@@ -8,7 +8,7 @@ class TestCamera(ICamera):
     def __init__(self) -> None:
         super().__init__()
         self.camera_name = CAM_TEST
-        self.roi = CameraROI(0, 0, 500, 500)
+        self.roi = CameraROI()
         self.fill_value = 0
         self.increase_factor = 1
         self.is_enabled = False

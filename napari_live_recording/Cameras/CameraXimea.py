@@ -1,3 +1,4 @@
+from ctypes import windll
 from .ICamera import CameraROI, ICamera
 
 # Ximea camera support only provided by downloading the Ximea Software package
@@ -6,10 +7,20 @@ try:
     from ximea.xiapi import Camera as XiCamera, Xi_error
     from ximea.xiapi import Image as XiImage
     from contextlib import contextmanager
+    from copy import copy
     import numpy as np
 
-    CAM_XIMEA = "Ximea xiB-64"
+    CAM_XIMEA = "Ximea"
     CONVERSION_FACTOR = 1000
+    DEFAULT_ROI = CameraROI(offset_x=0,
+                            offset_y=0,
+                            width = 1280,
+                            height = 864,
+                            ofs_x_step = 32,
+                            ofs_y_step = 2,
+                            width_step = 32, 
+                            height_step = 4)
+    
 
     @contextmanager
     def _camera_disabled(camera):
@@ -32,15 +43,18 @@ try:
             self.camera_name = CAM_XIMEA
             self.exposure = 1 * CONVERSION_FACTOR    # ms, default exposure
             self.sleep_time = 1 / CONVERSION_FACTOR  # ms
-            self.pixel_formats = {
-                "8-bit gray": "XI_MONO8",
-                "16-bit gray": "XI_MONO16"
+            self.dict_pixel_formats = {
+                "16-bit gray": "XI_MONO16", # default
+                "8-bit gray" : "XI_MONO8"                
             }
-            self.roi = CameraROI(0, 0, 1280, 864)
+            self.roi = DEFAULT_ROI
             self.frame_counter = 0
 
         def __del__(self) -> None:
-            self.close_device()
+            try:
+                self.close_device()
+            except Xi_error:
+                pass
 
         def __str__(self) -> str:
             return CAM_XIMEA
@@ -48,6 +62,7 @@ try:
         def open_device(self) -> bool:
             try:
                 self.camera.open_device()
+                self.camera.set_imgdataformat(self.dict_pixel_formats["16-bit gray"])
                 max_lut_idx = self.camera.get_LUTIndex_maximum()
                 for idx in range(0, max_lut_idx):
                     self.camera.set_LUTIndex(idx)
@@ -66,6 +81,13 @@ try:
                 del self.camera
             except Xi_error:  # Camera not connected or already closed
                 pass
+        
+        def get_pixel_formats(self) -> list:
+            return list(self.dict_pixel_formats.keys())
+        
+        def set_pixel_format(self, format) -> None:
+            with _camera_disabled(self):
+                self.camera.set_imgdataformat(self.dict_pixel_formats[format])
 
         def capture_image(self) -> np.array:
             try:
@@ -86,8 +108,8 @@ try:
 
         def set_roi(self, roi: CameraROI) -> None:
             # inspired from https://github.com/python-microscope/microscope/blob/master/microscope/cameras/ximea.py
-            if ((roi.width + roi.offset_x > self.roi.width) or (self.roi.height + self.roi.offset_y) > self.roi.height):
-                raise ValueError("ROI outside sensor boundaries")
+            # if ((roi.width + roi.offset_x > self.roi.width) or (self.roi.height + self.roi.offset_y > self.roi.height)):
+            #   raise ValueError("ROI outside sensor boundaries")
 
             with _camera_disabled(self):
                 self.camera.set_offsetX(0)            
@@ -101,13 +123,16 @@ try:
         def get_roi(self) -> CameraROI:
             return self.roi
         
-        def set_full_frame(self) -> None:
+        def get_sensor_range(self) -> CameraROI:
+            return DEFAULT_ROI
+        
+        def set_full_frame(self) -> CameraROI:
             with _camera_disabled(self):
-                self.roi = CameraROI(0, 0, 1280, 864)
-                self.camera.set_offsetX(self.roi.offset_x)            
-                self.camera.set_offsetY(self.roi.offset_y)
-                self.camera.set_width(self.roi.width)        
-                self.camera.set_height(self.roi.height)
+                self.camera.set_offsetX(DEFAULT_ROI.offset_x)            
+                self.camera.set_offsetY(DEFAULT_ROI.offset_y)
+                self.camera.set_width(DEFAULT_ROI.width)        
+                self.camera.set_height(DEFAULT_ROI.height)
+            return self.roi
 
         def get_acquisition(self) -> bool:
             return self.camera.get_acquisition_status()
