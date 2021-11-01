@@ -7,7 +7,6 @@ try:
     from ximea.xiapi import Camera as XiCamera, Xi_error
     from ximea.xiapi import Image as XiImage
     from contextlib import contextmanager
-    from copy import copy
     import numpy as np
 
     CAM_XIMEA = "Ximea"
@@ -44,9 +43,10 @@ try:
             self.exposure = 1 * CONVERSION_FACTOR    # ms, default exposure
             self.sleep_time = 1 / CONVERSION_FACTOR  # ms
             self.dict_pixel_formats = {
-                "16-bit gray": "XI_MONO16", # default
-                "8-bit gray" : "XI_MONO8"                
+                "16-bit gray": ["XI_MONO16", np.uint16], # default
+                "8-bit gray" : ["XI_MONO8", np.uint8]
             }
+            self.format = self.dict_pixel_formats["16-bit gray"]
             self.roi = DEFAULT_ROI
             self.frame_counter = 0
 
@@ -62,7 +62,7 @@ try:
         def open_device(self) -> bool:
             try:
                 self.camera.open_device()
-                self.camera.set_imgdataformat(self.dict_pixel_formats["16-bit gray"])
+                self.camera.set_imgdataformat(self.format[0])
                 max_lut_idx = self.camera.get_LUTIndex_maximum()
                 for idx in range(0, max_lut_idx):
                     self.camera.set_LUTIndex(idx)
@@ -82,12 +82,21 @@ try:
             except Xi_error:  # Camera not connected or already closed
                 pass
         
-        def get_pixel_formats(self) -> list:
+        def get_available_pixel_formats(self) -> list:
             return list(self.dict_pixel_formats.keys())
         
         def set_pixel_format(self, format) -> None:
+            self.format = self.dict_pixel_formats[format]
             with _camera_disabled(self):
-                self.camera.set_imgdataformat(self.dict_pixel_formats[format])
+                self.camera.set_imgdataformat(self.format[0])
+        
+        def get_pixel_format(self):
+            with _camera_disabled(self):
+                format = self.camera.get_imgdataformat()
+            for item in list(self.dict_pixel_formats.values()):
+                if item[0] == format:
+                    return item[1]
+            raise ValueError("Data type not found")
 
         def capture_image(self) -> np.array:
             try:

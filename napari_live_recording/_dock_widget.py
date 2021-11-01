@@ -2,6 +2,9 @@ from PyQt5 import QtCore
 from napari._qt.qthreading import thread_worker
 from PyQt5.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog, QLabel, QSpinBox, QVBoxLayout
 from napari_plugin_engine import napari_hook_implementation
+from numpy.lib.function_base import append
+from numpy.lib.shape_base import expand_dims
+from numpy.lib.type_check import imag
 from qtpy.QtWidgets import QWidget, QGridLayout, QPushButton
 import numpy as np
 import tifffile
@@ -16,7 +19,7 @@ class LiveRecording(QWidget):
         super().__init__()
         self.viewer = napari_viewer
         self.viewer.grid.enabled = False
-        self.camera = None
+        self.camera : ICamera = None
         self.live_worker = None
         self.live_image_buffer = deque([], maxlen=4000)
         self.album_image_buffer = deque([])
@@ -233,7 +236,7 @@ class LiveRecording(QWidget):
                 self._add_opencv_exposure()
             else:
                 self._add_camera_exposure()
-            self.camera_pixel_type_combobox.addItems(self.camera.get_pixel_formats())
+            self.camera_pixel_type_combobox.addItems(self.camera.get_available_pixel_formats())
 
         except KeyError:  # unsupported camera found
             if self.camera_exposure_label is not None:
@@ -285,7 +288,7 @@ class LiveRecording(QWidget):
         self.camera_exposure_label = QLabel("Exposure (ms)", self)
         self.options_layout.addWidget(self.camera_exposure_label, 9, 0)
         self.camera_exposure_widget = QDoubleSpinBox(self)
-        self.camera_exposure_widget.setRange(0.05, 100)
+        self.camera_exposure_widget.setRange(0.01, 100)
         self.camera_exposure_widget.setValue(1.0)
         self.camera_exposure_widget.setSingleStep(0.01)
         self.camera_exposure_widget.valueChanged.connect(
@@ -348,9 +351,9 @@ class LiveRecording(QWidget):
         self.camera.set_exposure(exposure)
 
     def _on_record_clicked(self):
-        def process_stack_images(is_process: bool, stack: list):
+        def process_stack_images(is_process: bool, stack: np.array, stack_size : int):
             if is_process:
-                stack = self.special_function(stack)
+                stack = self.special_function(stack, stack_size)
             return stack
 
         def add_recording_layer(file_path):
@@ -359,25 +362,34 @@ class LiveRecording(QWidget):
 
         @thread_worker(connect={"yielded": add_recording_layer})
         def acquire_stack_images(stack_size: int, file_path: str):
-            stack = [self.camera.capture_image()
-                     for idx in range(0, stack_size)]
-            processed = process_stack_images(
-                self.special_function_checkbox.isChecked(), stack)
-            processed = np.stack(processed)
-            file_path.replace(".tiff", ".ome.tiff")
+
+            # todo: move this string replacement at beginning of path acquisition 
+            if file_path.endswith(".tiff"):
+                file_path.replace(".tiff", ".ome.tiff")
+
+            # todo: should camera acquisition be moved to another thread
+            # and yield images to process_stack_images?
+            stack = process_stack_images(self.special_function_checkbox.isChecked(), 
+                                        np.stack([self.camera.capture_image() for _ in range(0, stack_size)]),
+                                        stack_size)
+
+            # todo: stacks bigger than 4 GBs are not saved, how to fix?
             with tifffile.TiffWriter(file_path, append=True) as writer:
-                writer.save(processed, photometric='minisblack',
-                            metadata={'axes': 'ZYX'})
+                writer.write(stack,
+                            photometric="minisblack", 
+                            metadata={"axes" : "ZYX"})
             yield file_path
 
         dlg = QFileDialog(self)
         dlg.setDefaultSuffix(".tiff")
         video_name = dlg.getSaveFileName(
-            self, caption="Save video", filter="TIFF stack (.tif)")[0]
+            self, caption="Save video", filter="TIFF stack (.tiff)")[0]
         if video_name != "":
-            video_name += ".tiff" if not video_name.endswith('.tiff') else ""
-            self.record_worker = acquire_stack_images(
-                self.camera_record_spinbox.value(), video_name)
+            if not video_name.endswith(".ome.tiff"):
+                video_name += ".ome.tiff"
+            elif video_name.endswith(".tiff"):
+                video_name.replace(".tiff", ".ome.tiff")
+            self.record_worker = acquire_stack_images(self.camera_record_spinbox.value(), video_name)
         else:
             raise ValueError("No file name specified!")
         pass

@@ -64,7 +64,7 @@ class ICamera(ABC):
         pass
 
     @abstractmethod
-    def get_pixel_formats(self) -> list:
+    def get_available_pixel_formats(self) -> list:
         """Returns a list with associated pixel byte type.
 
         i.e.
@@ -84,6 +84,13 @@ class ICamera(ABC):
         :param format: the new data format (for OpenCV time scale is fixed, for other devices is microseconds)
         :type exposure: str
         """
+        pass
+
+    @abstractmethod
+    def get_pixel_format(self):
+        """Returns the current camera pixel format.
+        """
+        pass    
 
     @abstractmethod
     def set_exposure(self, exposure) -> None:
