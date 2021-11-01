@@ -14,7 +14,7 @@ URL = 'https://github.com/jethro33/napari-live-recording'
 EMAIL = 'jacopo.abramo@gmail.com'
 AUTHOR = 'Jacopo Abramo'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '0.1.4'
+VERSION = '0.1.5'
 
 here = os.path.abspath(os.path.dirname(__file__))
 
