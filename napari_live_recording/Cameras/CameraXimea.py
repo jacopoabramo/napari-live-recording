@@ -1,4 +1,3 @@
-from ctypes import windll
 from .ICamera import CameraROI, ICamera
 
 # Ximea camera support only provided by downloading the Ximea Software package
@@ -89,14 +88,6 @@ try:
             self.format = self.dict_pixel_formats[format]
             with _camera_disabled(self):
                 self.camera.set_imgdataformat(self.format[0])
-        
-        def get_pixel_format(self):
-            with _camera_disabled(self):
-                format = self.camera.get_imgdataformat()
-            for item in list(self.dict_pixel_formats.values()):
-                if item[0] == format:
-                    return item[1]
-            raise ValueError("Data type not found")
 
         def capture_image(self) -> np.array:
             try:
@@ -116,10 +107,6 @@ try:
                 pass
 
         def set_roi(self, roi: CameraROI) -> None:
-            # inspired from https://github.com/python-microscope/microscope/blob/master/microscope/cameras/ximea.py
-            # if ((roi.width + roi.offset_x > self.roi.width) or (self.roi.height + self.roi.offset_y > self.roi.height)):
-            #   raise ValueError("ROI outside sensor boundaries")
-
             with _camera_disabled(self):
                 self.camera.set_offsetX(0)            
                 self.camera.set_offsetY(0)
