@@ -174,10 +174,9 @@ class LiveRecording(QWidget):
         self.outer_layout.addLayout(self.roi_layout)
         self.setLayout(self.outer_layout)
 
-        self.roi = CameraROI()
+        self.roi = None
 
-        # 1 s timer for FPS in live recording
-        self.live_fps_timer.setInterval(1000)
+        self.live_fps_timer.setInterval(1000) # 1 s timer for FPS in live recording
         self.live_view_timer.setInterval(1/60)  # grants 60 FPS for viewing
 
         self.live_fps_timer.timeout.connect(self._update_frames_per_second)
@@ -237,6 +236,7 @@ class LiveRecording(QWidget):
             else:
                 self._add_camera_exposure()
             self.camera_pixel_type_combobox.addItems(self.camera.get_available_pixel_formats())
+            self.roi = self.camera.get_sensor_range()
 
         except KeyError:  # unsupported camera found
             if self.camera_exposure_label is not None:
@@ -302,7 +302,6 @@ class LiveRecording(QWidget):
                 self.is_connect = True
                 self._set_widgets_enabled(True)
                 self.camera_pixel_type_combobox.currentTextChanged.connect(self._on_pixel_format_changed)
-                self._set_default_roi()
             else:
                 raise CameraError(f"Error in opening {self.camera.get_name()}")
         else:
@@ -420,13 +419,13 @@ class LiveRecording(QWidget):
 
     def _on_roi_change_requested(self):
         self.camera.set_roi(self.roi)
+        # it may happen that the true ROI is not the one set by the function
+        # i.e. the Ximea performs an approximation
+        # hence we update the spinbox with the proper values
+        self._update_indexes()
 
-    def _on_roi_full_requested(self):
-        self.camera.set_full_frame()
-        self._set_default_roi()
-
-    def _set_default_roi(self):
-        self.roi = self.camera.get_sensor_range()
+    def _update_indexes(self):
+        self.roi = self.camera.get_roi()
         self.camera_roi_x_offset_spinbox.setValue(self.roi.offset_x)
         self.camera_roi_y_offset_spinbox.setValue(self.roi.offset_y)
         self.camera_roi_x_offset_spinbox.setSingleStep(self.roi.ofs_x_step)
@@ -436,7 +435,10 @@ class LiveRecording(QWidget):
         self.camera_roi_height_spinbox.setSingleStep(self.roi.height_step)
         self.camera_roi_width_spinbox.setValue(self.roi.width)
         self.camera_roi_width_spinbox.setSingleStep(self.roi.width_step)
-        self.camera.set_roi(self.roi)
+
+    def _on_roi_full_requested(self):
+        self.camera.set_full_frame()
+        self._update_indexes()
 
 
 @napari_hook_implementation

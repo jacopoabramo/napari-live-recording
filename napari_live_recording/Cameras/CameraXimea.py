@@ -9,16 +9,7 @@ try:
     import numpy as np
 
     CAM_XIMEA = "Ximea"
-    CONVERSION_FACTOR = 1000
-    DEFAULT_ROI = CameraROI(offset_x=0,
-                            offset_y=0,
-                            width = 1280,
-                            height = 864,
-                            ofs_x_step = 32,
-                            ofs_y_step = 2,
-                            width_step = 32, 
-                            height_step = 4)
-    
+    CONVERSION_FACTOR = 1000   
 
     @contextmanager
     def _camera_disabled(camera):
@@ -46,7 +37,7 @@ try:
                 "8-bit gray" : ["XI_MONO8", np.uint8]
             }
             self.format = self.dict_pixel_formats["16-bit gray"]
-            self.roi = DEFAULT_ROI
+            self.roi    = None
             self.frame_counter = 0
 
         def __del__(self) -> None:
@@ -68,6 +59,16 @@ try:
                     self.camera.set_LUTValue(idx)
                 self.camera.enable_LUTEnable()
                 self.camera.set_exposure(self.exposure)
+                self.roi = CameraROI(
+                    offset_x    = self.camera.get_offsetX(),
+                    ofs_x_step  = self.camera.get_offsetX_increment(),
+                    offset_y    = self.camera.get_offsetY(),
+                    ofs_y_step  = self.camera.get_offsetY_increment(),
+                    width       = self.camera.get_width(),
+                    width_step  = self.camera.get_width_increment(),
+                    height      = self.camera.get_height(),
+                    height_step = self.camera.get_height_increment()                   
+                )
                 self.camera.start_acquisition()
             except Xi_error:
                 return False
@@ -108,26 +109,59 @@ try:
 
         def set_roi(self, roi: CameraROI) -> None:
             with _camera_disabled(self):
-                self.camera.set_offsetX(0)            
-                self.camera.set_offsetY(0)
-                self.camera.set_width(roi.width)        
-                self.camera.set_height(roi.height)
-                self.camera.set_offsetX(roi.offset_x)            
-                self.camera.set_offsetY(roi.offset_y)
-                self.roi = roi
+                # to properly update the Ximea ROI
+                # first set the height and width
+                # make sure that a minimum step is calculated
+                width_incr = self.camera.get_width_increment()
+                height_incr = self.camera.get_height_increment()
+                self.roi.width = (round(roi.width/width_incr)*width_incr if (roi.width % width_incr) != 0 else roi.width)
+                self.roi.height = (round(roi.height/height_incr)*height_incr if (roi.height % height_incr) != 0 else roi.height)
+
+                self.camera.set_width(self.roi.width)
+                self.camera.set_height(self.roi.height)
+
+                # now we can properly update offset X and Y
+                offx_incr  = self.camera.get_offsetX_increment()
+                offy_incr  = self.camera.get_offsetY_increment()
+                self.roi.offset_x = (round(roi.offset_x / offx_incr)*offx_incr if (roi.offset_x % offx_incr) != 0 else roi.offset_x)
+                self.roi.offset_y = (round(roi.offset_y / offy_incr)*offy_incr if (roi.offset_y % offy_incr) != 0 else roi.offset_y)
+
+                self.camera.set_offsetX(self.roi.offset_x)
+                self.camera.set_offsetY(self.roi.offset_y)
+
+                # we also update the single increment steps for each value of the ROI
+                self.roi.ofs_x_step  = offx_incr
+                self.roi.ofs_y_step  = offy_incr
+                self.roi.width_step  = width_incr
+                self.roi.height_step = height_incr 
 
         def get_roi(self) -> CameraROI:
             return self.roi
         
         def get_sensor_range(self) -> CameraROI:
-            return DEFAULT_ROI
+            return CameraROI(offset_x    = 0,
+                            offset_y     = 0,
+                            width        = 1280,
+                            height       = 864,
+                            ofs_x_step   = 32,
+                            ofs_y_step   = 2,
+                            width_step   = 32, 
+                            height_step  = 4)
         
         def set_full_frame(self) -> CameraROI:
             with _camera_disabled(self):
-                self.camera.set_offsetX(DEFAULT_ROI.offset_x)            
-                self.camera.set_offsetY(DEFAULT_ROI.offset_y)
-                self.camera.set_width(DEFAULT_ROI.width)        
-                self.camera.set_height(DEFAULT_ROI.height)
+                self.camera.set_offsetX(0)
+                self.camera.set_offsetY(0)
+                self.camera.set_width(1280)
+                self.camera.set_height(864)
+            self.roi = CameraROI(offset_x    = 0,
+                                 offset_y    = 0,
+                                 width       = 1280,
+                                 height      = 864,
+                                 ofs_x_step  = 32,
+                                 ofs_y_step  = 2,
+                                 width_step  = 32, 
+                                 height_step = 4)
             return self.roi
 
         def get_acquisition(self) -> bool:
