@@ -290,7 +290,7 @@ class LiveRecording(QWidget):
         self.camera_exposure_widget = QDoubleSpinBox(self)
         self.camera_exposure_widget.setRange(0.001, 100)
         self.camera_exposure_widget.setValue(1.0)
-        self.camera_exposure_widget.setSingleStep(0.01)
+        self.camera_exposure_widget.setSingleStep(0.001)
         self.camera_exposure_widget.valueChanged.connect(
             self._on_exposure_changed)
         self.options_layout.addWidget(self.camera_exposure_widget, 9, 1)
