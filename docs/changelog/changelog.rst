@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.1.7
+-----
+
+- Added better support for OpenCV ROI handling
+- Added support for multiple pixel formats for OpenCV
+
 0.1.6
 -----
 
