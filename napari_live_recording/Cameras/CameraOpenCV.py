@@ -1,5 +1,6 @@
 from .ICamera import CameraROI, ICamera
 from platform import system
+from copy import deepcopy
 import cv2
 import numpy as np
 
@@ -7,9 +8,6 @@ CAM_OPENCV = "Default Camera (OpenCV)"
 
 class CameraOpenCV(ICamera):
     """Generic OpenCV camera handler
-
-    :param ICamera: [description]
-    :type ICamera: [type]
     """
 
     def __init__(self) -> None:
@@ -19,9 +17,12 @@ class CameraOpenCV(ICamera):
         self.camera = None
         self.camera_name = CAM_OPENCV
         self.roi = CameraROI()
+        self.full_width = 0
+        self.full_height = 0
 
         # Windows platforms support discrete exposure times
         # These are mapped using a dictionary
+        # todo: add support for Linux
         self.exposure_dict = {
             "1 s":  0,
             "500 ms": -1,
@@ -39,6 +40,14 @@ class CameraOpenCV(ICamera):
             "122.1 us": -13
         }
 
+        self.supported_pixel_formats = {
+            "RGB" : cv2.COLOR_BGR2RGB,
+            "RGBA" : cv2.COLOR_BGR2RGBA,
+            "BGR" : None,
+            "Grayscale" : cv2.COLOR_RGB2GRAY 
+        }
+
+        self.pixel_format = self.supported_pixel_formats["RGB"]
         self.frame_counter = 0
 
     def __del__(self) -> None:
@@ -49,24 +58,35 @@ class CameraOpenCV(ICamera):
         return CAM_OPENCV
 
     def open_device(self) -> bool:
+        ret = False
+
         if self.camera is None:
             self.camera = cv2.VideoCapture(self.camera_idx, self.camera_api)
-            return self.camera.isOpened()
-        return self.camera.open(self.camera_idx, self.camera_api)
+            ret = self.camera.isOpened()
+        else:
+            ret = self.camera.open(self.camera_idx, self.camera_api)
+
+        self.full_width = int(self.camera.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.full_height = int(self.camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.roi = CameraROI(0, 0, self.full_height, self.full_width)
+
+        return ret
 
     def close_device(self) -> None:
         self.camera.release()
 
     def get_available_pixel_formats(self) -> list:
-        return ["No pixel format available"]
+        return list(self.supported_pixel_formats.keys())
 
     def set_pixel_format(self, format) -> None:
-        pass
+        self.pixel_format = self.supported_pixel_formats[format]
 
     def capture_image(self) -> np.array:
         _, img = self.camera.read()
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        cv2.waitKey(1)
+        y, h = self.roi.offset_y, self.roi.offset_y + self.roi.height
+        x, w = self.roi.offset_x, self.roi.offset_x + self.roi.width
+        img = img[y:h, x:w]
+        img = cv2.cvtColor(img, self.pixel_format) if self.pixel_format is not None else img
         self.frame_counter += 1
         return img
 
@@ -76,24 +96,27 @@ class CameraOpenCV(ICamera):
         self.camera.set(cv2.CAP_PROP_EXPOSURE, exposure)
 
     def set_roi(self, roi: CameraROI) -> None:
-        # todo: implement actual ROI
-        self.roi = roi
+        self.roi = deepcopy(roi)
 
     def get_roi(self) -> CameraROI:
         return self.roi
 
     def set_full_frame(self) -> None:
-        self.roi = CameraROI(0, 0, 500, 500)
+        self.roi = self.get_sensor_range()
     
     def get_sensor_range(self) -> CameraROI:
-        return super().get_sensor_range()
+        return CameraROI(width = self.full_width,
+                        height = self.full_height)
 
     def get_acquisition(self) -> bool:
         return self.camera.isOpened()
 
     def set_acquisition(self, is_enabled) -> None:
         if is_enabled:
-            self.camera = cv2.VideoCapture(self.camera_idx, self.camera_api)
+            if self.camera is None:
+                self.camera = cv2.VideoCapture(self.camera_idx, self.camera_api)
+            else:
+                self.camera.open(self.camera_idx, self.camera_api)
         else:
             self.camera.release()
 

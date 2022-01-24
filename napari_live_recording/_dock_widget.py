@@ -2,9 +2,6 @@ from PyQt5 import QtCore
 from napari._qt.qthreading import thread_worker
 from PyQt5.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog, QLabel, QSpinBox, QVBoxLayout
 from napari_plugin_engine import napari_hook_implementation
-from numpy.lib.function_base import append
-from numpy.lib.shape_base import expand_dims
-from numpy.lib.type_check import imag
 from qtpy.QtWidgets import QWidget, QGridLayout, QPushButton
 import numpy as np
 import tifffile
@@ -12,6 +9,7 @@ from napari_live_recording.Cameras import *
 from napari_live_recording.Functions import *
 from collections import deque
 from dask_image.imread import imread
+from copy import deepcopy
 
 
 class LiveRecording(QWidget):
@@ -109,8 +107,8 @@ class LiveRecording(QWidget):
         self.camera_roi_x_offset_label.setAlignment(QtCore.Qt.AlignCenter)
 
         self.camera_roi_x_offset_spinbox = QSpinBox(self)
-        self.camera_roi_x_offset_spinbox.setRange(0, 1280)
-        self.camera_roi_x_offset_spinbox.setSingleStep(32)
+        self.camera_roi_x_offset_spinbox.setRange(0, 0)
+        self.camera_roi_x_offset_spinbox.setSingleStep(0)
         self.camera_roi_x_offset_spinbox.setValue(0)
         self.camera_roi_x_offset_spinbox.valueChanged.connect(
             self._on_offset_x_changed)
@@ -119,8 +117,8 @@ class LiveRecording(QWidget):
         self.camera_roi_y_offset_label.setAlignment(QtCore.Qt.AlignCenter)
 
         self.camera_roi_y_offset_spinbox = QSpinBox(self)
-        self.camera_roi_y_offset_spinbox.setRange(0, 864)
-        self.camera_roi_y_offset_spinbox.setSingleStep(2)
+        self.camera_roi_y_offset_spinbox.setRange(0, 0)
+        self.camera_roi_y_offset_spinbox.setSingleStep(0)
         self.camera_roi_y_offset_spinbox.setValue(0)
         self.camera_roi_y_offset_spinbox.valueChanged.connect(
             self._on_offset_y_changed)
@@ -129,9 +127,9 @@ class LiveRecording(QWidget):
         self.camera_roi_width_label.setAlignment(QtCore.Qt.AlignCenter)
 
         self.camera_roi_width_spinbox = QSpinBox(self)
-        self.camera_roi_width_spinbox.setRange(32, 1280)
-        self.camera_roi_width_spinbox.setSingleStep(32)
-        self.camera_roi_width_spinbox.setValue(1280)
+        self.camera_roi_width_spinbox.setRange(0, 0)
+        self.camera_roi_width_spinbox.setSingleStep(0)
+        self.camera_roi_width_spinbox.setValue(0)
         self.camera_roi_width_spinbox.valueChanged.connect(
             self._on_width_changed)
 
@@ -139,9 +137,9 @@ class LiveRecording(QWidget):
         self.camera_roi_height_label.setAlignment(QtCore.Qt.AlignCenter)
 
         self.camera_roi_height_spinbox = QSpinBox(self)
-        self.camera_roi_height_spinbox.setRange(4, 864)
-        self.camera_roi_height_spinbox.setSingleStep(4)
-        self.camera_roi_height_spinbox.setValue(864)
+        self.camera_roi_height_spinbox.setRange(0, 0)
+        self.camera_roi_height_spinbox.setSingleStep(0)
+        self.camera_roi_height_spinbox.setValue(0)
         self.camera_roi_height_spinbox.valueChanged.connect(
             self._on_height_changed)
 
@@ -226,6 +224,7 @@ class LiveRecording(QWidget):
             self.camera_pixel_type_combobox.clear()
         self.camera_connect_button.setEnabled(bool(index))
         camera_name = self.camera_selection_combobox.currentText()
+        self.camera_pixel_type_combobox.clear()
         try:
             # constructs object of class specified by camera_name
             self.camera = supported_cameras[camera_name]()
@@ -295,6 +294,21 @@ class LiveRecording(QWidget):
         self.camera_exposure_widget.valueChanged.connect(
             self._on_exposure_changed)
         self.options_layout.addWidget(self.camera_exposure_widget, 9, 1)
+    
+    def _initialize_roi_widgets(self, roi : CameraROI):
+        self.camera_roi_x_offset_spinbox.setRange(0, roi.width)
+        self.camera_roi_x_offset_spinbox.setSingleStep(roi.ofs_x_step)
+
+        self.camera_roi_y_offset_spinbox.setRange(0, roi.height)
+        self.camera_roi_y_offset_spinbox.setSingleStep(roi.ofs_y_step)
+
+        self.camera_roi_width_spinbox.setRange(0, roi.width)
+        self.camera_roi_width_spinbox.setSingleStep(roi.width_step)
+        self.camera_roi_width_spinbox.setValue(roi.width)
+
+        self.camera_roi_height_spinbox.setRange(0, roi.height)
+        self.camera_roi_height_spinbox.setSingleStep(roi.height_step)
+        self.camera_roi_height_spinbox.setValue(roi.height)
 
     def _on_connect_clicked(self):
         if not self.is_connect:
@@ -303,6 +317,9 @@ class LiveRecording(QWidget):
                 self.is_connect = True
                 self._set_widgets_enabled(True)
                 self.camera_pixel_type_combobox.currentTextChanged.connect(self._on_pixel_format_changed)
+                # when opening the device, the ROI settings in the GUI must be updated
+                roi = self.camera.get_roi()
+                self._initialize_roi_widgets(roi)
             else:
                 raise CameraError(f"Error in opening {self.camera.get_name()}")
         else:
@@ -310,6 +327,7 @@ class LiveRecording(QWidget):
             self.camera_connect_button.setText("Connect camera")
             self.is_connect = False
             self._set_widgets_enabled(False)
+            self._initialize_roi_widgets(CameraROI())
 
     # inspired by https://github.com/haesleinhuepf/napari-webcam
     def _update_layer(self):
@@ -317,9 +335,17 @@ class LiveRecording(QWidget):
         # to access data stored from different thread
         try:
             data = self.live_image_buffer.pop()
-            self.viewer.layers["Live recording"].data = data
+            # this happens in case there is a change from
+            # a color base to grayscale image; we need
+            # to delete the layer and refresh it with
+            # new data
+            if data.ndim != self.viewer.layers["Live recording"].data.ndim:
+                self.viewer.layers.remove("Live recording")
+                self.viewer.add_image(data, name="Live recording")
+            else:
+                self.viewer.layers["Live recording"].data = data
         except KeyError:
-            self.viewer.add_image(data, name="Live recording")
+            self.viewer.add_image(data, name="Live recording")            
         except IndexError:
             pass
 
@@ -419,7 +445,7 @@ class LiveRecording(QWidget):
         self.roi.offset_y = offset
 
     def _on_roi_change_requested(self):
-        self.camera.set_roi(self.roi)
+        self.camera.set_roi(deepcopy(self.roi))
         # it may happen that the true ROI is not the one set by the function
         # i.e. the Ximea performs an approximation
         # hence we update the spinbox with the proper values
