@@ -1,5 +1,6 @@
 from .ICamera import CameraROI, ICamera
 from platform import system
+from copy import deepcopy
 import cv2
 import numpy as np
 
@@ -15,9 +16,9 @@ class CameraOpenCV(ICamera):
         self.camera_api = cv2.CAP_ANY
         self.camera = None
         self.camera_name = CAM_OPENCV
-        self.width = self.full_width = 0
-        self.height = self.full_height = 0
         self.roi = CameraROI()
+        self.full_width = 0
+        self.full_height = 0
 
         # Windows platforms support discrete exposure times
         # These are mapped using a dictionary
@@ -39,6 +40,14 @@ class CameraOpenCV(ICamera):
             "122.1 us": -13
         }
 
+        self.supported_pixel_formats = {
+            "RGB" : cv2.COLOR_BGR2RGB,
+            "RGBA" : cv2.COLOR_BGR2RGBA,
+            "BGR" : None,
+            "Grayscale" : cv2.COLOR_RGB2GRAY 
+        }
+
+        self.pixel_format = self.supported_pixel_formats["RGB"]
         self.frame_counter = 0
 
     def __del__(self) -> None:
@@ -57,8 +66,9 @@ class CameraOpenCV(ICamera):
         else:
             ret = self.camera.open(self.camera_idx, self.camera_api)
 
-        self.full_width = self.width = self.camera.get(cv2.CAP_PROP_FRAME_WIDTH)
-        self.full_height = self.height = self.camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        self.full_width = int(self.camera.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.full_height = int(self.camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.roi = CameraROI(0, 0, self.full_height, self.full_width)
 
         return ret
 
@@ -66,17 +76,17 @@ class CameraOpenCV(ICamera):
         self.camera.release()
 
     def get_available_pixel_formats(self) -> list:
-        return ["No pixel format available"]
+        return list(self.supported_pixel_formats.keys())
 
     def set_pixel_format(self, format) -> None:
-        pass
+        self.pixel_format = self.supported_pixel_formats[format]
 
     def capture_image(self) -> np.array:
         _, img = self.camera.read()
         y, h = self.roi.offset_y, self.roi.offset_y + self.roi.height
         x, w = self.roi.offset_x, self.roi.offset_x + self.roi.width
-        img = img[y:h, x:w]        
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        img = img[y:h, x:w]
+        img = cv2.cvtColor(img, self.pixel_format) if self.pixel_format is not None else img
         self.frame_counter += 1
         return img
 
@@ -86,16 +96,13 @@ class CameraOpenCV(ICamera):
         self.camera.set(cv2.CAP_PROP_EXPOSURE, exposure)
 
     def set_roi(self, roi: CameraROI) -> None:
-        self.roi = roi
+        self.roi = deepcopy(roi)
 
     def get_roi(self) -> CameraROI:
         return self.roi
 
     def set_full_frame(self) -> None:
-        self.width = self.full_width
-        self.height = self.full_height
-        self.roi = CameraROI(width = self.full_width,
-                            height = self.full_height)
+        self.roi = self.get_sensor_range()
     
     def get_sensor_range(self) -> CameraROI:
         return CameraROI(width = self.full_width,
