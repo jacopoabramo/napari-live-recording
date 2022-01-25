@@ -445,7 +445,7 @@ class LiveRecording(QWidget):
         self.roi.offset_y = offset
 
     def _on_roi_change_requested(self):
-        self.camera.set_roi(deepcopy(self.roi))
+        self.camera.set_roi(self.roi)
         # it may happen that the true ROI is not the one set by the function
         # i.e. the Ximea performs an approximation
         # hence we update the spinbox with the proper values

@@ -1,7 +1,7 @@
 from .ICamera import CameraROI, ICamera
 from platform import system
-from copy import deepcopy
 import cv2
+import copy
 import numpy as np
 
 CAM_OPENCV = "Default Camera (OpenCV)"
@@ -96,10 +96,10 @@ class CameraOpenCV(ICamera):
         self.camera.set(cv2.CAP_PROP_EXPOSURE, exposure)
 
     def set_roi(self, roi: CameraROI) -> None:
-        self.roi = deepcopy(roi)
+        self.roi = copy.copy(roi)
 
     def get_roi(self) -> CameraROI:
-        return self.roi
+        return copy.copy(self.roi)
 
     def set_full_frame(self) -> None:
         self.roi = self.get_sensor_range()
