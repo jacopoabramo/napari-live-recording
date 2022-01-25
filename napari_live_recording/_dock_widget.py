@@ -9,7 +9,6 @@ from napari_live_recording.Cameras import *
 from napari_live_recording.Functions import *
 from collections import deque
 from dask_image.imread import imread
-from copy import deepcopy
 
 
 class LiveRecording(QWidget):
