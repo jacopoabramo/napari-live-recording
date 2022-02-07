@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QWidget, QLabel, QComboBox, QSpinBox, QDoubleSpinBox
 from superqt import QLabeledSlider
 from PyQt5.QtWidgets import QFormLayout, QGridLayout
 from abc import ABC, abstractmethod
+from napari_live_recording_rework.common import ROI 
 
 class LocalWidget(ABC, QWidget):
     def __init__(self, name: str, unit: str = "") -> None:
@@ -364,3 +365,8 @@ class CameraSelection(QWidget):
         # we need to extend the list of available cameras with a selection text
         cameras.insert(0, "Select device")
         self.camerasComboBox.changeWidgetSettings(cameras)
+
+class ROIHandling(QWidget):
+    def __init__(self, cameraROI : ROI) -> None:
+        super(ROIHandling, self).__init__()
+        self.__ROI = cameraROI
