@@ -1,4 +1,3 @@
-from gc import isenabled
 from typing import Callable
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QWidget, QLabel, QComboBox, QSpinBox, QDoubleSpinBox, QSlider, QLineEdit, QPushButton
