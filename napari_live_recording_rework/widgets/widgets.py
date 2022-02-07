@@ -1,6 +1,7 @@
 from typing import Callable
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QWidget, QLabel, QComboBox, QSpinBox, QDoubleSpinBox, QSlider, QLineEdit, QPushButton
+from PyQt5.QtWidgets import QWidget, QLabel, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QPushButton
+from superqt import QLabeledSlider
 from PyQt5.QtWidgets import QFormLayout, QGridLayout
 from abc import ABC, abstractmethod
 
@@ -232,17 +233,10 @@ class Slider(LocalWidget):
             unit (str, optional): parameter unit measure. Defaults to "".
         """
         super().__init__(name, unit)
-        self.__slider = QSlider(self, QtCore.Qt.Horizontal)
+        self.__slider = QLabeledSlider(self, QtCore.Qt.Horizontal)
         self.__slider.setRange(param[0], param[1])
         self.__slider.setValue(param[2])
         self.__layout.addRow(self.__label, self.__slider)
-
-        # adding an extra text to the widget label (the current slider value)
-        self._updateLabelValue(param[2])
-
-        # we connect the valueChanged signal to _updateLabelValue
-        # this signal can still be connected to other slots if necessary
-        self.__slider.valueChanged.connect(self._updateLabelValue)
     
     def changeWidgetSettings(self, newParam : tuple[int, int, int]) -> None:
         """Slider update widget parameter method.
@@ -258,11 +252,7 @@ class Slider(LocalWidget):
         """Returns the Slider current value.
         """
         return self.__slider.value()
-    
-    def _updateLabelValue(self, value : int) -> None:
-        labelStr = (self.__name + " (" + self.__unit + ")" if self.__unit != "" else self.__name)
-        self.__label.setText(labelStr + " - " + str(value))
-
+        
     @property
     def isEnabled(self) -> bool:
         return self.__slider.isEnabled()
