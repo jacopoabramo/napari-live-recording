@@ -1,27 +1,43 @@
+from sys import intern
 from typing import Callable
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QWidget, QLabel, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QPushButton
 from superqt import QLabeledSlider
 from PyQt5.QtWidgets import QFormLayout, QGridLayout
 from abc import ABC, abstractmethod
-from napari_live_recording_rework.common import ROI 
+from dataclasses import replace
+from napari_live_recording_rework.common import ROI
 
-class LocalWidget(ABC, QWidget):
-    def __init__(self, name: str, unit: str = "") -> None:
+class LocalWidget(ABC):
+    def __init__(self, internalWidget : QWidget, name: str, unit: str = "", orientation: str = "left") -> None:
         """Common widget constructor.
 
         Args:
+            internalWidget (QWidget): widget to construct the form layout.
             name (str): parameter label description.
             unit (str, optional): parameter unit measure. Defaults to "".
+            orientation (str, optional): label orientation on the layout. Defaults to "left".
         """
-        super(LocalWidget, self).__init__()
         self.__name = name
         self.__unit = unit
         labelStr = (self.__name + " (" + self.__unit + ")" if self.__unit != "" else self.__name)
         self.__label = QLabel(labelStr)
         self.__label.setAlignment(QtCore.Qt.AlignRight)
-        self.__layout = QFormLayout(self)
+        self.__layout = QFormLayout()
+        self.__widget = internalWidget
+        self._buildLayout(orientation)
     
+    def _buildLayout(self, orientation: str) -> None:
+        """Builds the QFormLayout depending on the input orientation.
+
+        Args:
+            orientation (str): specifies the label orientation of the widget: either "left" or "righ" of the internal widget.
+        """
+        if orientation == "right":
+            self.__layout.addRow(self.__widget, self.__label)
+        else: # default layout
+            self.__layout.addRow(self.__label, self.__widget)
+
     @property
     def layout(self) -> QFormLayout:
         """ QFormLayout structured as |<Text label>|<Specific widget>| (this must be built in the specific class constructor).
@@ -63,18 +79,18 @@ class LocalWidget(ABC, QWidget):
         pass
 
 class ComboBox(LocalWidget):
-    def __init__(self, param : list[str], name : str, unit : str = "") -> None:
+    def __init__(self, param : list[str], name : str, unit : str = "", orientation: str = "left") -> None:
         """ComboBox widget.
 
         Args:
             param (list[str]): list of parameters added to the ComboBox.
             name (str): parameter label description.
             unit (str, optional): parameter unit measure. Defaults to "".
+            orientation (str, optional): label orientation on the layout. Defaults to "left".
         """
-        super().__init__(name, unit)
-        self.__combobox = QComboBox(self)
+        self.__combobox = QComboBox()
         self.__combobox.addItems(param)
-        self.__layout.addRow(self.__label, self.__combobox)
+        super().__init__(self.__combobox, name, unit, orientation)
     
     def changeWidgetSettings(self, newParam: list[str]) -> None:
         """ComboBox update widget parameter method. Old list of items is deleted.
@@ -93,10 +109,14 @@ class ComboBox(LocalWidget):
     
     @property
     def isEnabled(self) -> bool:
+        """ComboBox is enabled for editing (True) or not (False).
+        """
         return self.__combobox.isEnabled()
     
     @isEnabled.setter
     def isEnabled(self, enable : bool) -> None:
+        """Sets the ComboBox enabled for editing (True) or disabled (False).
+        """
         self.__combobox.setEnabled(enable)
     
     @property
@@ -117,19 +137,19 @@ class ComboBox(LocalWidget):
         
 
 class SpinBox(LocalWidget):
-    def __init__(self, param: tuple[int, int, int], name: str, unit: str = "") -> None:
+    def __init__(self, param: tuple[int, int, int], name: str, unit: str = "", orientation: str = "left") -> None:
         """SpinBox widget.
 
         Args:
             param (tuple[int, int, int]): parameters for SpinBox settings: (<minimum_value>, <maximum_value>, <starting_value>)
             name (str): parameter label description.
             unit (str, optional): parameter unit measure. Defaults to "".
+            orientation (str, optional): label orientation on the layout. Defaults to "left".
         """
-        super().__init__(name, unit)
         self.__spinbox = QSpinBox(self)
         self.__spinbox.setRange(param[0], param[1])
         self.__spinbox.setValue(param[2])
-        self.__layout.addRow(self.__label, self.__spinbox)
+        super().__init__(self.__spinbox, name, unit, orientation)
     
     def changeWidgetSettings(self, newParam : tuple(int, int, int)) -> None:
         """SpinBox update widget parameter method.
@@ -148,10 +168,14 @@ class SpinBox(LocalWidget):
     
     @property
     def isEnabled(self) -> bool:
+        """SpinBox is enabled for editing (True) or not (False).
+        """
         return self.__spinbox.isEnabled()
     
     @isEnabled.setter
     def isEnabled(self, enable : bool) -> None:
+        """Sets the SpinBox enabled for editing (True) or disabled (False).
+        """
         self.__spinbox.setEnabled(enable)
     
     @property
@@ -171,19 +195,19 @@ class SpinBox(LocalWidget):
         }
 
 class DoubleSpinBox(LocalWidget):
-    def __init__(self, param: tuple[float, float, float], name: str, unit: str = "") -> None:
+    def __init__(self, param: tuple[float, float, float], name: str, unit: str = "", orientation: str = "left") -> None:
         """DoubleSpinBox widget.
 
         Args:
             param (tuple[float, float, float]): parameters for spinbox settings: (<minimum_value>, <maximum_value>, <starting_value>)
             name (str): parameter label description.
             unit (str, optional): parameter unit measure. Defaults to "".
+            orientation (str, optional): label orientation on the layout. Defaults to "left".
         """
-        super().__init__(name, unit)
-        self.__spinbox = QDoubleSpinBox(self)
+        self.__spinbox = QDoubleSpinBox()
         self.__spinbox.setRange(param[0], param[1])
         self.__spinbox.setValue(param[2])
-        self.__layout.addRow(self.__label, self.__spinbox)
+        super().__init__(self.__spinbox, name, unit, orientation)
 
     def changeWidgetSettings(self, newParam : tuple[float, float, float]) -> None:
         """DoubleSpinBox update widget parameter method.
@@ -202,10 +226,14 @@ class DoubleSpinBox(LocalWidget):
     
     @property
     def isEnabled(self) -> bool:
+        """DoubleSpinBox is enabled for editing (True) or not (False).
+        """
         return self.__spinbox.isEnabled()
     
     @isEnabled.setter
     def isEnabled(self, enable : bool) -> None:
+        """Sets the DoubleSpinBox enabled for editing (True) or disabled (False).
+        """
         self.__spinbox.setEnabled(enable)
 
     @property
@@ -224,20 +252,21 @@ class DoubleSpinBox(LocalWidget):
             "textChanged" : self.__spinbox.textChanged
         }
 
-class Slider(LocalWidget):
-    def __init__(self, param: tuple[int, int, int], name: str, unit: str = "") -> None:
+class LabeledSlider(LocalWidget):
+    def __init__(self, param: tuple[int, int, int], name: str, unit: str = "", orientation: str = "left") -> None:
         """Slider widget.
 
         Args:
             param (tuple[int, int, int])): parameters for spinbox settings: (<minimum_value>, <maximum_value>, <starting_value>)
             name (str): parameter label description.
             unit (str, optional): parameter unit measure. Defaults to "".
+            orientation (str, optional): label orientation on the layout. Defaults to "left".
         """
         super().__init__(name, unit)
-        self.__slider = QLabeledSlider(self, QtCore.Qt.Horizontal)
+        self.__slider = QLabeledSlider(QtCore.Qt.Horizontal)
         self.__slider.setRange(param[0], param[1])
         self.__slider.setValue(param[2])
-        self.__layout.addRow(self.__label, self.__slider)
+        super().__init__(self.__slider, name, unit, orientation)
     
     def changeWidgetSettings(self, newParam : tuple[int, int, int]) -> None:
         """Slider update widget parameter method.
@@ -256,10 +285,14 @@ class Slider(LocalWidget):
         
     @property
     def isEnabled(self) -> bool:
+        """LabeledSlider is enabled for editing (True) or not (False).
+        """
         return self.__slider.isEnabled()
     
     @isEnabled.setter
-    def isEnabled(self, enable : bool) -> None:
+    def isEnabled(self, enable: bool) -> None:
+        """Sets the DoubleSpinBox enabled for editing (True) or disabled (False).
+        """
         self.__slider.setEnabled(enable)
 
     @property
@@ -278,18 +311,20 @@ class Slider(LocalWidget):
 
 class LineEdit(LocalWidget):
     
-    def __init__(self, param: str, name: str, unit: str = "", editable = False) -> None:
+    def __init__(self, param: str, name: str, unit: str = "", orientation: str = "left", editable = False) -> None:
         """LineEdit widget. Editing disabled by default.
 
         Args:
             param (str): line edit contents
             name (str): parameter label description.
             unit (str, optional): parameter unit measure. Defaults to "".
+            orientation (str, optional): label orientation on the layout. Defaults to "left".
+            editable (bool, optional): sets the LineEdit to be editable. Defaults to False.
         """
         super().__init__(name, unit)
         self.__lineEdit = QLineEdit(self, param)
         self.__lineEdit.setEnabled(editable)
-        self.__layout.addRow(self.__label, self.__lineEdit)
+        super().__init__(self.__lineEdit, name, unit, orientation)
     
     def changeWidgetSettings(self, newParam : str) -> None:
         """Updates LineEdit text contents.
@@ -307,11 +342,15 @@ class LineEdit(LocalWidget):
     
     @property
     def isEnabled(self) -> bool:
+        """LineEdit is enabled for editing (True) or not (False).
+        """
         return self.__lineEdit.isEnabled()
     
     @property
     @isEnabled.setter
     def isEnabled(self, enable: bool) -> None:
+        """Sets the LineEdit enabled for editing (True) or disabled (False).
+        """
         self.__lineEdit.setEnabled(enable)
     
     @property
@@ -369,4 +408,67 @@ class CameraSelection(QWidget):
 class ROIHandling(QWidget):
     def __init__(self, cameraROI : ROI) -> None:
         super(ROIHandling, self).__init__()
-        self.__ROI = cameraROI
+        # todo: maybe this is inefficient...
+        # in previous implementation
+        # copying the reference would cause
+        # issues when changing the ROI
+        # so we'll create a local copy
+        # and discard the input variable
+        self.__ROI = replace(cameraROI)
+
+        # todo: these widgets are not
+        # our custom LocalWidgets
+        # but since they are common
+        # for all types of cameras
+        # it is not worth to customize them...
+        # ... right?
+        self.__offsetXLabel = QLabel("Offset X (px)", self)
+        self.__offsetXLabel.setAlignment(QtCore.Qt.AlignCenter)
+
+        self.__offsetXSpinBox = QSpinBox(self)
+        self.__offsetXSpinBox.setRange(0, self.__ROI.offset_x)
+        self.__offsetXSpinBox.setSingleStep(self.__ROI.ofs_x_step)
+        self.__offsetXSpinBox.setValue(0)
+
+        self.__offsetYLabel = QLabel("Offset Y (px)", self)
+        self.__offsetYLabel.setAlignment(QtCore.Qt.AlignCenter)
+
+        self.__offsetYSpinBox = QSpinBox()
+        self.__offsetYSpinBox.setRange(0, self.__ROI.offset_y)
+        self.__offsetYSpinBox.setSingleStep(self.__ROI.ofs_y_step)
+        self.__offsetYSpinBox.setValue(0)
+
+        self.__widthLabel = QLabel("Width (px)", self)
+        self.__widthLabel.setAlignment(QtCore.Qt.AlignCenter)
+
+        self.__widthSpinBox = QSpinBox(self)
+        self.__widthSpinBox.setRange(0, self.__ROI.width)
+        self.__widthSpinBox.setSingleStep(self.__ROI.width_step)
+        self.__widthSpinBox.setValue(self.__ROI.width)
+
+        self.__heightLabel = QLabel("Height (px)", self)
+        self.__heightLabel.setAlignment(QtCore.Qt.AlignCenter)
+
+        self.__heightSpinBox = QSpinBox(self)
+        self.__heightSpinBox.setRange(0, self.__ROI.height)
+        self.__heightSpinBox.setSingleStep(self.__ROI.height_step)
+        self.__heightSpinBox.setValue(self.__ROI.height)
+
+        self.__changeROIButton = QPushButton("Set ROI", self)
+        self.__changeROIButton.setEnabled(False)
+
+        self.__fullROIButton = QPushButton("Full frame", self)
+        self.__fullROIButton.setEnabled(False)
+    
+    @property
+    def signals(self) -> dict[str, Callable]:
+        """Returns a list of signals available for the ROIHandling widget.
+        Exposed signals are:
+        
+        - changeROIPressed,
+        - fullROIPressed,
+
+        Returns:
+            dict: dict of signals (key: function name, value: function objects).
+        """
+        pass
