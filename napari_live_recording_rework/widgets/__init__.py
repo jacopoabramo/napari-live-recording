@@ -1,8 +1,9 @@
 from .widgets import (
+    LocalWidget,
     ComboBox,
     SpinBox,
     DoubleSpinBox,
-    Slider,
+    LabeledSlider,
     LineEdit,
     CameraSelection
 )
