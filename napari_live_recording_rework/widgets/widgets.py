@@ -309,8 +309,8 @@ class LabeledSlider(LocalWidget):
 
 class LineEdit(LocalWidget):
     
-    def __init__(self, param: str, name: str, unit: str = "", orientation: str = "left", editable = False) -> None:
-        """LineEdit widget. Editing disabled by default.
+    def __init__(self, param: str, name: str, unit: str = "", orientation: str = "left") -> None:
+        """LineEdit widget.
 
         Args:
             param (str): line edit contents
@@ -321,7 +321,6 @@ class LineEdit(LocalWidget):
         """
         super().__init__(name, unit)
         self.__lineEdit = QLineEdit(self, param)
-        self.__lineEdit.setEnabled(editable)
         super().__init__(self.__lineEdit, name, unit, orientation)
     
     def changeWidgetSettings(self, newParam : str) -> None:
