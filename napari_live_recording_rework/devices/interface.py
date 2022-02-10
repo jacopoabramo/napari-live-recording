@@ -1,42 +1,58 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Union
 from widgets.widgets import (
-    ComboBox, 
+    ComboBox,
+    ROIHandling, 
     SpinBox, 
     DoubleSpinBox, 
-    Slider, 
+    LabeledSlider, 
     LineEdit
 )
 
+ParameterType = Union[str, list[str], tuple[int, int, int], tuple[float, float, float]]
+
 class Camera(ABC):
-    def __init__(self, name, device_id: Union[str, int]) -> None:
-        """Constructor method for generic camera device.
+    __availableWidgets = {
+        "combobox" : ComboBox,
+        "spinbox" : SpinBox,
+        "doublespinbox" : DoubleSpinBox,
+        "slider" : LabeledSlider,
+        "lineedit" : LineEdit
+    }
+    def __init__(self, name: str, deviceID: Union[str, int]) -> None:
+        """Generic camera device. Each device lives in its own thread, and has a set of common widgets:
+
+        - ROI handling widget;
+        - Delete device button.
+
+        Constructor must be called AFTER calling the child class constructor to ensure that parameter widgets
+        can be accessed.
 
         Args:
             name (str): name of the camera device.
-            device_id (Union[str, int]): device ID.
+            deviceID (Union[str, int]): device ID.
         """
-        self.__availableWidgets = {
-            "combobox" : ComboBox,
-            "spinbox" : SpinBox,
-            "doublespinbox" : DoubleSpinBox,
-            "slider" : Slider,
-            "lineedit" : LineEdit
-        }
-        self.name = name
-        self.device_id = device_id
         self.parameters = {}
 
     @abstractmethod
-    def initDevice(self) -> None:
+    def addLocalWidgets(self) -> None:
+        """Adds the user-defined widgets to the final device widget.
+        """
+        pass
+
+    @abstractmethod
+    def initDevice(self, name: str, deviceID: Union[str, int]) -> None:
+        """Initializes the device.
+        """
         pass
 
     @abstractmethod
     def closeDevice(self) -> None:
+        """Closes the device if necessary.
+        """
         pass
 
-    def addParameter(self, widgetType: str, name: str, unit: str, param: Union[str, list[str], tuple[int, int, int], tuple[float, float, float]]) -> None:
+    def addParameter(self, widgetType: str, name: str, unit: str, param: ParameterType, orientation="left") -> None:
         """Adds a parameter in the form of a widget, exposing the respective signals to enable connections to user-defined slots.
         If the parameter already exists, it will not be added to the parameter list.
 
@@ -45,13 +61,15 @@ class Camera(ABC):
                 - \"ComboBox\"
                 - \"SpinBox\"
                 - \"DoubleSpinBox\"
-                - \"Slider\"
+                - \"LabeledSlider\"
                 - \"LineEdit\"
             - name (str): name of the added parameter (i.e. \"Exposure time\")
                 - this will be the name shown in the GUI
             - unit (str): unit measure of the added parameter (i.e. \"ms\")
-            - param (Union[str, list[str], tuple[int, int, int], tuple[float, float, float]]): actual parameter items
+            - param (ParameterType): actual parameter items
+            - orientation (str, optional): orientation of the label for the parameter (can either be "left" or "right"). Default is "left".
         """
-        paramWidget = self.__availableWidgets[widgetType.lower()](param=param, name=name, unit=unit)
-        self.parameters[name] = paramWidget
+        if not name in self.parameters:
+            paramWidget = self.__availableWidgets[widgetType.lower()](param, name, unit, orientation)
+            self.parameters[name] = paramWidget
 
