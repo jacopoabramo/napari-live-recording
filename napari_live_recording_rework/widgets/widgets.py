@@ -1,6 +1,4 @@
-from sys import intern
-from typing import Callable
-from PyQt5 import QtCore
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QLabel, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QPushButton
 from superqt import QLabeledSlider
 from PyQt5.QtWidgets import QFormLayout, QGridLayout
@@ -22,7 +20,7 @@ class LocalWidget(ABC):
         self.__unit = unit
         labelStr = (self.__name + " (" + self.__unit + ")" if self.__unit != "" else self.__name)
         self.__label = QLabel(labelStr)
-        self.__label.setAlignment(QtCore.Qt.AlignRight)
+        self.__label.setAlignment(Qt.AlignRight)
         self.__layout = QFormLayout()
         self.__widget = internalWidget
         self._buildLayout(orientation)
@@ -73,7 +71,7 @@ class LocalWidget(ABC):
     
     @property
     @abstractmethod
-    def signals(self) -> dict[str, Callable]:
+    def signals(self) -> dict[str, pyqtSignal]:
         """Common widget method to expose signals to the device.
         """
         pass
@@ -120,7 +118,7 @@ class ComboBox(LocalWidget):
         self.__combobox.setEnabled(enable)
     
     @property
-    def signals(self) -> dict[str, Callable]:
+    def signals(self) -> dict[str, pyqtSignal]:
         """Returns a list of signals available for the ComboBox widget.
         Exposed signals are:
         
@@ -179,7 +177,7 @@ class SpinBox(LocalWidget):
         self.__spinbox.setEnabled(enable)
     
     @property
-    def signals(self) -> dict[str, Callable]:
+    def signals(self) -> dict[str, pyqtSignal]:
         """Returns a list of signals available for the SpinBox widget.
         Exposed signals are:
         
@@ -237,7 +235,7 @@ class DoubleSpinBox(LocalWidget):
         self.__spinbox.setEnabled(enable)
 
     @property
-    def signals(self) -> dict[str, Callable]:
+    def signals(self) -> dict[str, pyqtSignal]:
         """Returns a list of signals available for the SpinBox widget.
         Exposed signals are:
         
@@ -263,7 +261,7 @@ class LabeledSlider(LocalWidget):
             orientation (str, optional): label orientation on the layout. Defaults to "left".
         """
         super().__init__(name, unit)
-        self.__slider = QLabeledSlider(QtCore.Qt.Horizontal)
+        self.__slider = QLabeledSlider(Qt.Horizontal)
         self.__slider.setRange(param[0], param[1])
         self.__slider.setValue(param[2])
         super().__init__(self.__slider, name, unit, orientation)
@@ -296,7 +294,7 @@ class LabeledSlider(LocalWidget):
         self.__slider.setEnabled(enable)
 
     @property
-    def signals(self) -> dict[str, Callable]:
+    def signals(self) -> dict[str, pyqtSignal]:
         """Returns a list of signals available for the SpinBox widget.
         Exposed signals are:
         
@@ -354,7 +352,7 @@ class LineEdit(LocalWidget):
         self.__lineEdit.setEnabled(enable)
     
     @property
-    def signals(self) -> dict[str, Callable]:
+    def signals(self) -> dict[str, pyqtSignal]:
         """Returns a list of signals available for the LineEdit widget.
         Exposed signals are:
         
@@ -408,13 +406,16 @@ class CameraSelection(QWidget):
 class ROIHandling(QWidget):
     def __init__(self, cameraROI : ROI) -> None:
         super(ROIHandling, self).__init__()
+        self.__changeROIRequested = pyqtSignal(ROI)
+        self.__fullROIRequested = pyqtSignal(ROI)
+
         # todo: maybe this is inefficient...
         # in previous implementation
         # copying the reference would cause
         # issues when changing the ROI
         # so we'll create a local copy
-        # and discard the input variable
-        self.__ROI = replace(cameraROI)
+        # and discard the input
+        self.__sensorFullROI = replace(cameraROI)
 
         # todo: these widgets are not
         # our custom LocalWidgets
@@ -423,52 +424,124 @@ class ROIHandling(QWidget):
         # it is not worth to customize them...
         # ... right?
         self.__offsetXLabel = QLabel("Offset X (px)", self)
-        self.__offsetXLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self.__offsetXLabel.setAlignment(Qt.AlignCenter)
 
         self.__offsetXSpinBox = QSpinBox(self)
-        self.__offsetXSpinBox.setRange(0, self.__ROI.offset_x)
-        self.__offsetXSpinBox.setSingleStep(self.__ROI.ofs_x_step)
+        self.__offsetXSpinBox.setRange(0, self.__sensorFullROI.offset_x)
+        self.__offsetXSpinBox.setSingleStep(self.__sensorFullROI.ofs_x_step)
         self.__offsetXSpinBox.setValue(0)
 
         self.__offsetYLabel = QLabel("Offset Y (px)", self)
-        self.__offsetYLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self.__offsetYLabel.setAlignment(Qt.AlignCenter)
 
         self.__offsetYSpinBox = QSpinBox()
-        self.__offsetYSpinBox.setRange(0, self.__ROI.offset_y)
-        self.__offsetYSpinBox.setSingleStep(self.__ROI.ofs_y_step)
+        self.__offsetYSpinBox.setRange(0, self.__sensorFullROI.offset_y)
+        self.__offsetYSpinBox.setSingleStep(self.__sensorFullROI.ofs_y_step)
         self.__offsetYSpinBox.setValue(0)
 
         self.__widthLabel = QLabel("Width (px)", self)
-        self.__widthLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self.__widthLabel.setAlignment(Qt.AlignCenter)
 
         self.__widthSpinBox = QSpinBox(self)
-        self.__widthSpinBox.setRange(0, self.__ROI.width)
-        self.__widthSpinBox.setSingleStep(self.__ROI.width_step)
-        self.__widthSpinBox.setValue(self.__ROI.width)
+        self.__widthSpinBox.setRange(0, self.__sensorFullROI.width)
+        self.__widthSpinBox.setSingleStep(self.__sensorFullROI.width_step)
+        self.__widthSpinBox.setValue(self.__sensorFullROI.width)
 
         self.__heightLabel = QLabel("Height (px)", self)
-        self.__heightLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self.__heightLabel.setAlignment(Qt.AlignCenter)
 
         self.__heightSpinBox = QSpinBox(self)
-        self.__heightSpinBox.setRange(0, self.__ROI.height)
-        self.__heightSpinBox.setSingleStep(self.__ROI.height_step)
-        self.__heightSpinBox.setValue(self.__ROI.height)
+        self.__heightSpinBox.setRange(0, self.__sensorFullROI.height)
+        self.__heightSpinBox.setSingleStep(self.__sensorFullROI.height_step)
+        self.__heightSpinBox.setValue(self.__sensorFullROI.height)
 
         self.__changeROIButton = QPushButton("Set ROI", self)
         self.__changeROIButton.setEnabled(False)
 
         self.__fullROIButton = QPushButton("Full frame", self)
         self.__fullROIButton.setEnabled(False)
+
+        self.__layout = QGridLayout(self)
+        self.__layout.addWidget(self.__offsetXLabel, 0, 0)
+        self.__layout.addWidget(self.__offsetXSpinBox, 0, 1)
+        self.__layout.addWidget(self.__offsetYSpinBox, 0, 2)
+        self.__layout.addWidget(self.__offsetYLabel, 0, 3)
+        
+        self.__layout.addWidget(self.__widthLabel, 1, 0)
+        self.__layout.addWidget(self.__widthSpinBox, 1, 1)
+        self.__layout.addWidget(self.__heightSpinBox, 1, 2)
+        self.__layout.addWidget(self.__heightLabel, 1, 3)
+        self.__layout.addWidget(self.__changeROIButton, 2, 0, 1, 4)
+        self.__layout.addWidget(self.__fullROIButton, 3, 0, 1, 4)
+
+        # "clicked" signals are connected to private slots.
+        # These slots expose the signals available to the user
+        # to process the new ROI information if necessary.
+        self.__changeROIButton.clicked.connect(self._onROIChanged)
+        self.__fullROIButton.clicked.connect(self._onFullROI)
+    
+    def changeWidgetSettings(self, settings : ROI):
+        """ROI handling update widget settings method.
+        This method is useful whenever the ROI values are changed based
+        on some device requirements and adapted.
+
+        Args:
+            settings (ROI): new ROI settings to change the widget values and steps.
+        """
+        self.__offsetXSpinBox.setSingleStep(settings.ofs_x_step)
+        self.__offsetXSpinBox.setValue(settings.offset_x)
+
+        self.__offsetYSpinBox.setSingleStep(settings.ofs_y_step)
+        self.__offsetYSpinBox.setValue(settings.offset_y)
+
+        self.__widthSpinBox.setSingleStep(settings.width_step)
+        self.__widthSpinBox.setValue(settings.width)
+        
+        self.__heightSpinBox.setSingleStep(settings.height_step)
+        self.__heightSpinBox.setValue(settings.height)
+        
+    
+    def _onROIChanged(self) -> None:
+        """Private slot for ROI changed button pressed. Exposes a signal with the updated ROI settings.
+        """
+        # read the current SpinBoxes status
+        newRoi = ROI(
+            offset_x=self.__offsetXSpinBox.value(),
+            ofs_x_step=self.__offsetXSpinBox.singleStep(),
+            offset_y=self.__offsetYSpinBox.value(),
+            ofs_y_step=self.__offsetXSpinBox.singleStep(),            
+            width=self.__widthSpinBox.value(),
+            width_step=self.__widthSpinBox.singleStep(),
+            height=self.__heightSpinBox.value(),
+            height_step=self.__heightSpinBox.singleStep()
+        )
+        self.__changeROIRequested.emit(newRoi)
+
+    def _onFullROI(self) -> None:
+        """Private slot for full ROI button pressed. Exposes a signal with the full ROI settings.
+        It also returns the widget settings to their original value.
+        """
+        self.changeWidgetSettings(self.__sensorFullROI)
+        self.__fullROIRequested.emit(replace(self.__sensorFullROI))
     
     @property
-    def signals(self) -> dict[str, Callable]:
+    def layout(self) -> QGridLayout:
+        """The ROI handling grid layout to add to the camera widgets.
+        """
+        return self.__layout
+    
+    @property
+    def signals(self) -> dict[str, pyqtSignal]:
         """Returns a list of signals available for the ROIHandling widget.
         Exposed signals are:
         
-        - changeROIPressed,
-        - fullROIPressed,
+        - changeROIRequested,
+        - fullROIRequested,
 
         Returns:
             dict: dict of signals (key: function name, value: function objects).
         """
-        pass
+        return {
+            "changeROIRequested" : self.__changeROIRequested,
+            "fullROIRequested" : self.__fullROIRequested,
+        }
