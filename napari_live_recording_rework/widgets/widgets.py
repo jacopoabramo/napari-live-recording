@@ -435,7 +435,7 @@ class CameraSelection(QWidget):
         - a LineEdit for camera ID or serial number input
         - a QPushButton to add the camera
 
-        Widget layout:
+        Widget grid layout:
         |(0,0) ComboBox|(0,1) QPushButton|
         |(1,0) LineEdit|(1,1)            |
 
@@ -524,6 +524,12 @@ class RecordHandling(QWidget):
         """The Record handling grid layout to add to the camera widgets.
         """
         return self.__layout
+    
+    @property
+    def recordSize(self) -> int:
+        """Returns the record size currently indicated in the QSpinBox widget.
+        """
+        return self.__recordSpinBox.value()
 
     @property
     def signals(self) -> dict[str, pyqtSignal]:
