@@ -37,14 +37,13 @@ class OpenCVCamera(Camera):
 
         Args:
             name (str): user-defined camera name.
-            deviceID (Union[str, int]): camera ID.
+            deviceID (Union[str, int]): camera identifier.
         """
         self.__capture = cv2.VideoCapture(deviceID, cv2.CAP_ANY)
         
         # read OpenCV parameters
         width = int(self.__capture.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.__capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self.__exposure = int(self.__capture.get(cv2.CAP_PROP_EXPOSURE))
         
         # initialize device local properties
         self.__ROI = ROI(0, 0, height, width)
@@ -60,7 +59,7 @@ class OpenCVCamera(Camera):
         super().__init__(name, deviceID, paramDict, self.__ROI)
 
     def setupWidgetsForStartup(self) -> None:
-        self.parameters["Exposure time"].value = abs(self.__exposure)
+        self.parameters["Exposure time"].value = abs(int(self.__capture.get(cv2.CAP_PROP_EXPOSURE)))
         self.parameters["Frame rate"].isEnabled = False
     
     def connectSignals(self) -> None:
