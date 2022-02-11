@@ -59,9 +59,6 @@ class OpenCVCamera(Camera):
         # call Camera.__init__ after initializing all parameters in paramDict
         super().__init__(name, deviceID, paramDict, self.__ROI)
 
-    def __del__(self) -> None:
-        self.closeDevice()
-
     def setupWidgetsForStartup(self) -> None:
         self.parameters["Exposure time"].value = abs(self.__exposure)
         self.parameters["Frame rate"].isEnabled = False
@@ -81,6 +78,9 @@ class OpenCVCamera(Camera):
     def cameraInfo(self) -> list[str]:
         # todo: implement
         return []
+    
+    def closeDevice(self) -> None:
+        self.__capture.release()
 
     def _updateExposure(self, exposure: str) -> None:
         self.__capture.set(cv2.CAP_PROP_EXPOSURE, self.__exposureDict[exposure])
