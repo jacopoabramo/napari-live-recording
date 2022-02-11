@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Any, Union
-from PyQt5.QtWidgets import QVBoxLayout
+from PyQt5.QtWidgets import QPushButton, QVBoxLayout
 import numpy as np
 from common import ROI
 from widgets.widgets import (
     LocalWidget,
     ROIHandling,
+    RecordHandling,
     ComboBox,
     SpinBox, 
     DoubleSpinBox, 
@@ -42,11 +43,21 @@ class Camera(ABC):
         self.name = name
         self.deviceID = deviceID
         self.layout = QVBoxLayout()
+        self.delete = QPushButton("Delete camera")
+        self.recordHandling = RecordHandling()
         self.ROIHandling = ROIHandling(sensorShape)
         self.parameters = paramDict
+
+        # layout order
+        # 1) record handling widgets
+        # 2) custom widgets
+        # 3) roi handling widgets
+        # 4) delete device button
+        self.layout.addLayout(self.recordHandling.layout)
         for widget in self.parameters.values():
             self.layout.addLayout(widget.layout)
         self.layout.addLayout(self.ROIHandling.layout)
+        self.layout.addWidget(self.delete)
         self.setupWidgetsForStartup()
         self.connectSignals()
     
@@ -77,8 +88,8 @@ class Camera(ABC):
         """
         pass
 
-    def initDevice(self, name: str, deviceID: Union[str, int]) -> Any:
-        """Initializes the device.
+    def initDevice(self, name: str, deviceID: Union[str, int], *args, **kwargs) -> Any:
+        """Initializes the device if necessary.
         """
         pass
 
