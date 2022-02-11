@@ -1,3 +1,4 @@
+from typing import Union
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QLabel, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QPushButton
 from superqt import QLabeledSlider
@@ -55,6 +56,13 @@ class LocalWidget(ABC):
         """
         pass
 
+    @value.setter
+    @abstractmethod
+    def value(self, value: Union[str, int, float]) -> None:
+        """Widget value setter.
+        """
+        pass
+
     @property
     @abstractmethod
     def isEnabled(self) -> bool:
@@ -104,6 +112,15 @@ class ComboBox(LocalWidget):
         """Returns a tuple containing the ComboBox current text and index.
         """
         return (self.__combobox.currentText(), self.__combobox.currentIndex())
+    
+    @value.setter
+    def value(self, value: int) -> None:
+        """Sets the ComboBox current showed value (based on elements indeces).
+
+        Args:
+            value (int): index of value to show on the ComboBox.
+        """
+        self.__combobox.setCurrentIndex(value)
     
     @property
     def isEnabled(self) -> bool:
@@ -164,6 +181,15 @@ class SpinBox(LocalWidget):
         """
         return self.__spinbox.value()
     
+    @value.setter
+    def value(self, value: int) -> None:
+        """Sets the SpinBox current value to show on the widget.
+
+        Args:
+            value (int): value to set.
+        """
+        self.__spinbox.setValue(value)
+    
     @property
     def isEnabled(self) -> bool:
         """SpinBox is enabled for editing (True) or not (False).
@@ -221,6 +247,15 @@ class DoubleSpinBox(LocalWidget):
         """Returns the DoubleSpinBox current value.
         """
         return self.__spinbox.value()
+    
+    @value.setter
+    def value(self, value: float) -> None:
+        """Sets the DoubleSpinBox current value to show on the widget.
+
+        Args:
+            value (float): value to set.
+        """
+        self.__spinbox.setValue(value)
     
     @property
     def isEnabled(self) -> bool:
@@ -280,6 +315,15 @@ class LabeledSlider(LocalWidget):
         """Returns the Slider current value.
         """
         return self.__slider.value()
+    
+    @value.setter
+    def value(self, value: int) -> None:
+        """Sets the DoubleSpinBox current value to show on the widget.
+
+        Args:
+            value (float): value to set.
+        """
+        self.__slider.setValue(value)
         
     @property
     def isEnabled(self) -> bool:
@@ -336,6 +380,15 @@ class LineEdit(LocalWidget):
         """Returns the LineEdit current text.
         """
         return self.__lineEdit.text()
+    
+    @value.setter
+    def value(self, value: str) -> None:
+        """Sets the LineEdit current text to show on the widget.
+
+        Args:
+            value (str): string to set.
+        """
+        self.__lineEdit.setText(value)
     
     @property
     def isEnabled(self) -> bool:
