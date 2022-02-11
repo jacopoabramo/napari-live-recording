@@ -1,13 +1,10 @@
 import cv2
+import numpy as np
 from interface import Camera
 from typing import Union
 from common import ROI
 from widgets.widgets import (
-    ComboBox,
-    SpinBox, 
-    DoubleSpinBox, 
-    LabeledSlider, 
-    LineEdit
+    WidgetEnum
 )
 
 class OpenCVCamera(Camera):
@@ -42,12 +39,51 @@ class OpenCVCamera(Camera):
             name (str): user-defined camera name.
             deviceID (Union[str, int]): camera ID.
         """
-        self.camera = cv2.VideoCapture(deviceID, cv2.CAP_ANY)
-        width = int(self.camera.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(self.camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        sensorShape = ROI(0, 0, height, width)
+        self.__capture = cv2.VideoCapture(deviceID, cv2.CAP_ANY)
+        
+        # read OpenCV parameters
+        width = int(self.__capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.__capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.__exposure = int(self.__capture.get(cv2.CAP_PROP_EXPOSURE))
+        
+        # initialize device local properties
+        self.__ROI = ROI(0, 0, height, width)
+        self.__format = self.__pixelFormats["RGB"]
+        self.__frameCounter = 0
         
         paramDict = {}
-        self.addParameter("ComboBox", "Exposure time", "", list(self.exposureDict.keys()), paramDict)
+        self.addParameter(WidgetEnum.ComboBox, "Exposure time", "", list(self.__exposureDict.keys()), paramDict)
+        self.addParameter(WidgetEnum.ComboBox, "Pixel format", "", list(self.__pixelFormats.keys()), paramDict)
+        self.addParameter(WidgetEnum.LineEdit, "Frame rate", "FPS", 0)
+        
+        # call Camera.__init__ after initializing all parameters in paramDict
+        super().__init__(name, deviceID, paramDict, self.__ROI)
 
-        super().__init__(name, deviceID, paramDict, sensorShape)
+    def __del__(self) -> None:
+        self.closeDevice()
+
+    def setupWidgetsForStartup(self) -> None:
+        self.parameters["Exposure time"].value = abs(self.__exposure)
+        self.parameters["Frame rate"].isEnabled = False
+    
+    def connectSignals(self) -> None:
+        self.parameters["Exposure time"].signals["currentTextChanged"].connect(self._updateExposure)
+        self.parameters["Pixel format"].signals["currentTextChanged"].connect(self._updateFormat)
+
+    def grabFrame(self) -> np.array:
+        _, img = self.__capture.read()
+        y, h = self.__ROI.offset_y, self.__ROI.offset_y + self.__ROI.height
+        x, w = self.__ROI.offset_x, self.__ROI.offset_x + self.__ROI.width
+        img = img[y:h, x:w]
+        self.__frameCounter += 1
+        return (cv2.cvtColor(img, self.__format) if self.__format is not None else img)
+    
+    def cameraInfo(self) -> list[str]:
+        # todo: implement
+        return []
+
+    def _updateExposure(self, exposure: str) -> None:
+        self.__capture.set(cv2.CAP_PROP_EXPOSURE, self.__exposureDict[exposure])
+    
+    def _updateFormat(self, format: str):
+        self.__format = self.__pixelFormats[format]
