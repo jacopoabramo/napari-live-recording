@@ -6,6 +6,14 @@ from PyQt5.QtWidgets import QFormLayout, QGridLayout
 from abc import ABC, abstractmethod
 from dataclasses import replace
 from napari_live_recording_rework.common import ROI
+from enum import Enum
+
+class WidgetEnum(Enum):
+    ComboBox = 0,
+    SpinBox = 1,
+    DoubleSpinBox = 2,
+    LabeledSlider = 3,
+    LineEdit = 4
 
 class LocalWidget(ABC):
     def __init__(self, internalWidget : QWidget, name: str, unit: str = "", orientation: str = "left") -> None:
@@ -136,7 +144,7 @@ class ComboBox(LocalWidget):
     
     @property
     def signals(self) -> dict[str, pyqtSignal]:
-        """Returns a list of signals available for the ComboBox widget.
+        """Returns a dictionary of signals available for the ComboBox widget.
         Exposed signals are:
         
         - currentIndexChanged,
@@ -204,7 +212,7 @@ class SpinBox(LocalWidget):
     
     @property
     def signals(self) -> dict[str, pyqtSignal]:
-        """Returns a list of signals available for the SpinBox widget.
+        """Returns a dictionary of signals available for the SpinBox widget.
         Exposed signals are:
         
         - valueChanged,
@@ -271,7 +279,7 @@ class DoubleSpinBox(LocalWidget):
 
     @property
     def signals(self) -> dict[str, pyqtSignal]:
-        """Returns a list of signals available for the SpinBox widget.
+        """Returns a dictionary of signals available for the SpinBox widget.
         Exposed signals are:
         
         - valueChanged,
@@ -339,7 +347,7 @@ class LabeledSlider(LocalWidget):
 
     @property
     def signals(self) -> dict[str, pyqtSignal]:
-        """Returns a list of signals available for the SpinBox widget.
+        """Returns a dictionary of signals available for the SpinBox widget.
         Exposed signals are:
         
         - valueChanged
@@ -405,7 +413,7 @@ class LineEdit(LocalWidget):
     
     @property
     def signals(self) -> dict[str, pyqtSignal]:
-        """Returns a list of signals available for the LineEdit widget.
+        """Returns a dictionary of signals available for the LineEdit widget.
         Exposed signals are:
         
         - textChanged,
@@ -455,8 +463,96 @@ class CameraSelection(QWidget):
         cameras.insert(0, "Select device")
         self.camerasComboBox.changeWidgetSettings(cameras)
 
+class RecordHandling(QWidget):
+    def __init__(self) -> None:
+        """Recording Handling widget. Includes QPushButtons which allow to handle the following operations:
+
+        - live viewing;
+        - recording to output file;
+        - single frame snap;
+        - album stacking snap.
+
+        Widget layout:
+        |(0,0) QPushButton (Snap)|(0,1) QPushButton (Album)|(0,2) QPushButton  (Live) |
+        |(1,0-1)          QSpinBox (Record size)           |(0,2) QPushButton (Record)| 
+
+        """
+        super(RecordHandling, self).__init__()
+        self.__snap = QPushButton("Snap", self)
+        self.__album = QPushButton("Album", self)
+        self.__live = QPushButton("Live", self)
+
+        # the live button is implemented as a toggle button
+        self.__live.setCheckable(True)
+
+        self.__recordSpinBox = QSpinBox(self)
+
+        # todo: this is currently hardcoded
+        # maybe should find a way to initialize
+        # from outside the instance?
+        self.__recordSpinBox.setRange(1, 5000)
+        self.__recordSpinBox.setValue(100)
+
+        self.__record = QPushButton("Record", self)
+
+        self.__layout = QGridLayout(self)
+        self.__layout.addWidget(self.__snap, 0, 0)
+        self.__layout.addWidget(self.__album, 0, 1)
+        self.__layout.addWidget(self.__live, 0, 2)
+        self.__layout.addWidget(self.__recordSpinBox, 1, 0, 1, 2)
+        self.__layout.addWidget(self.__record, 1, 2)
+
+        # whenever the live button is toggled,
+        # the other pushbutton must be enabled/disabled
+        # in order to avoid undefined behaviors
+        # when grabbing frames from the device
+        self.__live.toggled.connect(self._handleLiveToggled)
+
+
+    def _handleLiveToggled(self, status: bool) -> None:
+        """Enables/Disables pushbuttons when the live button is toggled.
+
+        Args:
+            status (bool): new live button status.
+        """
+        self.__snap.setEnabled(not status)
+        self.__album.setEnabled(not status)
+        self.__record.setEnabled(not status)
+    
+    @property
+    def layout(self) -> QGridLayout:
+        """The Record handling grid layout to add to the camera widgets.
+        """
+        return self.__layout
+
+    @property
+    def signals(self) -> dict[str, pyqtSignal]:
+        """Returns a dictionary of signals available for the RecordHandling widget.
+        Exposed signals are:
+        
+        - snapRequested,
+        - albumRequested,
+        - liveRequested,
+        - recordRequested
+
+        Returns:
+            dict: dict of signals (key: function name, value: function objects).
+        """
+        return {
+            "snapRequested" : self.__snap.clicked,
+            "albumRequested" : self.__album.clicked,
+            "liveRequested" : self.__live.toggled,
+            "recordRequested" : self.__record.clicked,
+        }
+
 class ROIHandling(QWidget):
-    def __init__(self, cameraROI : ROI) -> None:
+    def __init__(self, sensorShape : ROI) -> None:
+        """ROI Handling widget. Defines a set of non-custom widgets to set the Region Of Interest of the device.
+        This widget is common for all devices.
+
+        Args:
+            cameraROI (ROI): data describing the device sensor shape and step value to increment/decrement each parameter.
+        """
         super(ROIHandling, self).__init__()
         self.__changeROIRequested = pyqtSignal(ROI)
         self.__fullROIRequested = pyqtSignal(ROI)
@@ -467,7 +563,7 @@ class ROIHandling(QWidget):
         # issues when changing the ROI
         # so we'll create a local copy
         # and discard the input
-        self.__sensorFullROI = replace(cameraROI)
+        self.__sensorFullROI = replace(sensorShape)
 
         # todo: these widgets are not
         # our custom LocalWidgets
@@ -584,7 +680,7 @@ class ROIHandling(QWidget):
     
     @property
     def signals(self) -> dict[str, pyqtSignal]:
-        """Returns a list of signals available for the ROIHandling widget.
+        """Returns a dictionary of signals available for the ROIHandling widget.
         Exposed signals are:
         
         - changeROIRequested,
