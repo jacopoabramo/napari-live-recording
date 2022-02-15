@@ -1,10 +1,10 @@
+import numpy as np
 from abc import ABC, abstractmethod
 from typing import Any, Union
 from PyQt5.QtCore import QObject, Signal
 from PyQt5.QtWidgets import QPushButton, QVBoxLayout
 from napari.qt.threading import thread_worker
 from collections import deque
-import numpy as np
 from common import ROI
 from widgets.widgets import (
     LocalWidget,
@@ -70,6 +70,7 @@ class Camera(ABC, QObject):
         self.connectSignals()
         
         # live recording
+        self.isLive = False
         self.liveDeque = deque([], maxlen=10000)
         self.liveWorker = self._acquireForever()
         self.recordHandling.signals["liveRequested"].connect(self._handleLive)
@@ -86,7 +87,7 @@ class Camera(ABC, QObject):
         self.recordHandling.signals["liveRequested"].emit(False)
         self.close()
         self.layout.deleteLater()
-    
+
     @property
     def latestLiveFrame(self) -> np.array:
         """Pops a frame from the live deque, returning it.
@@ -158,6 +159,7 @@ class Camera(ABC, QObject):
         Args:
             isLive (bool): True if live acquisition is started, otherwise False.
         """
+        self.isLive = isLive
         if isLive:
             self.liveWorker.start()
         else:
