@@ -445,16 +445,21 @@ class CameraSelection(QWidget):
         The QPushButton remains disabled as long as no camera is selected (first index is highlited). 
         """
         super(CameraSelection, self).__init__()
-        self.camerasComboBox = ComboBox([], "Camera")
-        self.idLineEdit = LineEdit(param="", name="Camera ID/SN", editable=True)
-        self.addButton = QPushButton("Add camera", self)
-        self.addButton.setEnabled(False)
+        self.newCameraRequested = Signal(str, str)
+        
+        self.__camerasComboBox = ComboBox([], "Camera")
+        self.__idLineEdit = LineEdit(param="", name="Camera ID/SN", editable=True)
+        self.__addButton = QPushButton("Add camera", self)
+        self.__addButton.setEnabled(False)
 
         # create widget layout
         self.widgetLayout = QGridLayout(self)
-        self.widgetLayout.addLayout(self.camerasComboBox.layout, 0, 0, 1, 1)
-        self.widgetLayout.addWidget(self.addButton, 0, 1, 1, 1)
-        self.widgetLayout.addLayout(self.idLineEdit.layout, 1, 0, 1, 1)
+        self.widgetLayout.addLayout(self.__camerasComboBox.layout, 0, 0, 1, 1)
+        self.widgetLayout.addWidget(self.__addButton, 0, 1, 1, 1)
+        self.widgetLayout.addLayout(self.__idLineEdit.layout, 1, 0, 1, 1)
+
+        self.__camerasComboBox.signals["currentIndexChanged"].connect(self.setAddEnabled)
+        self.__addButton.clicked.connect(lambda: self.newCameraRequested.emit(self.__camerasComboBox.value[0], self.__idLineEdit.value))
     
     def setAvailableCameras(self, cameras: list[str]) -> None:
         """Sets the ComboBox with the list of available camera devices.
@@ -465,6 +470,12 @@ class CameraSelection(QWidget):
         # we need to extend the list of available cameras with a selection text
         cameras.insert(0, "Select device")
         self.camerasComboBox.changeWidgetSettings(cameras)
+    
+    def setAddEnabled(self, idx: int):
+        if idx > 0:
+            self.addButton.setEnabled(True)
+        else:
+            self.addButton.setEnabled(False)
 
 class RecordHandling(QWidget):
     def __init__(self) -> None:
