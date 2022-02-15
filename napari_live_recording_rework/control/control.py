@@ -1,11 +1,17 @@
-import numpy as np
+
 import common
+from PyQt5.QtWidgets import QVBoxLayout
 from devices.interface import Camera
 from widgets.widgets import Timer
 from napari.viewer import Viewer
 
 class Controller:
     def __init__(self, viewer: Viewer) -> None:
+        """Main Controller class. Stores all camera objects to access live and stack recordings.
+
+        Args:
+            viewer (Viewer): reference to the napari Viewer object (provided by the plugin interface).
+        """
         self.cameras : dict[str, Camera] = {}
         self.viewer = viewer
         self.liveTimer = Timer()
@@ -17,12 +23,19 @@ class Controller:
         for cam in self.cameras.values():
             del cam
 
-    def addCamera(self, camera: Camera) -> None:
+    def addCamera(self, camera: Camera) -> QVBoxLayout:
         """Adds a camera, storing it into a dictionary.
+
+        Args:
+            camera (Camera): new Camera object to add to the controller dictionary.
+
+        Returns:
+            QVBoxLayout: the camera widget layout.
         """
         cameraKey = f"{camera.name}:{str(camera.deviceID)}"
         self.cameras[cameraKey] = camera
         self.cameras[cameraKey].deleted.connect(self.deleteCamera)
+        return self.cameras[cameraKey].layout
     
     def deleteCamera(self, cameraKey: str) -> None:
         """Deletes a camera from the cameras dictionary.
