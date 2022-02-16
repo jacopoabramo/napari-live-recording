@@ -15,6 +15,11 @@ for (_, module_name, _) in iter_modules([package_dir]):
     except ImportError:
             pass
     for attribute_name in dir(module):
-        attribute = getattr(module, attribute_name)
-        if isclass(attribute):
-            devicesDict[attribute_name] = attribute
+
+        # we need to exclude the "ICamera" attribute name
+        # since this is an abstract class representing a
+        # base class for all derived classes
+        if attribute_name != "ICamera":
+            attribute = getattr(module, attribute_name)
+            if isclass(attribute):
+                devicesDict[attribute_name] = attribute
