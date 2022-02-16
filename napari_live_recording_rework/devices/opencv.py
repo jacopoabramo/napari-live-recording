@@ -1,4 +1,3 @@
-
 import cv2
 import numpy as np
 import common
@@ -6,10 +5,7 @@ from dataclasses import dataclass
 from interface import Camera
 from typing import Union
 from common import ROI
-from widgets.widgets import (
-    WidgetEnum,
-    Timer
-)
+from widgets import WidgetEnum, Timer
 
 class OpenCVCamera(Camera):
 
