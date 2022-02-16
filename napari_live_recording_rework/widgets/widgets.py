@@ -530,7 +530,8 @@ class RecordHandling(QWidget):
         self.__record.clicked.connect(lambda: 
                                     self.__recordRequested.emit(self.__recordSpinBox.value())
                                     )
-
+        
+        self.setLayout(self.__layout)
 
     def _handleLiveToggled(self, status: bool) -> None:
         """Enables/Disables pushbuttons when the live button is toggled.
@@ -541,12 +542,6 @@ class RecordHandling(QWidget):
         self.__snap.setEnabled(not status)
         self.__album.setEnabled(not status)
         self.__record.setEnabled(not status)
-    
-    @property
-    def layout(self) -> QGridLayout:
-        """The Record handling grid layout to add to the camera widgets.
-        """
-        return self.__layout
     
     @property
     def recordSize(self) -> int:
@@ -656,6 +651,8 @@ class ROIHandling(QWidget):
         # to process the new ROI information if necessary.
         self.__changeROIButton.clicked.connect(self._onROIChanged)
         self.__fullROIButton.clicked.connect(self._onFullROI)
+
+        self.setLayout(self.__layout)
     
     def changeWidgetSettings(self, settings : ROI):
         """ROI handling update widget settings method.
@@ -700,12 +697,6 @@ class ROIHandling(QWidget):
         """
         self.changeWidgetSettings(self.__sensorFullROI)
         self.__fullROIRequested.emit(replace(self.__sensorFullROI))
-    
-    @property
-    def layout(self) -> QGridLayout:
-        """The ROI handling grid layout to add to the camera widgets.
-        """
-        return self.__layout
     
     @property
     def signals(self) -> dict[str, Signal]:
