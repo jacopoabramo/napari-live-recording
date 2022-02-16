@@ -57,11 +57,10 @@ class Controller:
                     # a color base to grayscale image; we need
                     # to delete the layer and refresh it with
                     # new data
-                    if data.ndim != self.viewer.layers[f"Live ({name})"].data.ndim:
-                        self.viewer.layers.remove(f"Live ({name})")
-                        self.viewer.add_image(data, name = f"Live ({name})")
+                    if data is not None:
+                        if data.ndim != self.viewer.layers[f"Live ({name})"].data.ndim:
+                            self.viewer.layers.remove(f"Live ({name})")
+                            self.viewer.add_image(data, name = f"Live ({name})")
                 except KeyError:
                     # needed in case the layer of that live recording does not exist
-                    self.viewer.add_image(data, name = f"Live ({name})")            
-                except IndexError:
-                    pass
+                    self.viewer.add_image(data, name = f"Live ({name})")
