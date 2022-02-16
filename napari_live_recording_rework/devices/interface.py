@@ -1,12 +1,12 @@
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Any, Union
+from typing import Union
 from PyQt5.QtCore import QObject, Signal
 from PyQt5.QtWidgets import QPushButton, QVBoxLayout
 from napari.qt.threading import thread_worker
 from collections import deque
 from common import ROI
-from widgets.widgets import (
+from widgets import (
     LocalWidget,
     ROIHandling,
     RecordHandling,
@@ -20,7 +20,7 @@ from widgets.widgets import (
 
 ParameterType = Union[str, list[str], tuple[int, int, int], tuple[float, float, float]]
 
-class Camera(ABC, QObject):
+class ICamera(ABC, QObject):
     availableWidgets = {
         WidgetEnum.ComboBox : ComboBox,
         WidgetEnum.SpinBox : SpinBox,
@@ -30,7 +30,7 @@ class Camera(ABC, QObject):
     }
 
     def __init__(self, name: str, deviceID: Union[str, int], paramDict: dict[str, LocalWidget], sensorShape: ROI) -> None:
-        """Generic camera device. Each device has a set of common widgets:
+        """Generic camera device interface. Each device has a set of common widgets:
 
         - ROI handling widget;
         - Delete device button.
@@ -92,7 +92,11 @@ class Camera(ABC, QObject):
     def latestLiveFrame(self) -> np.array:
         """Pops a frame from the live deque, returning it.
         """
-        return self.liveDeque.pop()
+        try:
+            data = self.liveDeque.pop()
+            return data
+        except IndexError:
+            return None
     
     @abstractmethod
     def setupWidgetsForStartup(self) -> None:
