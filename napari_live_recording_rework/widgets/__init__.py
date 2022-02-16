@@ -1,9 +1,13 @@
-from .widgets import (
+from widgets import (
+    Timer,
+    WidgetEnum,
     LocalWidget,
     ComboBox,
     SpinBox,
     DoubleSpinBox,
     LabeledSlider,
     LineEdit,
-    CameraSelection
+    CameraSelection,
+    RecordHandling,
+    ROIHandling
 )
