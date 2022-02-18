@@ -1,13 +1,13 @@
 import cv2
 import numpy as np
-import common
+from napari_live_recording_rework.common import ONE_SECOND_IN_MS, ROI
+from napari_live_recording_rework.widgets import WidgetEnum, Timer
+from napari_live_recording_rework.devices.interface import ICamera
+from PyQt5.QtCore import QObject
 from dataclasses import dataclass
-from interface import Camera
 from typing import Union
-from common import ROI
-from widgets import WidgetEnum, Timer
 
-class OpenCVCamera(Camera):
+class OpenCV(ICamera):
 
     @dataclass(frozen=True)
     class OpenCVExposure:
@@ -44,6 +44,7 @@ class OpenCVCamera(Camera):
             name (str): user-defined camera name.
             deviceID (Union[str, int]): camera identifier.
         """
+        QObject.__init__(self)
         self.__capture = cv2.VideoCapture(deviceID, cv2.CAP_ANY)
         
         # read OpenCV parameters
@@ -55,17 +56,17 @@ class OpenCVCamera(Camera):
         self.__format = self.OpenCVPixelFormats.data["RGB"]
         self.__frameCounter = 0
         
-        paramDict = {}
-        self.addParameter(WidgetEnum.ComboBox, "Exposure time", "", list(self.OpenCVExposure.data.keys()), paramDict)
-        self.addParameter(WidgetEnum.ComboBox, "Pixel format", "", list(self.OpenCVPixelFormats.data.keys()), paramDict)
-        self.addParameter(WidgetEnum.LineEdit, "Frame rate", "FPS", 0)
+        self.parameters = {}
+        self.addParameter(WidgetEnum.ComboBox, "Exposure time", "", list(self.OpenCVExposure.data.keys()), self.parameters)
+        self.addParameter(WidgetEnum.ComboBox, "Pixel format", "", list(self.OpenCVPixelFormats.data.keys()), self.parameters)
+        self.addParameter(WidgetEnum.LineEdit, "Frame rate", "FPS", "", self.parameters)
         
         # call Camera.__init__ after initializing all parameters in paramDict
-        super().__init__(name, deviceID, paramDict, self.__ROI)
+        super().__init__(name, deviceID, self.parameters, self.__ROI)
 
         self.__fpsTimer = Timer()
-        self.__fpsTimer.setInterval(common.ONE_SECOND_IN_MS)
-        self.__fpsTimer.timeout.connect()
+        self.__fpsTimer.setInterval(ONE_SECOND_IN_MS)
+        self.__fpsTimer.timeout.connect(self._updateFPS)
 
     def setupWidgetsForStartup(self) -> None:
         self.parameters["Exposure time"].value = abs(int(self.__capture.get(cv2.CAP_PROP_EXPOSURE)))
@@ -74,7 +75,7 @@ class OpenCVCamera(Camera):
     def connectSignals(self) -> None:
         self.parameters["Exposure time"].signals["currentTextChanged"].connect(self._updateExposure)
         self.parameters["Pixel format"].signals["currentTextChanged"].connect(self._updateFormat)
-        self.recordHandling.signals["liveRequested"].connect(lambda: self.__fpsTimer.start())
+        self.recordHandling.signals["liveRequested"].connect(lambda enabled: (self.__fpsTimer.start() if enabled else self.__fpsTimer.stop()))
 
     def grabFrame(self) -> np.array:
         _, img = self.__capture.read()

@@ -1,12 +1,12 @@
 import numpy as np
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Union
-from PyQt5.QtCore import QObject, Signal
-from PyQt5.QtWidgets import QPushButton, QVBoxLayout
+from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtWidgets import QPushButton, QGroupBox, QFormLayout
 from napari.qt.threading import thread_worker
 from collections import deque
-from common import ROI
-from widgets import (
+from napari_live_recording_rework.common import ROI
+from napari_live_recording_rework.widgets import (
     LocalWidget,
     ROIHandling,
     RecordHandling,
@@ -20,7 +20,7 @@ from widgets import (
 
 ParameterType = Union[str, list[str], tuple[int, int, int], tuple[float, float, float]]
 
-class ICamera(ABC, QObject):
+class ICamera(QObject):
     availableWidgets = {
         WidgetEnum.ComboBox : ComboBox,
         WidgetEnum.SpinBox : SpinBox,
@@ -28,6 +28,8 @@ class ICamera(ABC, QObject):
         WidgetEnum.LabeledSlider : LabeledSlider,
         WidgetEnum.LineEdit : LineEdit
     }
+    recorded = pyqtSignal(np.ndarray)
+    deleted = pyqtSignal(str)
 
     def __init__(self, name: str, deviceID: Union[str, int], paramDict: dict[str, LocalWidget], sensorShape: ROI) -> None:
         """Generic camera device interface. Each device has a set of common widgets:
@@ -48,24 +50,25 @@ class ICamera(ABC, QObject):
         """
         self.name = name
         self.deviceID = deviceID
-        self.layout = QVBoxLayout()
+        self.layout = QFormLayout()
         self.delete = QPushButton("Delete camera")
         self.recordHandling = RecordHandling()
         self.ROIHandling = ROIHandling(sensorShape)
-        self.parameters = paramDict
-        self.recorded = Signal(np.array)
-        self.deleted = Signal(str)
+
+        self.group = QGroupBox(f"{self.name}:{self.deviceID}")
 
         # layout order
         # 1) record handling widgets
         # 2) custom widgets
         # 3) roi handling widgets
         # 4) delete device button
-        self.layout.addLayout(self.recordHandling.layout)
-        for widget in self.parameters.values():
-            self.layout.addLayout(widget.layout)
-        self.layout.addLayout(self.ROIHandling.layout)
-        self.layout.addWidget(self.delete)
+        self.layout.addRow(self.recordHandling.group)
+        for widget in paramDict.values():
+            self.layout.addRow(widget.label, widget.widget)
+        self.layout.addRow(self.ROIHandling.group)
+        self.layout.addRow(self.delete)
+
+        self.group.setLayout(self.layout)
         self.setupWidgetsForStartup()
         self.connectSignals()
         
@@ -102,25 +105,25 @@ class ICamera(ABC, QObject):
     def setupWidgetsForStartup(self) -> None:
         """Initializes widgets for device startup.
         """
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def connectSignals(self) -> None:
         """Connects widgets signals to device slots.
         """
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def grabFrame(self) -> np.array:
         """Returns the latest captured frame as a numpy array.
         """
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def cameraInfo(self) -> list[str]:
         """Returns a list of strings containing relevant device informations.
         """
-        pass
+        raise NotImplementedError()
 
     def close(self) -> None:
         """Closes the device if necessary.
@@ -140,7 +143,7 @@ class ICamera(ABC, QObject):
             - paramDict (dict[str, ParameterType]): dictionary to store all parameters.
             - orientation (str, optional): orientation of the label for the parameter (can either be "left" or "right"). Default is "left".
         """
-        if not name in self.parameters:
+        if not name in paramDict:
             paramWidget = self.availableWidgets[widgetType](param, name, unit, orientation)
             paramDict[name] = paramWidget
     

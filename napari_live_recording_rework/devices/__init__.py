@@ -2,24 +2,31 @@ from inspect import isclass
 from pkgutil import iter_modules
 from pathlib import Path
 from importlib import import_module
+from napari_live_recording_rework.devices.interface import ICamera
 
-# iterate through the modules
 package_dir = Path(__file__).resolve().parent
 devicesDict = {}
 
+# iterate through the modules of the devices module
+# in order to find all submodules containing the class definitions
+# of all cameras
 for (_, module_name, _) in iter_modules([package_dir]):
-    
     # import the modulte and iterate through the attributes
     try:
-        module = import_module(f"{__name__}.{module_name}")
+        # we skip the interface module
+        if module_name != "interface":
+            module = import_module(f"{__name__}.{module_name}")
+            for attribute_name in dir(module):
+                attribute = getattr(module, attribute_name)
+                if isclass(attribute) and issubclass(type(attribute), ICamera):
+                    devicesDict[attribute_name] = attribute
     except ImportError:
-            pass
-    for attribute_name in dir(module):
-
-        # we need to exclude the "ICamera" attribute name
-        # since this is an abstract class representing a
-        # base class for all derived classes
-        if attribute_name != "ICamera":
-            attribute = getattr(module, attribute_name)
-            if isclass(attribute):
-                devicesDict[attribute_name] = attribute
+        # This check is added to make sure that modules from cameras
+        # which must be added manually (i.e. Ximea's APIs) do not 
+        # cause issues when loading the plugin.
+        # The camera won't be visibile in the supported camera list
+        # but the plugin will still be working as expected.
+        # In case there are cameras which require external components,
+        # remember to wrap them in a try-except snippet and raise an
+        # ImportError exception if there is any missing package.
+        raise TypeError(f"Importing of {module_name} failed. Check napari's traceback for more informations.")

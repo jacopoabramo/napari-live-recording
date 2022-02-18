@@ -1,8 +1,16 @@
 from typing import Union
-from PyQt5.QtCore import Qt, Signal, QTimer
-from PyQt5.QtWidgets import QWidget, QLabel, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QPushButton
+from PyQt5.QtCore import Qt, QObject, pyqtSignal, QTimer
+from PyQt5.QtWidgets import (
+    QWidget, 
+    QLabel, 
+    QComboBox, 
+    QSpinBox, 
+    QDoubleSpinBox, 
+    QLineEdit, 
+    QPushButton
+)
 from superqt import QLabeledSlider
-from PyQt5.QtWidgets import QFormLayout, QGridLayout
+from PyQt5.QtWidgets import QFormLayout, QGridLayout, QGroupBox
 from abc import ABC, abstractmethod
 from dataclasses import replace
 from napari_live_recording_rework.common import ROI
@@ -31,28 +39,21 @@ class LocalWidget(ABC):
         self.__name = name
         self.__unit = unit
         labelStr = (self.__name + " (" + self.__unit + ")" if self.__unit != "" else self.__name)
-        self.__label = QLabel(labelStr)
-        self.__label.setAlignment(Qt.AlignRight)
-        self.__layout = QFormLayout()
-        self.__widget = internalWidget
-        self._buildLayout(orientation)
+        self.label = QLabel(labelStr)
+        self.label.setAlignment(Qt.AlignCenter)
+        self.widget = internalWidget
     
-    def _buildLayout(self, orientation: str) -> None:
-        """Builds the QFormLayout depending on the input orientation.
-
-        Args:
-            orientation (str): specifies the label orientation of the widget: either "left" or "righ" of the internal widget.
-        """
-        if orientation == "right":
-            self.__layout.addRow(self.__widget, self.__label)
-        else: # default layout
-            self.__layout.addRow(self.__label, self.__widget)
-
     @property
-    def layout(self) -> QFormLayout:
-        """ QFormLayout structured as |<Text label>|<Specific widget>| (this must be built in the specific class constructor).
+    def isEnabled(self) -> bool:
+        """Widget is enabled for editing (True) or not (False).
         """
-        return self.__layout
+        return self.widget.isEnabled()
+    
+    @isEnabled.setter
+    def isEnabled(self, enable : bool) -> None:
+        """Sets widget enabled for editing (True) or not (False).
+        """
+        self.widget.setEnabled(enable)
 
     @abstractmethod
     def changeWidgetSettings(self, newParam) -> None:
@@ -73,24 +74,10 @@ class LocalWidget(ABC):
         """Widget value setter.
         """
         pass
-
-    @property
-    @abstractmethod
-    def isEnabled(self) -> bool:
-        """Widget is enabled for editing (True) or not (False).
-        """
-        pass
-    
-    @isEnabled.setter
-    @abstractmethod
-    def isEnabled(self, enable : bool) -> None:
-        """Sets widget enabled for editing (True) or not (False).
-        """
-        pass
     
     @property
     @abstractmethod
-    def signals(self) -> dict[str, Signal]:
+    def signals(self) -> dict[str, pyqtSignal]:
         """Common widget method to expose signals to the device.
         """
         pass
@@ -115,6 +102,7 @@ class ComboBox(LocalWidget):
         Args:
             newParam (list[str]): new list of parameters to add to the ComboBox.
         """
+        print(newParam)
         self.__combobox.clear()
         self.__combobox.addItems(newParam)
     
@@ -134,19 +122,7 @@ class ComboBox(LocalWidget):
         self.__combobox.setCurrentIndex(value)
     
     @property
-    def isEnabled(self) -> bool:
-        """ComboBox is enabled for editing (True) or not (False).
-        """
-        return self.__combobox.isEnabled()
-    
-    @isEnabled.setter
-    def isEnabled(self, enable : bool) -> None:
-        """Sets the ComboBox enabled for editing (True) or disabled (False).
-        """
-        self.__combobox.setEnabled(enable)
-    
-    @property
-    def signals(self) -> dict[str, Signal]:
+    def signals(self) -> dict[str, pyqtSignal]:
         """Returns a dictionary of signals available for the ComboBox widget.
         Exposed signals are:
         
@@ -172,12 +148,12 @@ class SpinBox(LocalWidget):
             unit (str, optional): parameter unit measure. Defaults to "".
             orientation (str, optional): label orientation on the layout. Defaults to "left".
         """
-        self.__spinbox = QSpinBox(self)
+        self.__spinbox = QSpinBox()
         self.__spinbox.setRange(param[0], param[1])
         self.__spinbox.setValue(param[2])
         super().__init__(self.__spinbox, name, unit, orientation)
     
-    def changeWidgetSettings(self, newParam : tuple(int, int, int)) -> None:
+    def changeWidgetSettings(self, newParam : tuple[int, int, int]) -> None:
         """SpinBox update widget parameter method.
 
         Args:
@@ -202,19 +178,7 @@ class SpinBox(LocalWidget):
         self.__spinbox.setValue(value)
     
     @property
-    def isEnabled(self) -> bool:
-        """SpinBox is enabled for editing (True) or not (False).
-        """
-        return self.__spinbox.isEnabled()
-    
-    @isEnabled.setter
-    def isEnabled(self, enable : bool) -> None:
-        """Sets the SpinBox enabled for editing (True) or disabled (False).
-        """
-        self.__spinbox.setEnabled(enable)
-    
-    @property
-    def signals(self) -> dict[str, Signal]:
+    def signals(self) -> dict[str, pyqtSignal]:
         """Returns a dictionary of signals available for the SpinBox widget.
         Exposed signals are:
         
@@ -267,21 +231,9 @@ class DoubleSpinBox(LocalWidget):
             value (float): value to set.
         """
         self.__spinbox.setValue(value)
-    
-    @property
-    def isEnabled(self) -> bool:
-        """DoubleSpinBox is enabled for editing (True) or not (False).
-        """
-        return self.__spinbox.isEnabled()
-    
-    @isEnabled.setter
-    def isEnabled(self, enable : bool) -> None:
-        """Sets the DoubleSpinBox enabled for editing (True) or disabled (False).
-        """
-        self.__spinbox.setEnabled(enable)
 
     @property
-    def signals(self) -> dict[str, Signal]:
+    def signals(self) -> dict[str, pyqtSignal]:
         """Returns a dictionary of signals available for the SpinBox widget.
         Exposed signals are:
         
@@ -306,7 +258,6 @@ class LabeledSlider(LocalWidget):
             unit (str, optional): parameter unit measure. Defaults to "".
             orientation (str, optional): label orientation on the layout. Defaults to "left".
         """
-        super().__init__(name, unit)
         self.__slider = QLabeledSlider(Qt.Horizontal)
         self.__slider.setRange(param[0], param[1])
         self.__slider.setValue(param[2])
@@ -335,21 +286,9 @@ class LabeledSlider(LocalWidget):
             value (float): value to set.
         """
         self.__slider.setValue(value)
-        
-    @property
-    def isEnabled(self) -> bool:
-        """LabeledSlider is enabled for editing (True) or not (False).
-        """
-        return self.__slider.isEnabled()
-    
-    @isEnabled.setter
-    def isEnabled(self, enable: bool) -> None:
-        """Sets the DoubleSpinBox enabled for editing (True) or disabled (False).
-        """
-        self.__slider.setEnabled(enable)
 
     @property
-    def signals(self) -> dict[str, Signal]:
+    def signals(self) -> dict[str, pyqtSignal]:
         """Returns a dictionary of signals available for the SpinBox widget.
         Exposed signals are:
         
@@ -374,8 +313,7 @@ class LineEdit(LocalWidget):
             orientation (str, optional): label orientation on the layout. Defaults to "left".
             editable (bool, optional): sets the LineEdit to be editable. Defaults to False.
         """
-        super().__init__(name, unit)
-        self.__lineEdit = QLineEdit(self, param)
+        self.__lineEdit = QLineEdit(param)
         super().__init__(self.__lineEdit, name, unit, orientation)
     
     def changeWidgetSettings(self, newParam : str) -> None:
@@ -402,20 +340,7 @@ class LineEdit(LocalWidget):
         self.__lineEdit.setText(value)
     
     @property
-    def isEnabled(self) -> bool:
-        """LineEdit is enabled for editing (True) or not (False).
-        """
-        return self.__lineEdit.isEnabled()
-    
-    @property
-    @isEnabled.setter
-    def isEnabled(self, enable: bool) -> None:
-        """Sets the LineEdit enabled for editing (True) or disabled (False).
-        """
-        self.__lineEdit.setEnabled(enable)
-    
-    @property
-    def signals(self) -> dict[str, Signal]:
+    def signals(self) -> dict[str, pyqtSignal]:
         """Returns a dictionary of signals available for the LineEdit widget.
         Exposed signals are:
         
@@ -430,7 +355,9 @@ class LineEdit(LocalWidget):
             "textEdited" : self.__lineEdit.textEdited
         }
 
-class CameraSelection(QWidget):
+class CameraSelection(QObject):
+    newCameraRequested = pyqtSignal(str, str)
+
     def __init__(self) -> None:
         """Camera selection widget. It includes the following widgets:
 
@@ -439,28 +366,30 @@ class CameraSelection(QWidget):
         - a QPushButton to add the camera
 
         Widget grid layout:
-        |(0,0) ComboBox|(0,1) QPushButton|
-        |(1,0) LineEdit|(1,1)            |
+        |(0,0-1) ComboBox                |(0,2) QPushButton|
+        |(1,0) LineEdit|Line Edit(1,1)   |(1,2)            |
 
         The QPushButton remains disabled as long as no camera is selected (first index is highlited). 
         """
-        super(CameraSelection, self).__init__()
-        self.newCameraRequested = Signal(str, str)
-        
-        self.__camerasComboBox = ComboBox([], "Camera")
-        self.__idLineEdit = LineEdit(param="", name="Camera ID/SN", editable=True)
-        self.__addButton = QPushButton("Add camera", self)
-        self.__addButton.setEnabled(False)
+        super(CameraSelection, self).__init__()        
+        self.group = QGroupBox()
+        self.camerasComboBox = ComboBox([], "Interface")
+        self.nameLineEdit = LineEdit(param="MyCamera", name="Camera name")
+        self.idLineEdit = LineEdit(param="0", name="Camera ID/SN", orientation="right")
+        self.addButton = QPushButton("Add camera")
+        self.addButton.setEnabled(False)
 
         # create widget layout
-        self.widgetLayout = QGridLayout(self)
-        self.widgetLayout.addLayout(self.__camerasComboBox.layout, 0, 0, 1, 1)
-        self.widgetLayout.addWidget(self.__addButton, 0, 1, 1, 1)
-        self.widgetLayout.addLayout(self.__idLineEdit.layout, 1, 0, 1, 1)
+        self.camerasComboBox.signals["currentIndexChanged"].connect(self._setAddEnabled)
+        self.addButton.clicked.connect(lambda: self.newCameraRequested.emit(self.camerasComboBox.value[0], self.idLineEdit.value))
 
-        self.__camerasComboBox.signals["currentIndexChanged"].connect(self.setAddEnabled)
-        self.__addButton.clicked.connect(lambda: self.newCameraRequested.emit(self.__camerasComboBox.value[0], self.__idLineEdit.value))
-    
+        self.formLayout = QFormLayout()
+        self.formLayout.addRow(self.camerasComboBox.label, self.camerasComboBox.widget)
+        self.formLayout.addRow(self.nameLineEdit.label, self.nameLineEdit.widget)
+        self.formLayout.addRow(self.idLineEdit.label, self.idLineEdit.widget)
+        self.formLayout.addRow(self.addButton)
+        self.group.setLayout(self.formLayout)
+
     def setAvailableCameras(self, cameras: list[str]) -> None:
         """Sets the ComboBox with the list of available camera devices.
 
@@ -470,14 +399,20 @@ class CameraSelection(QWidget):
         # we need to extend the list of available cameras with a selection text
         cameras.insert(0, "Select device")
         self.camerasComboBox.changeWidgetSettings(cameras)
+        self.camerasComboBox.isEnabled = True
     
-    def setAddEnabled(self, idx: int):
+    def _setAddEnabled(self, idx: int):
+        """Private method serving as an enable/disable mechanism for the Add button widget.
+        This is done to avoid the first index, the "Select device" string, to be considered
+        as a valid camera device (which is not).
+        """
         if idx > 0:
             self.addButton.setEnabled(True)
         else:
             self.addButton.setEnabled(False)
 
-class RecordHandling(QWidget):
+
+class RecordHandling:
     def __init__(self) -> None:
         """Recording Handling widget. Includes QPushButtons which allow to handle the following operations:
 
@@ -491,47 +426,44 @@ class RecordHandling(QWidget):
         |(1,0-1)          QSpinBox (Record size)           |(0,2) QPushButton (Record)| 
 
         """
-        super(RecordHandling, self).__init__()
-        self.__recordRequested = Signal(int)
+        self.recordRequested = pyqtSignal(int)
 
-        self.__snap = QPushButton("Snap", self)
-        self.__album = QPushButton("Album", self)
-        self.__live = QPushButton("Live", self)
+        self.snap = QPushButton("Snap")
+        self.album = QPushButton("Album")
+        self.live = QPushButton("Live")
 
         # the live button is implemented as a toggle button
-        self.__live.setCheckable(True)
+        self.live.setCheckable(True)
 
-        self.__recordSpinBox = QSpinBox(self)
+        self.recordSpinBox = QSpinBox()
 
         # todo: this is currently hardcoded
         # maybe should find a way to initialize
         # from outside the instance?
-        self.__recordSpinBox.setRange(1, 5000)
-        self.__recordSpinBox.setValue(100)
+        self.recordSpinBox.setRange(1, 5000)
+        self.recordSpinBox.setValue(100)
 
-        self.__record = QPushButton("Record", self)
+        self.record = QPushButton("Record")
 
-        self.__layout = QGridLayout(self)
-        self.__layout.addWidget(self.__snap, 0, 0)
-        self.__layout.addWidget(self.__album, 0, 1)
-        self.__layout.addWidget(self.__live, 0, 2)
-        self.__layout.addWidget(self.__recordSpinBox, 1, 0, 1, 2)
-        self.__layout.addWidget(self.__record, 1, 2)
+        self.group = QGroupBox()
+        self.layout = QGridLayout()
+        self.layout.addWidget(self.snap, 0, 0)
+        self.layout.addWidget(self.album, 0, 1)
+        self.layout.addWidget(self.live, 0, 2)
+        self.layout.addWidget(self.recordSpinBox, 1, 0, 1, 2)
+        self.layout.addWidget(self.record, 1, 2)
+        self.group.setLayout(self.layout)
 
         # whenever the live button is toggled,
         # the other pushbutton must be enabled/disabled
         # in order to avoid undefined behaviors
         # when grabbing frames from the device
-        self.__live.toggled.connect(self._handleLiveToggled)
+        self.live.toggled.connect(self._handleLiveToggled)
 
         # whenever the record button is clicked,
         # the widgets send a signal
         # with the current SpinBox value
-        self.__record.clicked.connect(lambda: 
-                                    self.__recordRequested.emit(self.__recordSpinBox.value())
-                                    )
-        
-        self.setLayout(self.__layout)
+        self.record.clicked.connect(lambda: self.recordRequested.emit(self.recordSpinBox.value()))
 
     def _handleLiveToggled(self, status: bool) -> None:
         """Enables/Disables pushbuttons when the live button is toggled.
@@ -539,18 +471,18 @@ class RecordHandling(QWidget):
         Args:
             status (bool): new live button status.
         """
-        self.__snap.setEnabled(not status)
-        self.__album.setEnabled(not status)
-        self.__record.setEnabled(not status)
+        self.snap.setEnabled(not status)
+        self.album.setEnabled(not status)
+        self.record.setEnabled(not status)
     
     @property
     def recordSize(self) -> int:
         """Returns the record size currently indicated in the QSpinBox widget.
         """
-        return self.__recordSpinBox.value()
+        return self.recordSpinBox.value()
 
     @property
-    def signals(self) -> dict[str, Signal]:
+    def signals(self) -> dict[str, pyqtSignal]:
         """Returns a dictionary of signals available for the RecordHandling widget.
         Exposed signals are:
         
@@ -563,13 +495,13 @@ class RecordHandling(QWidget):
             dict: dict of signals (key: function name, value: function objects).
         """
         return {
-            "snapRequested" : self.__snap.clicked,
-            "albumRequested" : self.__album.clicked,
-            "liveRequested" : self.__live.toggled,
-            "recordRequested" : self.__recordRequested,
+            "snapRequested" : self.snap.clicked,
+            "albumRequested" : self.album.clicked,
+            "liveRequested" : self.live.toggled,
+            "recordRequested" : self.recordRequested,
         }
 
-class ROIHandling(QWidget):
+class ROIHandling(QObject):
     def __init__(self, sensorShape : ROI) -> None:
         """ROI Handling widget. Defines a set of non-custom widgets to set the Region Of Interest of the device.
         This widget is common for all devices.
@@ -577,9 +509,8 @@ class ROIHandling(QWidget):
         Args:
             cameraROI (ROI): data describing the device sensor shape and step value to increment/decrement each parameter.
         """
-        super(ROIHandling, self).__init__()
-        self.__changeROIRequested = Signal(ROI)
-        self.__fullROIRequested = Signal(ROI)
+        self.__changeROIRequested = pyqtSignal(ROI)
+        self.__fullROIRequested = pyqtSignal(ROI)
 
         # todo: maybe this is inefficient...
         # in previous implementation
@@ -595,15 +526,15 @@ class ROIHandling(QWidget):
         # for all types of cameras
         # it is not worth to customize them...
         # ... right?
-        self.__offsetXLabel = QLabel("Offset X (px)", self)
+        self.__offsetXLabel = QLabel("Offset X (px)")
         self.__offsetXLabel.setAlignment(Qt.AlignCenter)
 
-        self.__offsetXSpinBox = QSpinBox(self)
+        self.__offsetXSpinBox = QSpinBox()
         self.__offsetXSpinBox.setRange(0, self.__sensorFullROI.offset_x)
         self.__offsetXSpinBox.setSingleStep(self.__sensorFullROI.ofs_x_step)
         self.__offsetXSpinBox.setValue(0)
 
-        self.__offsetYLabel = QLabel("Offset Y (px)", self)
+        self.__offsetYLabel = QLabel("Offset Y (px)", )
         self.__offsetYLabel.setAlignment(Qt.AlignCenter)
 
         self.__offsetYSpinBox = QSpinBox()
@@ -611,29 +542,29 @@ class ROIHandling(QWidget):
         self.__offsetYSpinBox.setSingleStep(self.__sensorFullROI.ofs_y_step)
         self.__offsetYSpinBox.setValue(0)
 
-        self.__widthLabel = QLabel("Width (px)", self)
+        self.__widthLabel = QLabel("Width (px)")
         self.__widthLabel.setAlignment(Qt.AlignCenter)
 
-        self.__widthSpinBox = QSpinBox(self)
+        self.__widthSpinBox = QSpinBox()
         self.__widthSpinBox.setRange(0, self.__sensorFullROI.width)
         self.__widthSpinBox.setSingleStep(self.__sensorFullROI.width_step)
         self.__widthSpinBox.setValue(self.__sensorFullROI.width)
 
-        self.__heightLabel = QLabel("Height (px)", self)
+        self.__heightLabel = QLabel("Height (px)")
         self.__heightLabel.setAlignment(Qt.AlignCenter)
 
-        self.__heightSpinBox = QSpinBox(self)
+        self.__heightSpinBox = QSpinBox()
         self.__heightSpinBox.setRange(0, self.__sensorFullROI.height)
         self.__heightSpinBox.setSingleStep(self.__sensorFullROI.height_step)
         self.__heightSpinBox.setValue(self.__sensorFullROI.height)
 
-        self.__changeROIButton = QPushButton("Set ROI", self)
+        self.__changeROIButton = QPushButton("Set ROI")
         self.__changeROIButton.setEnabled(False)
 
-        self.__fullROIButton = QPushButton("Full frame", self)
+        self.__fullROIButton = QPushButton("Full frame", )
         self.__fullROIButton.setEnabled(False)
 
-        self.__layout = QGridLayout(self)
+        self.__layout = QGridLayout()
         self.__layout.addWidget(self.__offsetXLabel, 0, 0)
         self.__layout.addWidget(self.__offsetXSpinBox, 0, 1)
         self.__layout.addWidget(self.__offsetYSpinBox, 0, 2)
@@ -652,7 +583,12 @@ class ROIHandling(QWidget):
         self.__changeROIButton.clicked.connect(self._onROIChanged)
         self.__fullROIButton.clicked.connect(self._onFullROI)
 
-        self.setLayout(self.__layout)
+        self.__group = QGroupBox()
+        self.__group.setLayout(self.__layout)
+
+    @property
+    def group(self) -> QGroupBox:
+        return self.__group
     
     def changeWidgetSettings(self, settings : ROI):
         """ROI handling update widget settings method.
@@ -699,7 +635,7 @@ class ROIHandling(QWidget):
         self.__fullROIRequested.emit(replace(self.__sensorFullROI))
     
     @property
-    def signals(self) -> dict[str, Signal]:
+    def signals(self) -> dict[str, pyqtSignal]:
         """Returns a dictionary of signals available for the ROIHandling widget.
         Exposed signals are:
         

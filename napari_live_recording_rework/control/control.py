@@ -1,8 +1,8 @@
 
-import common
-from PyQt5.QtWidgets import QVBoxLayout
-from devices.interface import Camera
-from widgets.widgets import Timer
+import napari_live_recording_rework.common as common
+from PyQt5.QtWidgets import QGroupBox
+from napari_live_recording_rework.devices.interface import ICamera
+from napari_live_recording_rework.widgets.widgets import Timer
 from napari.viewer import Viewer
 
 class Controller:
@@ -12,7 +12,7 @@ class Controller:
         Args:
             viewer (Viewer): reference to the napari Viewer object (provided by the plugin interface).
         """
-        self.cameras : dict[str, Camera] = {}
+        self.cameras : dict[str, ICamera] = {}
         self.viewer = viewer
         self.liveTimer = Timer()
         self.liveTimer.timeout.connect(self.refreshViewer)
@@ -23,11 +23,11 @@ class Controller:
         for cam in self.cameras.values():
             del cam
 
-    def addCamera(self, camera: Camera) -> QVBoxLayout:
+    def addCamera(self, camera: ICamera) -> QGroupBox:
         """Adds a camera, storing it into a dictionary.
 
         Args:
-            camera (Camera): new Camera object to add to the controller dictionary.
+            camera (ICamera): new Camera object to add to the controller dictionary.
 
         Returns:
             QVBoxLayout: the camera widget layout.
@@ -35,7 +35,7 @@ class Controller:
         cameraKey = f"{camera.name}:{str(camera.deviceID)}"
         self.cameras[cameraKey] = camera
         self.cameras[cameraKey].deleted.connect(self.deleteCamera)
-        return self.cameras[cameraKey].layout
+        return self.cameras[cameraKey].group
     
     def deleteCamera(self, cameraKey: str) -> None:
         """Deletes a camera from the cameras dictionary.

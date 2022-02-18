@@ -104,7 +104,7 @@ setup(
     ],
     entry_points={
         'napari.plugin': [
-            'napari-live-recording = napari_live_recording',
+            'napari-live-recording = napari_live_recording_rework',
         ],
     },
     cmdclass={
