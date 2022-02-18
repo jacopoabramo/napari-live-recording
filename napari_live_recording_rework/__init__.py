@@ -1,12 +1,9 @@
 from napari import Viewer
 from napari_plugin_engine import napari_hook_implementation
-# import napari_live_recording_rework.devices as devices
+import napari_live_recording_rework.devices as devices
 from napari_live_recording_rework.widgets import CameraSelection
 from napari_live_recording_rework.control import Controller
 from PyQt5.QtWidgets import QWidget, QFormLayout
-from napari_live_recording_rework.devices.opencv import OpenCV
-
-supportedCameras = {"OpenCV" : OpenCV}
 
 class LiveRecordingPlugin(QWidget):
     def __init__(self, napari_viewer : Viewer) -> None:
@@ -14,7 +11,7 @@ class LiveRecordingPlugin(QWidget):
         
         self.mainLayout = QFormLayout()
         self.selectionWidget = CameraSelection()
-        cameras = list(supportedCameras.keys())
+        cameras = list(devices.devicesDict.keys())
         self.selectionWidget.setAvailableCameras(cameras)
         self.controller = Controller(napari_viewer)
         self.mainLayout.addRow(self.selectionWidget.group)
@@ -25,7 +22,7 @@ class LiveRecordingPlugin(QWidget):
         self.setLayout(self.mainLayout)
     
     def addNewCameraToController(self, name: str, idx: str) -> None:
-        self.mainLayout.addRow(self.controller.addCamera(supportedCameras[name](name, idx)))
+        self.mainLayout.addRow(self.controller.addCamera(devices.devicesDict[name](name, idx)))
 
 @napari_hook_implementation
 def napari_experimental_provide_dock_widget():
