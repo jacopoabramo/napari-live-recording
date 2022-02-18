@@ -40,7 +40,7 @@ class LocalWidget(ABC):
         self.__unit = unit
         labelStr = (self.__name + " (" + self.__unit + ")" if self.__unit != "" else self.__name)
         self.label = QLabel(labelStr)
-        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.widget = internalWidget
     
     @property
@@ -92,9 +92,9 @@ class ComboBox(LocalWidget):
             unit (str, optional): parameter unit measure. Defaults to "".
             orientation (str, optional): label orientation on the layout. Defaults to "left".
         """
-        self.__combobox = QComboBox()
-        self.__combobox.addItems(param)
-        super().__init__(self.__combobox, name, unit, orientation)
+        self.combobox = QComboBox()
+        self.combobox.addItems(param)
+        super().__init__(self.combobox, name, unit, orientation)
     
     def changeWidgetSettings(self, newParam: list[str]) -> None:
         """ComboBox update widget parameter method. Old list of items is deleted.
@@ -102,15 +102,14 @@ class ComboBox(LocalWidget):
         Args:
             newParam (list[str]): new list of parameters to add to the ComboBox.
         """
-        print(newParam)
-        self.__combobox.clear()
-        self.__combobox.addItems(newParam)
+        self.combobox.clear()
+        self.combobox.addItems(newParam)
     
     @property
     def value(self) -> tuple[str, int]:
         """Returns a tuple containing the ComboBox current text and index.
         """
-        return (self.__combobox.currentText(), self.__combobox.currentIndex())
+        return (self.combobox.currentText(), self.combobox.currentIndex())
     
     @value.setter
     def value(self, value: int) -> None:
@@ -119,7 +118,7 @@ class ComboBox(LocalWidget):
         Args:
             value (int): index of value to show on the ComboBox.
         """
-        self.__combobox.setCurrentIndex(value)
+        self.combobox.setCurrentIndex(value)
     
     @property
     def signals(self) -> dict[str, pyqtSignal]:
@@ -133,8 +132,8 @@ class ComboBox(LocalWidget):
             dict: dict of signals (key: function name, value: function objects).
         """
         return {
-            "currentIndexChanged" : self.__combobox.currentIndexChanged,
-            "currentTextChanged" : self.__combobox.currentTextChanged
+            "currentIndexChanged" : self.combobox.currentIndexChanged,
+            "currentTextChanged" : self.combobox.currentTextChanged
         }
         
 
@@ -148,10 +147,11 @@ class SpinBox(LocalWidget):
             unit (str, optional): parameter unit measure. Defaults to "".
             orientation (str, optional): label orientation on the layout. Defaults to "left".
         """
-        self.__spinbox = QSpinBox()
-        self.__spinbox.setRange(param[0], param[1])
-        self.__spinbox.setValue(param[2])
-        super().__init__(self.__spinbox, name, unit, orientation)
+        self.spinbox = QSpinBox()
+        self.spinbox.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.spinbox.setRange(param[0], param[1])
+        self.spinbox.setValue(param[2])
+        super().__init__(self.spinbox, name, unit, orientation)
     
     def changeWidgetSettings(self, newParam : tuple[int, int, int]) -> None:
         """SpinBox update widget parameter method.
@@ -159,14 +159,14 @@ class SpinBox(LocalWidget):
         Args:
             newParam (tuple(int, int, int)): new parameters for SpinBox settings: (<minimum_value>, <maximum_value>, <starting_value>)
         """
-        self.__spinbox.setRange(newParam[0], newParam[1])
-        self.__spinbox.setValue(newParam[2])
+        self.spinbox.setRange(newParam[0], newParam[1])
+        self.spinbox.setValue(newParam[2])
     
     @property
     def value(self) -> int:
         """Returns the SpinBox current value.
         """
-        return self.__spinbox.value()
+        return self.spinbox.value()
     
     @value.setter
     def value(self, value: int) -> None:
@@ -175,7 +175,7 @@ class SpinBox(LocalWidget):
         Args:
             value (int): value to set.
         """
-        self.__spinbox.setValue(value)
+        self.spinbox.setValue(value)
     
     @property
     def signals(self) -> dict[str, pyqtSignal]:
@@ -189,8 +189,8 @@ class SpinBox(LocalWidget):
             dict: dict of signals (key: function name, value: function objects).
         """
         return {
-            "valueChanged" : self.__spinbox.valueChanged,
-            "textChanged" : self.__spinbox.textChanged
+            "valueChanged" : self.spinbox.valueChanged,
+            "textChanged" : self.spinbox.textChanged
         }
 
 class DoubleSpinBox(LocalWidget):
@@ -389,6 +389,7 @@ class CameraSelection(QObject):
         self.formLayout.addRow(self.idLineEdit.label, self.idLineEdit.widget)
         self.formLayout.addRow(self.addButton)
         self.group.setLayout(self.formLayout)
+        self.group.setFlat(True)
 
     def setAvailableCameras(self, cameras: list[str]) -> None:
         """Sets the ComboBox with the list of available camera devices.
@@ -412,7 +413,8 @@ class CameraSelection(QObject):
             self.addButton.setEnabled(False)
 
 
-class RecordHandling:
+class RecordHandling(QObject):
+    recordRequested = pyqtSignal(int)
     def __init__(self) -> None:
         """Recording Handling widget. Includes QPushButtons which allow to handle the following operations:
 
@@ -426,7 +428,10 @@ class RecordHandling:
         |(1,0-1)          QSpinBox (Record size)           |(0,2) QPushButton (Record)| 
 
         """
-        self.recordRequested = pyqtSignal(int)
+        QObject.__init__(self)
+
+        self.group = QGroupBox()
+        self.layout = QGridLayout()
 
         self.snap = QPushButton("Snap")
         self.album = QPushButton("Album")
@@ -436,6 +441,7 @@ class RecordHandling:
         self.live.setCheckable(True)
 
         self.recordSpinBox = QSpinBox()
+        self.recordSpinBox.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # todo: this is currently hardcoded
         # maybe should find a way to initialize
@@ -444,9 +450,7 @@ class RecordHandling:
         self.recordSpinBox.setValue(100)
 
         self.record = QPushButton("Record")
-
-        self.group = QGroupBox()
-        self.layout = QGridLayout()
+        
         self.layout.addWidget(self.snap, 0, 0)
         self.layout.addWidget(self.album, 0, 1)
         self.layout.addWidget(self.live, 0, 2)
@@ -502,6 +506,8 @@ class RecordHandling:
         }
 
 class ROIHandling(QObject):
+    changeROIRequested = pyqtSignal(ROI)
+    fullROIRequested = pyqtSignal(ROI)
     def __init__(self, sensorShape : ROI) -> None:
         """ROI Handling widget. Defines a set of non-custom widgets to set the Region Of Interest of the device.
         This widget is common for all devices.
@@ -509,16 +515,14 @@ class ROIHandling(QObject):
         Args:
             cameraROI (ROI): data describing the device sensor shape and step value to increment/decrement each parameter.
         """
-        self.__changeROIRequested = pyqtSignal(ROI)
-        self.__fullROIRequested = pyqtSignal(ROI)
-
+        QObject.__init__(self)
         # todo: maybe this is inefficient...
         # in previous implementation
         # copying the reference would cause
         # issues when changing the ROI
         # so we'll create a local copy
         # and discard the input
-        self.__sensorFullROI = replace(sensorShape)
+        self.sensorFullROI = replace(sensorShape)
 
         # todo: these widgets are not
         # our custom LocalWidgets
@@ -526,69 +530,66 @@ class ROIHandling(QObject):
         # for all types of cameras
         # it is not worth to customize them...
         # ... right?
-        self.__offsetXLabel = QLabel("Offset X (px)")
-        self.__offsetXLabel.setAlignment(Qt.AlignCenter)
+        self.offsetXLabel = QLabel("Offset X (px)")
+        self.offsetXLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.__offsetXSpinBox = QSpinBox()
-        self.__offsetXSpinBox.setRange(0, self.__sensorFullROI.offset_x)
-        self.__offsetXSpinBox.setSingleStep(self.__sensorFullROI.ofs_x_step)
-        self.__offsetXSpinBox.setValue(0)
+        self.offsetXSpinBox = QSpinBox()
+        self.offsetXSpinBox.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.offsetXSpinBox.setRange(0, self.sensorFullROI.offset_x)
+        self.offsetXSpinBox.setSingleStep(self.sensorFullROI.ofs_x_step)
+        self.offsetXSpinBox.setValue(0)
 
-        self.__offsetYLabel = QLabel("Offset Y (px)", )
-        self.__offsetYLabel.setAlignment(Qt.AlignCenter)
+        self.offsetYLabel = QLabel("Offset Y (px)", )
+        self.offsetYLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.__offsetYSpinBox = QSpinBox()
-        self.__offsetYSpinBox.setRange(0, self.__sensorFullROI.offset_y)
-        self.__offsetYSpinBox.setSingleStep(self.__sensorFullROI.ofs_y_step)
-        self.__offsetYSpinBox.setValue(0)
+        self.offsetYSpinBox = QSpinBox()
+        self.offsetYSpinBox.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.offsetYSpinBox.setRange(0, self.sensorFullROI.offset_y)
+        self.offsetYSpinBox.setSingleStep(self.sensorFullROI.ofs_y_step)
+        self.offsetYSpinBox.setValue(0)
 
-        self.__widthLabel = QLabel("Width (px)")
-        self.__widthLabel.setAlignment(Qt.AlignCenter)
+        self.widthLabel = QLabel("Width (px)")
+        self.widthLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.__widthSpinBox = QSpinBox()
-        self.__widthSpinBox.setRange(0, self.__sensorFullROI.width)
-        self.__widthSpinBox.setSingleStep(self.__sensorFullROI.width_step)
-        self.__widthSpinBox.setValue(self.__sensorFullROI.width)
+        self.widthSpinBox = QSpinBox()
+        self.widthSpinBox.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.widthSpinBox.setRange(0, self.sensorFullROI.width)
+        self.widthSpinBox.setSingleStep(self.sensorFullROI.width_step)
+        self.widthSpinBox.setValue(self.sensorFullROI.width)
 
-        self.__heightLabel = QLabel("Height (px)")
-        self.__heightLabel.setAlignment(Qt.AlignCenter)
+        self.heightLabel = QLabel("Height (px)")
+        self.heightLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.__heightSpinBox = QSpinBox()
-        self.__heightSpinBox.setRange(0, self.__sensorFullROI.height)
-        self.__heightSpinBox.setSingleStep(self.__sensorFullROI.height_step)
-        self.__heightSpinBox.setValue(self.__sensorFullROI.height)
+        self.heightSpinBox = QSpinBox()
+        self.heightSpinBox.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.heightSpinBox.setRange(0, self.sensorFullROI.height)
+        self.heightSpinBox.setSingleStep(self.sensorFullROI.height_step)
+        self.heightSpinBox.setValue(self.sensorFullROI.height)
 
-        self.__changeROIButton = QPushButton("Set ROI")
-        self.__changeROIButton.setEnabled(False)
+        self.changeROIButton = QPushButton("Set ROI")
+        self.fullROIButton = QPushButton("Full frame")
 
-        self.__fullROIButton = QPushButton("Full frame", )
-        self.__fullROIButton.setEnabled(False)
-
-        self.__layout = QGridLayout()
-        self.__layout.addWidget(self.__offsetXLabel, 0, 0)
-        self.__layout.addWidget(self.__offsetXSpinBox, 0, 1)
-        self.__layout.addWidget(self.__offsetYSpinBox, 0, 2)
-        self.__layout.addWidget(self.__offsetYLabel, 0, 3)
+        self.layout = QGridLayout()
+        self.layout.addWidget(self.offsetXLabel, 0, 0)
+        self.layout.addWidget(self.offsetXSpinBox, 0, 1)
+        self.layout.addWidget(self.offsetYSpinBox, 0, 2)
+        self.layout.addWidget(self.offsetYLabel, 0, 3)
         
-        self.__layout.addWidget(self.__widthLabel, 1, 0)
-        self.__layout.addWidget(self.__widthSpinBox, 1, 1)
-        self.__layout.addWidget(self.__heightSpinBox, 1, 2)
-        self.__layout.addWidget(self.__heightLabel, 1, 3)
-        self.__layout.addWidget(self.__changeROIButton, 2, 0, 1, 4)
-        self.__layout.addWidget(self.__fullROIButton, 3, 0, 1, 4)
+        self.layout.addWidget(self.widthLabel, 1, 0)
+        self.layout.addWidget(self.widthSpinBox, 1, 1)
+        self.layout.addWidget(self.heightSpinBox, 1, 2)
+        self.layout.addWidget(self.heightLabel, 1, 3)
+        self.layout.addWidget(self.changeROIButton, 2, 0, 1, 2)
+        self.layout.addWidget(self.fullROIButton, 2, 2, 1, 2)
 
         # "clicked" signals are connected to private slots.
         # These slots expose the signals available to the user
         # to process the new ROI information if necessary.
-        self.__changeROIButton.clicked.connect(self._onROIChanged)
-        self.__fullROIButton.clicked.connect(self._onFullROI)
+        self.changeROIButton.clicked.connect(self._onROIChanged)
+        self.fullROIButton.clicked.connect(self._onFullROI)
 
-        self.__group = QGroupBox()
-        self.__group.setLayout(self.__layout)
-
-    @property
-    def group(self) -> QGroupBox:
-        return self.__group
+        self.group = QGroupBox()
+        self.group.setLayout(self.layout)
     
     def changeWidgetSettings(self, settings : ROI):
         """ROI handling update widget settings method.
@@ -598,17 +599,17 @@ class ROIHandling(QObject):
         Args:
             settings (ROI): new ROI settings to change the widget values and steps.
         """
-        self.__offsetXSpinBox.setSingleStep(settings.ofs_x_step)
-        self.__offsetXSpinBox.setValue(settings.offset_x)
+        self.offsetXSpinBox.setSingleStep(settings.ofs_x_step)
+        self.offsetXSpinBox.setValue(settings.offset_x)
 
-        self.__offsetYSpinBox.setSingleStep(settings.ofs_y_step)
-        self.__offsetYSpinBox.setValue(settings.offset_y)
+        self.offsetYSpinBox.setSingleStep(settings.ofs_y_step)
+        self.offsetYSpinBox.setValue(settings.offset_y)
 
-        self.__widthSpinBox.setSingleStep(settings.width_step)
-        self.__widthSpinBox.setValue(settings.width)
+        self.widthSpinBox.setSingleStep(settings.width_step)
+        self.widthSpinBox.setValue(settings.width)
         
-        self.__heightSpinBox.setSingleStep(settings.height_step)
-        self.__heightSpinBox.setValue(settings.height)
+        self.heightSpinBox.setSingleStep(settings.height_step)
+        self.heightSpinBox.setValue(settings.height)
         
     
     def _onROIChanged(self) -> None:
@@ -616,23 +617,23 @@ class ROIHandling(QObject):
         """
         # read the current SpinBoxes status
         newRoi = ROI(
-            offset_x=self.__offsetXSpinBox.value(),
-            ofs_x_step=self.__offsetXSpinBox.singleStep(),
-            offset_y=self.__offsetYSpinBox.value(),
-            ofs_y_step=self.__offsetXSpinBox.singleStep(),            
-            width=self.__widthSpinBox.value(),
-            width_step=self.__widthSpinBox.singleStep(),
-            height=self.__heightSpinBox.value(),
-            height_step=self.__heightSpinBox.singleStep()
+            offset_x=self.offsetXSpinBox.value(),
+            ofs_x_step=self.offsetXSpinBox.singleStep(),
+            offset_y=self.offsetYSpinBox.value(),
+            ofs_y_step=self.offsetXSpinBox.singleStep(),            
+            width=self.widthSpinBox.value(),
+            width_step=self.widthSpinBox.singleStep(),
+            height=self.heightSpinBox.value(),
+            height_step=self.heightSpinBox.singleStep()
         )
-        self.__changeROIRequested.emit(newRoi)
+        self.changeROIRequested.emit(newRoi)
 
     def _onFullROI(self) -> None:
         """Private slot for full ROI button pressed. Exposes a signal with the full ROI settings.
         It also returns the widget settings to their original value.
         """
-        self.changeWidgetSettings(self.__sensorFullROI)
-        self.__fullROIRequested.emit(replace(self.__sensorFullROI))
+        self.changeWidgetSettings(self.sensorFullROI)
+        self.fullROIRequested.emit(replace(self.sensorFullROI))
     
     @property
     def signals(self) -> dict[str, pyqtSignal]:
@@ -646,6 +647,6 @@ class ROIHandling(QObject):
             dict: dict of signals (key: function name, value: function objects).
         """
         return {
-            "changeROIRequested" : self.__changeROIRequested,
-            "fullROIRequested" : self.__fullROIRequested,
+            "changeROIRequested" : self.changeROIRequested,
+            "fullROIRequested" : self.fullROIRequested,
         }

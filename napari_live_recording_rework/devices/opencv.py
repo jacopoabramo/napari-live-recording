@@ -45,7 +45,7 @@ class OpenCV(ICamera):
             deviceID (Union[str, int]): camera identifier.
         """
         QObject.__init__(self)
-        self.__capture = cv2.VideoCapture(deviceID, cv2.CAP_ANY)
+        self.__capture = cv2.VideoCapture(int(deviceID), cv2.CAP_ANY)
         
         # read OpenCV parameters
         width = int(self.__capture.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -69,7 +69,9 @@ class OpenCV(ICamera):
         self.__fpsTimer.timeout.connect(self._updateFPS)
 
     def setupWidgetsForStartup(self) -> None:
-        self.parameters["Exposure time"].value = abs(int(self.__capture.get(cv2.CAP_PROP_EXPOSURE)))
+        exposure = self.OpenCVExposure.data["7.8 ms"]
+        self.__capture.set(cv2.CAP_PROP_EXPOSURE, exposure)
+        self.parameters["Exposure time"].value = abs(exposure)
         self.parameters["Frame rate"].isEnabled = False
     
     def connectSignals(self) -> None:

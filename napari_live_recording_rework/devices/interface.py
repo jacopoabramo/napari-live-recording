@@ -50,21 +50,27 @@ class ICamera(QObject):
         """
         self.name = name
         self.deviceID = deviceID
+        self.group = QGroupBox(f"{self.name}:{self.deviceID}")
         self.layout = QFormLayout()
         self.delete = QPushButton("Delete camera")
-        self.recordHandling = RecordHandling()
         self.ROIHandling = ROIHandling(sensorShape)
-
-        self.group = QGroupBox(f"{self.name}:{self.deviceID}")
+        self.recordHandling = RecordHandling()
 
         # layout order
         # 1) record handling widgets
         # 2) custom widgets
         # 3) roi handling widgets
         # 4) delete device button
-        self.layout.addRow(self.recordHandling.group)
+
+        parametersLayout = QFormLayout()
+        parametersGroup = QGroupBox()
         for widget in paramDict.values():
-            self.layout.addRow(widget.label, widget.widget)
+            parametersLayout.addRow(widget.label, widget.widget)
+        parametersGroup.setLayout(parametersLayout)
+
+
+        self.layout.addRow(self.recordHandling.group)
+        self.layout.addRow(parametersGroup)
         self.layout.addRow(self.ROIHandling.group)
         self.layout.addRow(self.delete)
 
