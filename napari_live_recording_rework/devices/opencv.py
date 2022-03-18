@@ -6,6 +6,7 @@ from napari_live_recording_rework.devices.interface import ICamera
 from PyQt5.QtCore import QObject
 from dataclasses import dataclass
 from typing import Union
+from copy import copy
 
 class OpenCV(ICamera):
 
@@ -45,8 +46,8 @@ class OpenCV(ICamera):
             deviceID (Union[str, int]): camera identifier.
         """
         QObject.__init__(self)
-        self.__capture = cv2.VideoCapture(int(deviceID), cv2.CAP_ANY)
-        
+        self.__capture = cv2.VideoCapture(int(deviceID))
+
         # read OpenCV parameters
         width = int(self.__capture.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.__capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -86,6 +87,9 @@ class OpenCV(ICamera):
         img = img[y:h, x:w]
         self.__frameCounter += 1
         return (cv2.cvtColor(img, self.__format) if self.__format is not None else img)
+    
+    def changeROI(self, newROI: ROI):
+        self.__ROI = copy(newROI)
     
     def cameraInfo(self) -> list[str]:
         # todo: implement

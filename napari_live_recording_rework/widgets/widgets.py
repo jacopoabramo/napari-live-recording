@@ -7,7 +7,8 @@ from PyQt5.QtWidgets import (
     QSpinBox, 
     QDoubleSpinBox, 
     QLineEdit, 
-    QPushButton
+    QPushButton,
+    QProgressBar
 )
 from superqt import QLabeledSlider
 from PyQt5.QtWidgets import QFormLayout, QGridLayout, QGroupBox
@@ -356,7 +357,7 @@ class LineEdit(LocalWidget):
         }
 
 class CameraSelection(QObject):
-    newCameraRequested = pyqtSignal(str, str)
+    newCameraRequested = pyqtSignal(str, str, str)
 
     def __init__(self) -> None:
         """Camera selection widget. It includes the following widgets:
@@ -381,7 +382,7 @@ class CameraSelection(QObject):
 
         # create widget layout
         self.camerasComboBox.signals["currentIndexChanged"].connect(self._setAddEnabled)
-        self.addButton.clicked.connect(lambda: self.newCameraRequested.emit(self.camerasComboBox.value[0], self.idLineEdit.value))
+        self.addButton.clicked.connect(lambda: self.newCameraRequested.emit(self.camerasComboBox.value[0], self.nameLineEdit.value, self.idLineEdit.value))
 
         self.formLayout = QFormLayout()
         self.formLayout.addRow(self.camerasComboBox.label, self.camerasComboBox.widget)
@@ -535,7 +536,7 @@ class ROIHandling(QObject):
 
         self.offsetXSpinBox = QSpinBox()
         self.offsetXSpinBox.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.offsetXSpinBox.setRange(0, self.sensorFullROI.offset_x)
+        self.offsetXSpinBox.setRange(0, self.sensorFullROI.width)
         self.offsetXSpinBox.setSingleStep(self.sensorFullROI.ofs_x_step)
         self.offsetXSpinBox.setValue(0)
 
@@ -544,7 +545,7 @@ class ROIHandling(QObject):
 
         self.offsetYSpinBox = QSpinBox()
         self.offsetYSpinBox.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.offsetYSpinBox.setRange(0, self.sensorFullROI.offset_y)
+        self.offsetYSpinBox.setRange(0, self.sensorFullROI.height)
         self.offsetYSpinBox.setSingleStep(self.sensorFullROI.ofs_y_step)
         self.offsetYSpinBox.setValue(0)
 

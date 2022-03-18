@@ -3,9 +3,7 @@ from abc import abstractmethod
 from typing import Union
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QPushButton, QGroupBox, QFormLayout
-from napari.qt.threading import thread_worker
-from collections import deque
-from napari_live_recording_rework.common import ROI
+from napari_live_recording_rework.common import ROI, THIRTY_FPS_IN_MS
 from napari_live_recording_rework.widgets import (
     LocalWidget,
     ROIHandling,
@@ -15,7 +13,8 @@ from napari_live_recording_rework.widgets import (
     DoubleSpinBox, 
     LabeledSlider,
     LineEdit,
-    WidgetEnum
+    WidgetEnum,
+    Timer
 )
 
 ParameterType = Union[str, list[str], tuple[int, int, int], tuple[float, float, float]]
@@ -28,7 +27,9 @@ class ICamera(QObject):
         WidgetEnum.LabeledSlider : LabeledSlider,
         WidgetEnum.LineEdit : LineEdit
     }
-    recorded = pyqtSignal(np.ndarray)
+    live = pyqtSignal(np.ndarray)
+    snap = pyqtSignal(np.ndarray)
+    album = pyqtSignal(np.ndarray)
     deleted = pyqtSignal(str)
 
     def __init__(self, name: str, deviceID: Union[str, int], paramDict: dict[str, LocalWidget], sensorShape: ROI) -> None:
@@ -50,9 +51,11 @@ class ICamera(QObject):
         """
         self.name = name
         self.deviceID = deviceID
-        self.group = QGroupBox(f"{self.name}:{self.deviceID}")
+        self.cameraKey = f"{self.name}:{self.__class__.__name__}:{str(self.deviceID)}"
+        self.group = QGroupBox(f"{self.name} ({self.__class__.__name__}:{self.deviceID})")
         self.layout = QFormLayout()
         self.delete = QPushButton("Delete camera")
+        self.sensorShape = sensorShape
         self.ROIHandling = ROIHandling(sensorShape)
         self.recordHandling = RecordHandling()
 
@@ -61,13 +64,11 @@ class ICamera(QObject):
         # 2) custom widgets
         # 3) roi handling widgets
         # 4) delete device button
-
         parametersLayout = QFormLayout()
         parametersGroup = QGroupBox()
         for widget in paramDict.values():
             parametersLayout.addRow(widget.label, widget.widget)
         parametersGroup.setLayout(parametersLayout)
-
 
         self.layout.addRow(self.recordHandling.group)
         self.layout.addRow(parametersGroup)
@@ -77,35 +78,26 @@ class ICamera(QObject):
         self.group.setLayout(self.layout)
         self.setupWidgetsForStartup()
         self.connectSignals()
+
+        # ROI handling
+        self.ROIHandling.signals["changeROIRequested"].connect(self.changeROI)
+        self.ROIHandling.signals["fullROIRequested"].connect(lambda: self.changeROI(self.sensorShape))
         
         # live recording
         self.isLive = False
-        self.liveDeque = deque([], maxlen=10000)
-        self.liveWorker = self._acquireForever()
+        self.liveTimer = Timer()
+        self.liveTimer.setInterval(THIRTY_FPS_IN_MS)
+        self.liveTimer.timeout.connect(lambda : self.live.emit(self.grabFrame()))
         self.recordHandling.signals["liveRequested"].connect(self._handleLive)
 
         # stack recording
         # todo: add implementation
 
         # deletion button clicked
-        self.delete.clicked.connect(lambda: self.deleted.emit(f"{self.name}:{self.deviceID}"))
+        self.delete.clicked.connect(lambda: self.deleted.emit(self.cameraKey))
     
     def __del__(self) -> None:
-        # make sure that if live thread 
-        # is running, this quits it
-        self.recordHandling.signals["liveRequested"].emit(False)
         self.close()
-        self.layout.deleteLater()
-
-    @property
-    def latestLiveFrame(self) -> np.array:
-        """Pops a frame from the live deque, returning it.
-        """
-        try:
-            data = self.liveDeque.pop()
-            return data
-        except IndexError:
-            return None
     
     @abstractmethod
     def setupWidgetsForStartup(self) -> None:
@@ -122,6 +114,12 @@ class ICamera(QObject):
     @abstractmethod
     def grabFrame(self) -> np.array:
         """Returns the latest captured frame as a numpy array.
+        """
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def changeROI(self, newROI: ROI):
+        """Changes the Region Of Interest of the sensor's device.
         """
         raise NotImplementedError()
 
@@ -153,17 +151,6 @@ class ICamera(QObject):
             paramWidget = self.availableWidgets[widgetType](param, name, unit, orientation)
             paramDict[name] = paramWidget
     
-    @thread_worker(start_thread=False)
-    def _acquireForever(self):
-        """Private thread worker for live view acquisitions.
-        Captured images are stored in a ring buffer.
-        The worker is stopped via the quit() signal for a graceful exit.
-        """
-        while True:
-            img = self.grabFrame()
-            (self.liveDeque.append(img) if img is not None else None)
-            yield
-    
     def _handleLive(self, isLive: bool) -> None:
         """Private slot to start/stop live acquisition. Signals start() and quit() are called
         when the thread needs to be started or stopped. When the thread is stopped, the live queue
@@ -174,14 +161,6 @@ class ICamera(QObject):
         """
         self.isLive = isLive
         if isLive:
-            self.liveWorker.start()
+            self.liveTimer.start()
         else:
-            self.liveWorker.quit()
-            self.liveDeque.clear()
-    
-    @thread_worker(start_thread=True)
-    def _acquireRecording(self, length: int) -> np.array:
-        """Private thread worker for recording acquisitions.
-        Captured images are stacked, stored on disk and then 
-        """
-        return np.stack([self.grabFrame() for _ in range(0, length)])
+            self.liveTimer.stop()

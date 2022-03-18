@@ -17,6 +17,8 @@ for (_, module_name, _) in iter_modules([package_dir]):
         if module_name != "interface":
             module = import_module(f"{__name__}.{module_name}")
             for attr in getmembers(module, isclass):
+                # attr[0]: class name as string
+                # attr[1]: class object
                 if attr[1] != ICamera and issubclass(attr[1], ICamera):
                     devicesDict[attr[0]] = attr[1]
     except ImportError:
