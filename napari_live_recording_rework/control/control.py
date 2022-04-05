@@ -2,7 +2,6 @@ from napari_live_recording_rework import LiveRecordingPlugin
 from PyQt5.QtWidgets import QGroupBox
 from PyQt5.QtCore import QThread, QObject, pyqtSignal
 from napari_live_recording_rework.devices.interface import ICamera
-from napari.viewer import Viewer
 from typing import NamedTuple
 
 class LocalController(NamedTuple):
@@ -18,7 +17,8 @@ class Controller(QObject):
         """Main Controller class. Stores all camera objects to access live and stack recordings.
 
         Args:
-            plugin (LiveRecordingPlugin): reference to the plugin, acting as viewer.
+            plugin (LiveRecordingPlugin): reference to the plugin,
+            acting as interface to napari viewer viewer.
         """
         super(Controller, self).__init__()
         self.localControllers : dict[str, LocalController] = {}
