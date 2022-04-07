@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import os
 import time
 from napari_live_recording_rework.common import ONE_SECOND_IN_MS, ROI
 from napari_live_recording_rework.widgets import WidgetEnum, Timer
