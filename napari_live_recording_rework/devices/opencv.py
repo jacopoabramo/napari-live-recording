@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+import os
+import time
 from napari_live_recording_rework.common import ONE_SECOND_IN_MS, ROI
 from napari_live_recording_rework.widgets import WidgetEnum, Timer
 from napari_live_recording_rework.devices.interface import ICamera
@@ -55,7 +57,7 @@ class OpenCV(ICamera):
         # initialize device local properties
         self.__ROI = ROI(0, 0, height, width)
         self.__format = self.OpenCVPixelFormats.data["RGB"]
-        self.__frameCounter = 0
+        self.__FPS = 0
         
         self.parameters = {}
         self.addParameter(WidgetEnum.ComboBox, "Exposure time", "", list(self.OpenCVExposure.data.keys()), self.parameters)
@@ -68,6 +70,8 @@ class OpenCV(ICamera):
         self.__fpsTimer = Timer()
         self.__fpsTimer.setInterval(ONE_SECOND_IN_MS)
         self.__fpsTimer.timeout.connect(self._updateFPS)
+        self.__prevFrameTime = 0
+        self.__newFrameTime = 0
 
     def setupWidgetsForStartup(self) -> None:
         exposure = self.OpenCVExposure.data["7.8 ms"]
@@ -85,8 +89,13 @@ class OpenCV(ICamera):
         y, h = self.__ROI.offset_y, self.__ROI.offset_y + self.__ROI.height
         x, w = self.__ROI.offset_x, self.__ROI.offset_x + self.__ROI.width
         img = img[y:h, x:w]
-        self.__frameCounter += 1
-        return (cv2.cvtColor(img, self.__format) if self.__format is not None else img)
+        img = (cv2.cvtColor(img, self.__format) if self.__format is not None else img)
+
+        # updating FPS counter
+        self.__newFrameTime = time.time()
+        self.__FPS = round(1/(self.__newFrameTime-self.__prevFrameTime))
+        self.__prevFrameTime = self.__newFrameTime
+        return img
     
     def changeROI(self, newROI: ROI):
         self.__ROI = copy(newROI)
@@ -105,5 +114,4 @@ class OpenCV(ICamera):
         self.__format = self.OpenCVPixelFormats.data[format]
     
     def _updateFPS(self) -> None:
-        self.parameters["Frame rate"].value = str(self.__frameCounter)
-        self.__frameCounter = 0
+        self.parameters["Frame rate"].value = str(self.__FPS)
