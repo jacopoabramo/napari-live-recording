@@ -143,7 +143,12 @@ class ICamera(QObject):
             - name (str): name of the added parameter (i.e. \"Exposure time\")
                 - this will be the name shown in the GUI
             - unit (str): unit measure of the added parameter (i.e. \"ms\")
-            - param (ParameterType): actual parameter items
+            - param (ParameterType): actual parameter items; parameters can be of the following type:
+            ParameterType = Union[str, list[str], tuple[int, int, int], tuple[float, float, float]]
+                - str
+                - list[str]
+                - tuple[int, int, int]
+                - tuple[float, float, float]
             - paramDict (dict[str, ParameterType]): dictionary to store all parameters.
             - orientation (str, optional): orientation of the label for the parameter (can either be "left" or "right"). Default is "left".
         """

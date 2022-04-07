@@ -7,8 +7,7 @@ from PyQt5.QtWidgets import (
     QSpinBox, 
     QDoubleSpinBox, 
     QLineEdit, 
-    QPushButton,
-    QProgressBar
+    QPushButton
 )
 from superqt import QLabeledSlider
 from PyQt5.QtWidgets import QFormLayout, QGridLayout, QGroupBox
