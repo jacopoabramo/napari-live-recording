@@ -63,7 +63,7 @@ class OpenCV(ICamera):
         self.addParameter(WidgetEnum.ComboBox, "Pixel format", "", list(self.OpenCVPixelFormats.data.keys()), self.parameters)
         self.addParameter(WidgetEnum.LineEdit, "Frame rate", "FPS", "", self.parameters)
         
-        # call Camera.__init__ after initializing all parameters in paramDict
+        # call ICamera.__init__ after initializing all parameters in the parameters dictionary
         super().__init__(name, deviceID, self.parameters, self.__ROI)
 
         self.__fpsTimer = Timer()
