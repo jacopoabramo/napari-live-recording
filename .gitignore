@@ -1,9 +1,8 @@
 # Visual Studio Code settings folder
 .vscode/
 
-# Test images / Test folder
-test/
-*.tiff
+# Version file
+src/napari-live-recording/_version.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
