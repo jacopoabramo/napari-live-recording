@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import QGroupBox
-from qtpy.QtCore import QThread, QObject, pyqtSignal
+from qtpy.QtCore import QThread, QObject, Signal
 from napari_live_recording.devices.interface import ICamera
 from typing import NamedTuple
 
@@ -10,7 +10,7 @@ class LocalController(NamedTuple):
     device : ICamera
 
 class Controller(QObject):
-    cameraDeleted = pyqtSignal(QGroupBox)
+    cameraDeleted = Signal(QGroupBox)
 
     def __init__(self, plugin) -> None:
         """Main Controller class. Stores all camera objects to access live and stack recordings.

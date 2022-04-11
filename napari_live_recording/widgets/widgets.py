@@ -1,5 +1,5 @@
 from typing import Union
-from qtpy.QtCore import Qt, QObject, pyqtSignal, QTimer
+from qtpy.QtCore import Qt, QObject, Signal, QTimer
 from qtpy.QtWidgets import (
     QWidget, 
     QLabel, 
@@ -77,7 +77,7 @@ class LocalWidget(ABC):
     
     @property
     @abstractmethod
-    def signals(self) -> dict[str, pyqtSignal]:
+    def signals(self) -> dict[str, Signal]:
         """Common widget method to expose signals to the device.
         """
         pass
@@ -121,7 +121,7 @@ class ComboBox(LocalWidget):
         self.combobox.setCurrentIndex(value)
     
     @property
-    def signals(self) -> dict[str, pyqtSignal]:
+    def signals(self) -> dict[str, Signal]:
         """Returns a dictionary of signals available for the ComboBox widget.
         Exposed signals are:
         
@@ -178,7 +178,7 @@ class SpinBox(LocalWidget):
         self.spinbox.setValue(value)
     
     @property
-    def signals(self) -> dict[str, pyqtSignal]:
+    def signals(self) -> dict[str, Signal]:
         """Returns a dictionary of signals available for the SpinBox widget.
         Exposed signals are:
         
@@ -233,7 +233,7 @@ class DoubleSpinBox(LocalWidget):
         self.__spinbox.setValue(value)
 
     @property
-    def signals(self) -> dict[str, pyqtSignal]:
+    def signals(self) -> dict[str, Signal]:
         """Returns a dictionary of signals available for the SpinBox widget.
         Exposed signals are:
         
@@ -288,7 +288,7 @@ class LabeledSlider(LocalWidget):
         self.__slider.setValue(value)
 
     @property
-    def signals(self) -> dict[str, pyqtSignal]:
+    def signals(self) -> dict[str, Signal]:
         """Returns a dictionary of signals available for the SpinBox widget.
         Exposed signals are:
         
@@ -340,7 +340,7 @@ class LineEdit(LocalWidget):
         self.__lineEdit.setText(value)
     
     @property
-    def signals(self) -> dict[str, pyqtSignal]:
+    def signals(self) -> dict[str, Signal]:
         """Returns a dictionary of signals available for the LineEdit widget.
         Exposed signals are:
         
@@ -356,7 +356,7 @@ class LineEdit(LocalWidget):
         }
 
 class CameraSelection(QObject):
-    newCameraRequested = pyqtSignal(str, str, str)
+    newCameraRequested = Signal(str, str, str)
 
     def __init__(self) -> None:
         """Camera selection widget. It includes the following widgets:
@@ -414,7 +414,7 @@ class CameraSelection(QObject):
 
 
 class RecordHandling(QObject):
-    recordRequested = pyqtSignal(int)
+    recordRequested = Signal(int)
     def __init__(self) -> None:
         """Recording Handling widget. Includes QPushButtons which allow to handle the following operations:
 
@@ -486,7 +486,7 @@ class RecordHandling(QObject):
         return self.recordSpinBox.value()
 
     @property
-    def signals(self) -> dict[str, pyqtSignal]:
+    def signals(self) -> dict[str, Signal]:
         """Returns a dictionary of signals available for the RecordHandling widget.
         Exposed signals are:
         
@@ -506,8 +506,8 @@ class RecordHandling(QObject):
         }
 
 class ROIHandling(QObject):
-    changeROIRequested = pyqtSignal(ROI)
-    fullROIRequested = pyqtSignal(ROI)
+    changeROIRequested = Signal(ROI)
+    fullROIRequested = Signal(ROI)
     def __init__(self, sensorShape : ROI) -> None:
         """ROI Handling widget. Defines a set of non-custom widgets to set the Region Of Interest of the device.
         This widget is common for all devices.
@@ -636,7 +636,7 @@ class ROIHandling(QObject):
         self.fullROIRequested.emit(replace(self.sensorFullROI))
     
     @property
-    def signals(self) -> dict[str, pyqtSignal]:
+    def signals(self) -> dict[str, Signal]:
         """Returns a dictionary of signals available for the ROIHandling widget.
         Exposed signals are:
         

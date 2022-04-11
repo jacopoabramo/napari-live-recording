@@ -1,7 +1,7 @@
 import numpy as np
 from abc import abstractmethod
 from typing import Union
-from qtpy.QtCore import QObject, pyqtSignal
+from qtpy.QtCore import QObject, Signal
 from qtpy.QtWidgets import QPushButton, QGroupBox, QFormLayout
 from napari_live_recording.common import ROI, THIRTY_FPS_IN_MS
 from napari_live_recording.widgets import (
@@ -27,10 +27,10 @@ class ICamera(QObject):
         WidgetEnum.LabeledSlider : LabeledSlider,
         WidgetEnum.LineEdit : LineEdit
     }
-    live = pyqtSignal(np.ndarray)
-    snap = pyqtSignal(np.ndarray)
-    album = pyqtSignal(np.ndarray)
-    deleted = pyqtSignal(str)
+    live = Signal(np.ndarray)
+    snap = Signal(np.ndarray)
+    album = Signal(np.ndarray)
+    deleted = Signal(str)
 
     def __init__(self, name: str, deviceID: Union[str, int], paramDict: dict[str, LocalWidget], sensorShape: ROI) -> None:
         """Generic camera device interface. Each device has a set of common widgets:
