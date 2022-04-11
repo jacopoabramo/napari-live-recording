@@ -18,14 +18,11 @@ VERSION = '0.2.0'
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-try:
-    with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
-        long_description = '\n' + f.read()
-except FileNotFoundError:
-    long_description = DESCRIPTION
+with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
+    long_description = '\n' + f.read()
 
 about = {}
-about['__version__'] = VERSION
+about['__version__'] = "0.2.0"
 
 requirements = []
 with open('requirements.txt') as f:
@@ -74,19 +71,19 @@ class UploadCommand(Command):
         sys.exit()
 
 setup(
-    name=NAME,
-    author=AUTHOR,
-    author_email=EMAIL,
+    name='napari_live_recording',
+    author="Jacopo Abramo",
+    author_email='jacopo.abramo@gmail.com',
     license='MIT',
-    url=URL,
-    description=DESCRIPTION,
+    url='https://github.com/jethro33/napari-live-recording',
+    description='A napari plugin for live video recording with a generic camera device.',
     long_description_content_type='text/markdown',
     long_description=long_description,
     packages=find_packages(),
-    python_requires=REQUIRES_PYTHON,
+    python_requires='>=3.6.0',
     install_requires=requirements,
     include_package_data=True,
-    version=VERSION,
+    version='0.2.0',
     setup_requires=['setuptools_scm'],
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
