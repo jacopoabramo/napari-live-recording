@@ -1,11 +1,10 @@
 from napari.viewer import Viewer
-from napari_plugin_engine import napari_hook_implementation
 import napari_live_recording.devices as devices
 from napari_live_recording.widgets import CameraSelection
 from napari_live_recording.control import Controller
 from qtpy.QtWidgets import QWidget, QFormLayout, QGroupBox
 
-class LiveRecordingPlugin(QWidget):
+class NapariLiveRecording(QWidget):
     def __init__(self, napari_viewer : Viewer) -> None:
         super().__init__()
         
@@ -65,6 +64,6 @@ class LiveRecordingPlugin(QWidget):
         """
         pass
 
-@napari_hook_implementation
-def napari_experimental_provide_dock_widget():
-    return [LiveRecordingPlugin]
+# @napari_hook_implementation
+# def napari_experimental_provide_dock_widget():
+#     return [NapariLiveRecording]

@@ -2,7 +2,7 @@
 .vscode/
 
 # Version file
-src/napari-live-recording/_version.py
+./src/napari-live-recording/_version.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
