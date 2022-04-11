@@ -4,7 +4,7 @@ import time
 from napari_live_recording.common import ONE_SECOND_IN_MS, ROI
 from napari_live_recording.widgets import WidgetEnum, Timer
 from napari_live_recording.devices.interface import ICamera
-from PyQt5.QtCore import QObject
+from qtpy.QtCore import QObject
 from dataclasses import dataclass
 from typing import Union
 from copy import copy

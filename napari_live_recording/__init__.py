@@ -3,7 +3,7 @@ from napari_plugin_engine import napari_hook_implementation
 import napari_live_recording.devices as devices
 from napari_live_recording.widgets import CameraSelection
 from napari_live_recording.control import Controller
-from PyQt5.QtWidgets import QWidget, QFormLayout, QGroupBox
+from qtpy.QtWidgets import QWidget, QFormLayout, QGroupBox
 
 class LiveRecordingPlugin(QWidget):
     def __init__(self, napari_viewer : Viewer) -> None:

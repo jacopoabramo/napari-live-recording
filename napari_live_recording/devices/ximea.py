@@ -11,7 +11,7 @@ try:
     from napari_live_recording.widgets import WidgetEnum, Timer
     from napari_live_recording.common import ROI, ONE_SECOND_IN_MS
     from dataclasses import dataclass
-    from PyQt5.QtCore import QObject
+    from qtpy.QtCore import QObject
     from typing import Union
 
     class Ximea(ICamera):

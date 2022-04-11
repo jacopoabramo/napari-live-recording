@@ -1,8 +1,8 @@
 import numpy as np
 from abc import abstractmethod
 from typing import Union
-from PyQt5.QtCore import QObject, pyqtSignal
-from PyQt5.QtWidgets import QPushButton, QGroupBox, QFormLayout
+from qtpy.QtCore import QObject, pyqtSignal
+from qtpy.QtWidgets import QPushButton, QGroupBox, QFormLayout
 from napari_live_recording.common import ROI, THIRTY_FPS_IN_MS
 from napari_live_recording.widgets import (
     LocalWidget,

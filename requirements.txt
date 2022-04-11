@@ -8,4 +8,4 @@ opencv-python
 opencv-contrib-python
 dask_image
 napari
-pyqt5
+qtpy

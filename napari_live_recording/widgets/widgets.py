@@ -1,6 +1,6 @@
 from typing import Union
-from PyQt5.QtCore import Qt, QObject, pyqtSignal, QTimer
-from PyQt5.QtWidgets import (
+from qtpy.QtCore import Qt, QObject, pyqtSignal, QTimer
+from qtpy.QtWidgets import (
     QWidget, 
     QLabel, 
     QComboBox, 
@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (
     QPushButton
 )
 from superqt import QLabeledSlider
-from PyQt5.QtWidgets import QFormLayout, QGridLayout, QGroupBox
+from qtpy.QtWidgets import QFormLayout, QGridLayout, QGroupBox
 from abc import ABC, abstractmethod
 from dataclasses import replace
 from napari_live_recording.common import ROI
