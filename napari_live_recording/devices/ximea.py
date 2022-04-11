@@ -7,9 +7,9 @@ try:
     from copy import copy
     from contextlib import contextmanager
     from ximea.xiapi import Camera as XiCam, Image as XiImg, Xi_error as XiError
-    from napari_live_recording_rework.devices.interface import ICamera
-    from napari_live_recording_rework.widgets import WidgetEnum, Timer
-    from napari_live_recording_rework.common import ROI, ONE_SECOND_IN_MS
+    from napari_live_recording.devices.interface import ICamera
+    from napari_live_recording.widgets import WidgetEnum, Timer
+    from napari_live_recording.common import ROI, ONE_SECOND_IN_MS
     from dataclasses import dataclass
     from PyQt5.QtCore import QObject
     from typing import Union

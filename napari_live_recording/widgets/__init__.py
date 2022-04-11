@@ -1,4 +1,4 @@
-from napari_live_recording_rework.widgets.widgets import (
+from napari_live_recording.widgets.widgets import (
     Timer,
     WidgetEnum,
     LocalWidget,

@@ -2,7 +2,7 @@ from inspect import isclass, getmembers
 from pkgutil import iter_modules
 from pathlib import Path
 from importlib import import_module
-from napari_live_recording_rework.devices.interface import ICamera
+from napari_live_recording.devices.interface import ICamera
 
 package_dir = Path(__file__).resolve().parent
 devicesDict = {}

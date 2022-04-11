@@ -13,7 +13,7 @@ from superqt import QLabeledSlider
 from PyQt5.QtWidgets import QFormLayout, QGridLayout, QGroupBox
 from abc import ABC, abstractmethod
 from dataclasses import replace
-from napari_live_recording_rework.common import ROI
+from napari_live_recording.common import ROI
 from enum import Enum
 
 class Timer(QTimer):

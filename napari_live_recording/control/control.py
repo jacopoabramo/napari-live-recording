@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QGroupBox
 from PyQt5.QtCore import QThread, QObject, pyqtSignal
-from napari_live_recording_rework.devices.interface import ICamera
+from napari_live_recording.devices.interface import ICamera
 from typing import NamedTuple
 
 class LocalController(NamedTuple):
