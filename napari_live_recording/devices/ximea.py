@@ -3,9 +3,9 @@ try:
     # Ximea Python APIs need to be installed manually.
     # See https://www.ximea.com/support/wiki/apis/Python
     import numpy as np
+    from time import time
     from copy import copy
     from contextlib import contextmanager
-    from collections import deque
     from ximea.xiapi import Camera as XiCam, Image as XiImg, Xi_error as XiError
     from napari_live_recording_rework.devices.interface import ICamera
     from napari_live_recording_rework.widgets import WidgetEnum, Timer
@@ -33,6 +33,8 @@ try:
                 "Frames missed due to overflow" : "XI_CNT_SEL_FRAME_MISSED_TRIGGER_DUETO_FRAME_BUFFER_OVR",
                 "Frame buffer overflow" : "XI_CNT_SEL_FRAME_BUFFER_OVERFLOW"
             }
+        
+        MAX_FRAME_COUNT = 10
 
         def __init__(self, name: str, deviceID: Union[str, int]) -> None:
             QObject.__init__(self)
@@ -40,7 +42,8 @@ try:
             self.__camera = XiCam()
             self.__img = XiImg()
 
-            self.__samplingFreq = 10 # Hz
+            self.__frameCounter = 0
+            self.__startTime = 0
 
             try:
                 deviceID = int(deviceID)
@@ -51,14 +54,13 @@ try:
 
             height = self.__camera.get_height()
             width = self.__camera.get_width()
-            minExp, maxExp = self.__camera.get_exposure_minimum(), ONE_SECOND_IN_MS/10
+            minExp, maxExp = self.__camera.get_exposure_minimum(), (ONE_SECOND_IN_MS/10)*1e3
             startExp = int(maxExp/10)
 
             self.__camera.set_exposure(startExp)
 
             self.__ROI = ROI(width=width, height=height)
             self.__cntSel = "Transfered frames"
-            self.__cntRingBuff = deque([], maxlen = self.__samplingFreq)
 
             self.parameters = {}
             self.addParameter(WidgetEnum.ComboBox, "Pixel format", "", list(self.XimeaPixelFormat.data.keys()), self.parameters)
@@ -67,10 +69,6 @@ try:
             self.addParameter(WidgetEnum.LineEdit, "Frame counter", "", "", self.parameters)
 
             super().__init__(name, deviceID, self.parameters, self.__ROI)
-
-            self.__fpsTimer = Timer()
-            self.__fpsTimer.setInterval(self.__samplingFreq)
-            self.__fpsTimer.timeout.connect(self._updateFrameCounter)
         
         @contextmanager
         def _camera_disabled(self):
@@ -98,6 +96,9 @@ try:
             try:
                 self.__camera.get_image(self.__img)
                 data = self.__img.get_image_data_numpy()
+                self.__frameCounter += 1
+                if self.__frameCounter == self.MAX_FRAME_COUNT:
+                    self._updateFrameCounter()
             except XiError:
                 data = None
             return data
@@ -149,13 +150,11 @@ try:
         def _updateAcquisitionStatus(self, enabled: bool) -> None:
             if enabled:
                 self.__camera.start_acquisition()
-
+                self.__startTime = time()
                 # we need to do this to make sure that the counter works at startup
                 self.__camera.set_counter_selector(self.XimeaCounterSelector.data[self.__cntSel])
-                self.__fpsTimer.start()
             else:
                 self.__camera.stop_acquisition()
-                self.__fpsTimer.stop()
 
         def _updateExposure(self, exposure: str) -> None:
             if self.__camera.get_acquisition_status():
@@ -174,7 +173,8 @@ try:
                 self.parameters["Frame counter"].value = str(0)
         
         def _updateFrameCounter(self) -> None:
-            self.__cntRingBuff.append(float(self.__camera.get_counter_value()) - float(self.parameters["Frame counter"].value))
-            self.parameters["Frame counter"].value = str(round(np.median(self.__cntRingBuff) / (1/self.__samplingFreq)))
+            self.parameters["Frame counter"].value = str(round(self.__frameCounter / (time() - self.__startTime), 2))
+            self.__frameCounter = 0
+            self.__startTime = time()
 except ImportError:
     pass
