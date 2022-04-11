@@ -63,7 +63,3 @@ class NapariLiveRecording(QWidget):
             camName (camName): name of the camera.
         """
         pass
-
-# @napari_hook_implementation
-# def napari_experimental_provide_dock_widget():
-#     return [NapariLiveRecording]
