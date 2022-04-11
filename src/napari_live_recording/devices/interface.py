@@ -1,4 +1,6 @@
 import numpy as np
+from napari.qt.threading import thread_worker
+from collections import deque
 from abc import abstractmethod
 from typing import Union
 from qtpy.QtCore import QObject, Signal
@@ -84,10 +86,12 @@ class ICamera(QObject):
         self.ROIHandling.signals["fullROIRequested"].connect(lambda: self.changeROI(self.sensorShape))
         
         # live recording
+        self.liveBuffer = deque([], maxlen=1000)
+        self.liveWorker = None
         self.isLive = False
         self.liveTimer = Timer()
         self.liveTimer.setInterval(THIRTY_FPS_IN_MS)
-        self.liveTimer.timeout.connect(lambda : self.live.emit(self.grabFrame()))
+        self.liveTimer.timeout.connect(lambda : self.live.emit(self.liveBuffer.pop()))
         self.recordHandling.signals["liveRequested"].connect(self._handleLive)
 
         # stack recording
@@ -160,12 +164,26 @@ class ICamera(QObject):
         """Private slot to start/stop live acquisition. Signals start() and quit() are called
         when the thread needs to be started or stopped. When the thread is stopped, the live queue
         is cleared.
+        The local controller spawns a second thread to store acquired images on a local buffer.
+        Images are popped from the buffer with a 60 Hz refresh rate and sent to the napari viewer.
 
         Args:
             isLive (bool): True if live acquisition is started, otherwise False.
         """
+        # inspired by https://github.com/haesleinhuepf/napari-webcam
+        @thread_worker
+        def acquire_images_forever():
+            while True:  # infinite loop, quit signal makes it stop
+                img = self.grabFrame()
+                (self.liveBuffer.append(img) if img is not None else None)
+                yield  # needed to return control
+
         self.isLive = isLive
         if isLive:
+            self.liveWorker = acquire_images_forever()
+            self.liveWorker.start()
             self.liveTimer.start()
         else:
             self.liveTimer.stop()
+            self.liveWorker.quit()
+            self.liveBuffer.clear()
