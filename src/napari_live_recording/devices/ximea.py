@@ -3,7 +3,7 @@ try:
     # Ximea Python APIs need to be installed manually.
     # See https://www.ximea.com/support/wiki/apis/Python
     import numpy as np
-    from time import time
+    from collections import deque
     from copy import copy
     from contextlib import contextmanager
     from ximea.xiapi import Camera as XiCam, Image as XiImg, Xi_error as XiError
@@ -33,17 +33,13 @@ try:
                 "Frames missed due to overflow" : "XI_CNT_SEL_FRAME_MISSED_TRIGGER_DUETO_FRAME_BUFFER_OVR",
                 "Frame buffer overflow" : "XI_CNT_SEL_FRAME_BUFFER_OVERFLOW"
             }
-        
-        MAX_FRAME_COUNT = 10
 
         def __init__(self, name: str, deviceID: Union[str, int]) -> None:
             QObject.__init__(self)
 
             self.__camera = XiCam()
             self.__img = XiImg()
-
-            self.__frameCounter = 0
-            self.__startTime = 0
+            self.__samplingTime = 0.1 # s
 
             try:
                 deviceID = int(deviceID)
@@ -61,14 +57,19 @@ try:
 
             self.__ROI = ROI(width=width, height=height)
             self.__cntSel = "Transfered frames"
+            self.__cntBuf = deque([], maxlen=10)
 
             self.parameters = {}
             self.addParameter(WidgetEnum.ComboBox, "Pixel format", "", list(self.XimeaPixelFormat.data.keys()), self.parameters)
             self.addParameter(WidgetEnum.LabeledSlider, "Exposure time", "µs", (minExp, maxExp, startExp), self.parameters)
             self.addParameter(WidgetEnum.ComboBox, "Frame counter selector", "", list(self.XimeaCounterSelector.data.keys()), self.parameters)
             self.addParameter(WidgetEnum.LineEdit, "Frame counter", "", "", self.parameters)
+            self.addParameter(WidgetEnum.LineEdit, "Framerate", "FPS", "", self.parameters)
 
             super().__init__(name, deviceID, self.parameters, self.__ROI)
+            self.__frameTimer = Timer()
+            self.__frameTimer.setInterval(self.__samplingTime*1e3)
+            self.__frameTimer.timeout.connect(self._updateFrameCounter)
         
         @contextmanager
         def _camera_disabled(self):
@@ -85,6 +86,8 @@ try:
         def setupWidgetsForStartup(self) -> None:
             self.parameters["Frame counter"].value = str(0)
             self.parameters["Frame counter"].isEnabled = False
+            self.parameters["Framerate"].value = str(0)
+            self.parameters["Framerate"].isEnabled = False
         
         def connectSignals(self) -> None:
             self.parameters["Exposure time"].signals["valueChanged"].connect(self._updateExposure)
@@ -96,9 +99,6 @@ try:
             try:
                 self.__camera.get_image(self.__img)
                 data = self.__img.get_image_data_numpy()
-                self.__frameCounter += 1
-                if self.__frameCounter == self.MAX_FRAME_COUNT:
-                    self._updateFrameCounter()
             except XiError:
                 data = None
             return data
@@ -129,8 +129,8 @@ try:
                     self.__ROI.offset_x = (round(newROI.offset_x / offx_incr)*offx_incr if (newROI.offset_x % offx_incr) != 0 else newROI.offset_x)
                     self.__ROI.offset_y = (round(newROI.offset_y / offy_incr)*offy_incr if (newROI.offset_y % offy_incr) != 0 else newROI.offset_y)
 
-                    self.__camera.set_offsetX(self.__ROI.offset_x)
-                    self.__camera.set_offsetY(self.__ROI.offset_y)
+                    self.__camera.set_offsetX(newROI.offset_x)
+                    self.__camera.set_offsetY(newROI.offset_y)
 
                     # we also update the single increment steps for each value of the ROI
                     self.__ROI.ofs_x_step  = offx_incr
@@ -147,14 +147,20 @@ try:
                 self.__camera.stop_acquisition()
             self.__camera.close_device()
         
+        def _clearWidgets(self) -> None:
+            self.parameters["Frame counter"].value = str(0)
+            self.parameters["Framerate"].value = str(0)
+        
         def _updateAcquisitionStatus(self, enabled: bool) -> None:
             if enabled:
                 self.__camera.start_acquisition()
-                self.__startTime = time()
+                self.__frameTimer.start()
                 # we need to do this to make sure that the counter works at startup
                 self.__camera.set_counter_selector(self.XimeaCounterSelector.data[self.__cntSel])
             else:
                 self.__camera.stop_acquisition()
+                self.__frameTimer.stop()
+                self._clearWidgets()
 
         def _updateExposure(self, exposure: str) -> None:
             if self.__camera.get_acquisition_status():
@@ -170,11 +176,16 @@ try:
             with self._camera_disabled():
                 self.__camera.set_counter_selector(self.XimeaCounterSelector.data[counter])
                 self.__cntSel = counter
-                self.parameters["Frame counter"].value = str(0)
+                self.__cntBuf.clear()
+                self._clearWidgets()
         
         def _updateFrameCounter(self) -> None:
-            self.parameters["Frame counter"].value = str(round(self.__frameCounter / (time() - self.__startTime), 2))
-            self.__frameCounter = 0
-            self.__startTime = time()
+            # counter is reset
+            # when acquisition restarts
+            with self._camera_disabled():
+                cnt = self.__camera.get_counter_value()
+                self.__cntBuf.append(cnt)
+                self.parameters["Frame counter"].value = str(cnt)
+                self.parameters["Framerate"].value = str(round(np.median(self.__cntBuf) / self.__samplingTime, 2))
 except ImportError:
     pass
