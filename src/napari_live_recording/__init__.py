@@ -8,12 +8,14 @@ class NapariLiveRecording(QWidget):
     def __init__(self, napari_viewer : Viewer) -> None:
         super().__init__()
         
+        
+        self.viewer = napari_viewer
         self.mainLayout = QFormLayout()
         self.selectionWidget = CameraSelection()
         self.selectionWidget.setAvailableCameras(list(devices.devicesDict.keys()))
         self.controller = Controller(self)
         self.mainLayout.addRow(self.selectionWidget.group)
-        self.viewer = napari_viewer
+        self.viewer.layers.events.removed.connect(self.controller.clearAlbumBuffer)
 
         # Creates a new camera object and passes it to the controller
         # whenever the add button is pressed

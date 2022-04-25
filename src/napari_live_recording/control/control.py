@@ -61,3 +61,12 @@ class Controller(QObject):
         self.localControllers[cameraKey].device.deleteLater()
         self.cameraDeleted.emit(self.localControllers[cameraKey].device.group)
         del self.localControllers[cameraKey]
+    
+    def clearAlbumBuffer(self, event) -> None:
+        """ Special callback to clear the album frame buffer
+         of a specific device whenever the layer is deleted.        
+        """
+        for cameraKey in self.localControllers.keys():
+            if cameraKey.split(":")[0] in event.value.name:
+                self.localControllers[cameraKey].device.albumBuffer.clear()
+                break
