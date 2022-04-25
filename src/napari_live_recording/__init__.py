@@ -28,38 +28,23 @@ class NapariLiveRecording(QWidget):
     def deleteCameraWidget(self, widget: QGroupBox) -> None:
         self.mainLayout.removeRow(widget)
     
-    def refreshLiveViewer(self, img, camName) -> None:
-        """Slot triggered every time a camera acquires a live frame
+    def refreshViewer(self, img, layerName) -> None:
+        """ Slot triggered every time a camera acquires a frame.
+        Creates a new layer on the viewer with the received image as content.
+        If the layer already exists, it updates its content.
 
         Args:
             img (np.ndarray): image data.
-            camName (str): name of the camera.
+            layerName (str): name of the layer to create/update.
         """
         if img is not None:
             try:
-                if img.ndim != self.viewer.layers[f"Live ({camName})"].data.ndim:
-                    self.viewer.layers.remove(f"Live ({camName})")
-                    self.viewer.add_image(img, name = f"Live ({camName})")
+                # layer is recreated in case the image changes type (i.e. grayscale -> RGB and viceversa)
+                if img.ndim != self.viewer.layers[layerName].data.ndim:
+                    self.viewer.layers.remove(layerName)
+                    self.viewer.add_image(img, name = layerName)
                 else:
-                    self.viewer.layers[f"Live ({camName})"].data = img
+                    self.viewer.layers[layerName].data = img
             except KeyError:
                 # needed in case the layer of that live recording does not exist
-                self.viewer.add_image(img, name = f"Live ({camName})")
-    
-    def refreshSnapViewer(self, img, camName) -> None:
-        """Slot triggered every time a camera acquires a new snap.
-
-        Args:
-            img (np.ndarray): image data.
-            camName (str): name of the camera.
-        """
-        pass
-
-    def refreshAlbumViewer(self, img, camName) -> None:
-        """Slot triggered every time a camera acquires an image to add to an album.
-
-        Args:
-            img (np.ndarray): image data.
-            camName (camName): name of the camera.
-        """
-        pass
+                self.viewer.add_image(img, name = layerName)

@@ -1,3 +1,6 @@
+from typing import final
+
+
 try:
     # We need a try-except structure because
     # Ximea Python APIs need to be installed manually.
@@ -70,9 +73,10 @@ try:
             self.__frameTimer = Timer()
             self.__frameTimer.setInterval(self.__samplingTime*1e3)
             self.__frameTimer.timeout.connect(self._updateFrameCounter)
+            self.__camera.start_acquisition()
         
         @contextmanager
-        def _camera_disabled(self):
+        def _cameraDisabled(self):
             """Context manager to temporarily disable camera."""
             if self.__camera.get_acquisition_status():
                 try:
@@ -95,7 +99,7 @@ try:
             self.parameters["Frame counter selector"].signals["currentTextChanged"].connect(self._updateCounterSelection)
             self.recordHandling.signals["liveRequested"].connect(lambda enabled: self._updateAcquisitionStatus(enabled))
 
-        def grabFrame(self) -> np.array:
+        def grabFrame(self) -> np.ndarray:
             try:
                 self.__camera.get_image(self.__img)
                 data = self.__img.get_image_data_numpy()
@@ -104,7 +108,7 @@ try:
             return data
         
         def changeROI(self, newROI: ROI):
-            with self._camera_disabled():
+            with self._cameraDisabled():
                 try:
                     self.__camera.set_width(newROI.width)
                     self.__camera.set_height(newROI.height)
@@ -143,8 +147,7 @@ try:
             return []
         
         def close(self) -> None:
-            if self.__camera.get_acquisition_status():
-                self.__camera.stop_acquisition()
+            self.__camera.stop_acquisition()
             self.__camera.close_device()
         
         def _clearWidgets(self) -> None:
@@ -153,12 +156,10 @@ try:
         
         def _updateAcquisitionStatus(self, enabled: bool) -> None:
             if enabled:
-                self.__camera.start_acquisition()
                 self.__frameTimer.start()
                 # we need to do this to make sure that the counter works at startup
                 self.__camera.set_counter_selector(self.XimeaCounterSelector.data[self.__cntSel])
             else:
-                self.__camera.stop_acquisition()
                 self.__frameTimer.stop()
                 self._clearWidgets()
 
@@ -169,11 +170,11 @@ try:
                 self.__camera.set_exposure(int(exposure))
         
         def _updateFormat(self, format: str) -> None:
-            with self._camera_disabled():
+            with self._cameraDisabled():
                 self.__camera.set_imgdataformat(self.XimeaPixelFormat.data[format])
         
         def _updateCounterSelection(self, counter: str) -> None:
-            with self._camera_disabled():
+            with self._cameraDisabled():
                 self.__camera.set_counter_selector(self.XimeaCounterSelector.data[counter])
                 self.__cntSel = counter
                 self.__cntBuf.clear()
@@ -182,7 +183,7 @@ try:
         def _updateFrameCounter(self) -> None:
             # counter is reset
             # when acquisition restarts
-            with self._camera_disabled():
+            with self._cameraDisabled():
                 cnt = self.__camera.get_counter_value()
                 self.__cntBuf.append(cnt)
                 self.parameters["Frame counter"].value = str(cnt)

@@ -85,7 +85,7 @@ class ICamera(QObject):
         self.ROIHandling.signals["changeROIRequested"].connect(self.changeROI)
         self.ROIHandling.signals["fullROIRequested"].connect(lambda: self.changeROI(self.sensorShape))
         
-        # live recording
+        # live
         self.liveBuffer = deque([], maxlen=1000)
         self.liveWorker = None
         self.isLive = False
@@ -94,14 +94,18 @@ class ICamera(QObject):
         self.liveTimer.timeout.connect(lambda : self.live.emit(self.liveBuffer.pop()))
         self.recordHandling.signals["liveRequested"].connect(self._handleLive)
 
+        # snap
+        self.recordHandling.signals["snapRequested"].connect(self._handleSnap)
+
+        # album
+        self.albumBuffer = deque([])
+        self.recordHandling.signals["albumRequested"].connect(self._handleAlbum)
+
         # stack recording
         # todo: add implementation
 
         # deletion button clicked
         self.delete.clicked.connect(lambda: self.deleted.emit(self.cameraKey))
-    
-    def __del__(self) -> None:
-        self.close()
     
     @abstractmethod
     def setupWidgetsForStartup(self) -> None:
@@ -116,7 +120,7 @@ class ICamera(QObject):
         raise NotImplementedError()
 
     @abstractmethod
-    def grabFrame(self) -> np.array:
+    def grabFrame(self) -> np.ndarray:
         """Returns the latest captured frame as a numpy array.
         """
         raise NotImplementedError()
@@ -160,6 +164,15 @@ class ICamera(QObject):
             paramWidget = self.availableWidgets[widgetType](param, name, unit, orientation)
             paramDict[name] = paramWidget
     
+    def _handleSnap(self) -> np.ndarray:
+        """ Returns a camera snap. """
+        self.snap.emit(self.grabFrame())
+    
+    def _handleAlbum(self) -> np.ndarray:
+        """ Returns the currently accumulated buffer consisting of a snap album. """
+        self.albumBuffer.append(self.grabFrame())
+        self.album.emit(np.stack(self.albumBuffer))
+    
     def _handleLive(self, isLive: bool) -> None:
         """Private slot to start/stop live acquisition. Signals start() and quit() are called
         when the thread needs to be started or stopped. When the thread is stopped, the live queue
@@ -187,3 +200,6 @@ class ICamera(QObject):
             self.liveTimer.stop()
             self.liveWorker.quit()
             self.liveBuffer.clear()
+    
+    def _handleRecord(self) -> None:
+        pass

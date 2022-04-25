@@ -83,7 +83,7 @@ class OpenCV(ICamera):
         self.parameters["Pixel format"].signals["currentTextChanged"].connect(self._updateFormat)
         self.recordHandling.signals["liveRequested"].connect(lambda enabled: (self.__fpsTimer.start() if enabled else self.__fpsTimer.stop()))
 
-    def grabFrame(self) -> np.array:
+    def grabFrame(self) -> np.ndarray:
         _, img = self.__capture.read()
         y, h = self.__ROI.offset_y, self.__ROI.offset_y + self.__ROI.height
         x, w = self.__ROI.offset_x, self.__ROI.offset_x + self.__ROI.width
