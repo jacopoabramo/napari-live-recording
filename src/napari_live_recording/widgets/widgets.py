@@ -464,11 +464,6 @@ class RecordHandling(QObject):
         # when grabbing frames from the device
         self.live.toggled.connect(self._handleLiveToggled)
 
-        # whenever the record button is clicked,
-        # the widgets send a signal
-        # with the current SpinBox value
-        self.record.clicked.connect(lambda: self.recordRequested.emit(self.recordSpinBox.value()))
-
     def _handleLiveToggled(self, status: bool) -> None:
         """Enables/Disables pushbuttons when the live button is toggled.
 
@@ -502,7 +497,7 @@ class RecordHandling(QObject):
             "snapRequested" : self.snap.clicked,
             "albumRequested" : self.album.clicked,
             "liveRequested" : self.live.toggled,
-            "recordRequested" : self.recordRequested,
+            "recordRequested" : self.record.clicked,
         }
 
 class ROIHandling(QObject):

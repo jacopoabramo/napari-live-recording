@@ -202,4 +202,9 @@ class ICamera(QObject):
             self.liveBuffer.clear()
     
     def _handleRecord(self) -> None:
-        pass
+        """ Runs a recording request. Since the controller already 
+        lives in a separate thread from the viewer, 
+        we don't need to spawn a new thread. All the pushbuttons
+        are disabled until the recording is complete. """
+        recordBuffer = deque([], maxlen=self.recordHandling.recordSize)
+
