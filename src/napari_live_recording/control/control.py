@@ -39,6 +39,7 @@ class Controller(QObject):
         self.localControllers[cameraKey].device.live.connect(lambda img: self.plugin.refreshViewer(img, f"Live ({camera.name})"))
         self.localControllers[cameraKey].device.snap.connect(lambda img: self.plugin.refreshViewer(img, f"Snap ({camera.name})"))
         self.localControllers[cameraKey].device.album.connect(lambda img: self.plugin.refreshViewer(img, f"Album ({camera.name})"))
+        self.localControllers[cameraKey].device.record.connect(lambda img: self.plugin.refreshViewer(img, f"Record ({camera.name})"))
         self.localControllers[cameraKey].device.deleted.connect(self.deleteCamera)
         self.localControllers[cameraKey].thread.start()
         return self.localControllers[cameraKey].device.group
@@ -54,6 +55,7 @@ class Controller(QObject):
         self.localControllers[cameraKey].device.live.disconnect()
         self.localControllers[cameraKey].device.snap.disconnect()
         self.localControllers[cameraKey].device.album.disconnect()
+        self.localControllers[cameraKey].device.record.disconnect()
         self.localControllers[cameraKey].device.deleted.disconnect()
         self.localControllers[cameraKey].thread.quit()
         self.localControllers[cameraKey].thread.wait()

@@ -463,6 +463,14 @@ class RecordHandling(QObject):
         # in order to avoid undefined behaviors
         # when grabbing frames from the device
         self.live.toggled.connect(self._handleLiveToggled)
+    
+    def setWidgetsEnabling(self, isEnabled : bool) -> None:
+        """ Enables/Disables all record handling widgets. """
+        self.snap.setEnabled(isEnabled)
+        self.album.setEnabled(isEnabled)
+        self.live.setEnabled(isEnabled)
+        self.record.setEnabled(isEnabled)
+        self.recordSpinBox.setEnabled(isEnabled)
 
     def _handleLiveToggled(self, status: bool) -> None:
         """Enables/Disables pushbuttons when the live button is toggled.

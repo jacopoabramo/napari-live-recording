@@ -32,6 +32,7 @@ class ICamera(QObject):
     live = Signal(np.ndarray)
     snap = Signal(np.ndarray)
     album = Signal(np.ndarray)
+    record = Signal(np.ndarray)
     deleted = Signal(str)
 
     def __init__(self, name: str, deviceID: Union[str, int], paramDict: dict[str, LocalWidget], sensorShape: ROI) -> None:
@@ -67,13 +68,13 @@ class ICamera(QObject):
         # 3) roi handling widgets
         # 4) delete device button
         parametersLayout = QFormLayout()
-        parametersGroup = QGroupBox()
+        self.parametersGroup = QGroupBox()
         for widget in paramDict.values():
             parametersLayout.addRow(widget.label, widget.widget)
-        parametersGroup.setLayout(parametersLayout)
+        self.parametersGroup.setLayout(parametersLayout)
 
         self.layout.addRow(self.recordHandling.group)
-        self.layout.addRow(parametersGroup)
+        self.layout.addRow(self.parametersGroup)
         self.layout.addRow(self.ROIHandling.group)
         self.layout.addRow(self.delete)
 
@@ -102,7 +103,7 @@ class ICamera(QObject):
         self.recordHandling.signals["albumRequested"].connect(self._handleAlbum)
 
         # stack recording
-        # todo: add implementation
+        self.recordHandling.signals["recordRequested"].connect(self._handleRecord)
 
         # deletion button clicked
         self.delete.clicked.connect(lambda: self.deleted.emit(self.cameraKey))
@@ -198,13 +199,26 @@ class ICamera(QObject):
             self.liveTimer.start()
         else:
             self.liveTimer.stop()
-            self.liveWorker.quit()
+            self.liveWorker.toggle_pause()
             self.liveBuffer.clear()
     
     def _handleRecord(self) -> None:
-        """ Runs a recording request. Since the controller already 
-        lives in a separate thread from the viewer, 
-        we don't need to spawn a new thread. All the pushbuttons
+        """ Runs a recording request. All the pushbuttons
         are disabled until the recording is complete. """
-        recordBuffer = deque([], maxlen=self.recordHandling.recordSize)
+        @thread_worker(connect={"returned" : self.record.emit})
+        def record_stack(stackSize):
+            self.recordHandling.setWidgetsEnabling(False)
+            self.parametersGroup.setEnabled(False)
+            recordBuffer = deque([], maxlen=stackSize)
+            for _ in range(recordBuffer.maxlen):
+                recordBuffer.append(self.grabFrame())
+            self.parametersGroup.setEnabled(True)
+            self.recordHandling.setWidgetsEnabling(True)
+            return np.stack(recordBuffer)
+        
+        record_stack(self.recordHandling.recordSize)
+        
+
+        
+
 
