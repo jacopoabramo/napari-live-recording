@@ -1,0 +1,10 @@
+name: napari-live-recording
+schema_version: 0.1.0
+contributions:
+  commands:
+    - id: napari-live-recording.open
+      title: Live recording
+      python_name: napari_live_recording:NapariLiveRecording
+  widgets:
+    - command: napari-live-recording.open
+      display_name: Live recording
