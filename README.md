@@ -29,7 +29,7 @@ You can install `napari-live-recording` via [pip]:
 
 ## Documentation
 
-You can view the full documentation at [napari-live-recording.readthedocs.io](https://napari-live-recording.readthedocs.io/en/latest/)
+Documentation is work in progress. For any problem or questions please open an issue.
 
 ## Contributing
 
