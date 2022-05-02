@@ -1,6 +1,3 @@
-from typing import final
-
-
 try:
     # We need a try-except structure because
     # Ximea Python APIs need to be installed manually.
@@ -14,7 +11,6 @@ try:
     from napari_live_recording.widgets import WidgetEnum, Timer
     from napari_live_recording.common import ROI, ONE_SECOND_IN_MS
     from dataclasses import dataclass
-    from qtpy.QtCore import QObject
     from typing import Union
 
     class Ximea(ICamera):
@@ -38,8 +34,6 @@ try:
             }
 
         def __init__(self, name: str, deviceID: Union[str, int]) -> None:
-            QObject.__init__(self)
-
             self.__camera = XiCam()
             self.__img = XiImg()
             self.__samplingTime = 0.1 # s

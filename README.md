@@ -5,7 +5,6 @@
 [![Python Version](https://img.shields.io/pypi/pyversions/napari-live-recording.svg?color=green)](https://python.org)
 [![tests](https://github.com/jethro33/napari-live-recording/workflows/tests/badge.svg)](https://github.com/jacopoabramo/napari-live-recording/actions)
 [![codecov](https://codecov.io/gh/jethro33/napari-live-recording/branch/master/graph/badge.svg)](https://codecov.io/gh/jacopoabramo/napari-live-recording)
-[![Documentation Status](https://readthedocs.org/projects/napari-live-recording/badge/?version=latest)](https://napari-live-recording.readthedocs.io/en/latest/?badge=latest)
 
 A napari plugin for live video recording with a generic camera device and generate a stack of TIFF images from said device.
 
@@ -29,7 +28,7 @@ You can install `napari-live-recording` via [pip]:
 
 ## Documentation
 
-Documentation is work in progress. For any problem or questions please open an issue.
+You can review the documentation of this plugin [here](./docs/README.md)
 
 ## Contributing
 

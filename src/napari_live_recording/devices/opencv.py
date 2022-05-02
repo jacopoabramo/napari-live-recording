@@ -4,7 +4,6 @@ import time
 from napari_live_recording.common import ONE_SECOND_IN_MS, ROI
 from napari_live_recording.widgets import WidgetEnum, Timer
 from napari_live_recording.devices.interface import ICamera
-from qtpy.QtCore import QObject
 from dataclasses import dataclass
 from typing import Union
 from copy import copy
@@ -46,17 +45,16 @@ class OpenCV(ICamera):
             name (str): user-defined camera name.
             deviceID (Union[str, int]): camera identifier.
         """
-        QObject.__init__(self)
         self.__capture = cv2.VideoCapture(int(deviceID))
 
         # read OpenCV parameters
         width = int(self.__capture.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.__capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
-        # initialize device local properties
-        self.__ROI = ROI(0, 0, height, width)
-        self.__format = self.OpenCVPixelFormats.data["RGB"]
-        self.__FPS = 0
+        # initialize region of interest
+        # steps for height, width and offsets
+        # are by default 1. We leave them as such
+        self.__ROI = ROI(offset_x=0, offset_y=0, height=height, width=width)
         
         self.parameters = {}
         self.addParameter(WidgetEnum.ComboBox, "Exposure time", "", list(self.OpenCVExposure.data.keys()), self.parameters)
@@ -77,6 +75,8 @@ class OpenCV(ICamera):
         self.__capture.set(cv2.CAP_PROP_EXPOSURE, exposure)
         self.parameters["Exposure time"].value = abs(exposure)
         self.parameters["Frame rate"].isEnabled = False
+        self.__format = self.OpenCVPixelFormats.data["RGB"]
+        self.__FPS = 0
     
     def connectSignals(self) -> None:
         self.parameters["Exposure time"].signals["currentTextChanged"].connect(self._updateExposure)
