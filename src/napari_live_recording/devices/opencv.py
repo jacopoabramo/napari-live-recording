@@ -51,7 +51,7 @@ class OpenCV(ICamera):
         width = int(self.__capture.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.__capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
-        # initialize device local properties
+        # initialize region of interest
         # steps for height, width and offsets
         # are by default 1. We leave them as such
         self.__ROI = ROI(offset_x=0, offset_y=0, height=height, width=width)
