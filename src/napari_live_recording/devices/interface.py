@@ -94,7 +94,7 @@ class ICamera(QObject):
         self.isLive = False
         self.liveTimer = Timer()
         self.liveTimer.setInterval(THIRTY_FPS_IN_MS)
-        self.liveTimer.timeout.connect(lambda : self.live.emit(self.liveBuffer.pop()))
+        self.liveTimer.timeout.connect(self._sendLiveFrame)
         self.recordHandling.signals["liveRequested"].connect(self._handleLive)
 
         # snap
@@ -166,6 +166,12 @@ class ICamera(QObject):
         if not name in paramDict:
             paramWidget = self.availableWidgets[widgetType](param, name, unit, orientation)
             paramDict[name] = paramWidget
+    
+    def _sendLiveFrame(self) -> None:
+        try:
+            self.live.emit(self.liveBuffer.pop())
+        except IndexError:
+            pass
     
     def _handleSnap(self) -> np.ndarray:
         """ Returns a camera snap. """
