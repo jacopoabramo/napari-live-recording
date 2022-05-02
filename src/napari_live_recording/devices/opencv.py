@@ -46,7 +46,6 @@ class OpenCV(ICamera):
             name (str): user-defined camera name.
             deviceID (Union[str, int]): camera identifier.
         """
-        QObject.__init__(self)
         self.__capture = cv2.VideoCapture(int(deviceID))
 
         # read OpenCV parameters

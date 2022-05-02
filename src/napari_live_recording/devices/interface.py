@@ -52,6 +52,8 @@ class ICamera(QObject):
             paramDict (dict[str, LocalWidget]): dictionary of parameters' widgets initialized for the specific device.
             sensorShape (ROI): camera physical shape and information related to the widget steps.
         """
+        QObject.__init__(self)
+        
         self.name = name
         self.deviceID = deviceID
         self.cameraKey = f"{self.name}:{self.__class__.__name__}:{str(self.deviceID)}"

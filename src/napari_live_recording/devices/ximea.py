@@ -38,8 +38,6 @@ try:
             }
 
         def __init__(self, name: str, deviceID: Union[str, int]) -> None:
-            QObject.__init__(self)
-
             self.__camera = XiCam()
             self.__img = XiImg()
             self.__samplingTime = 0.1 # s
