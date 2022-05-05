@@ -15,15 +15,14 @@ on:
 jobs:
   deploy:
     runs-on: windows-latest
+    timeout-minutes: 8
     steps:
-      if: ${{ github.ref == "refs/heads/main" }}
       - uses: actions/checkout@v2
-
+      if: ${{ github.ref == "refs/heads/main" }}
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: "3.x"
-
       - name: Check new plugin version
         uses: thebongy/version-check@v1
         with:
