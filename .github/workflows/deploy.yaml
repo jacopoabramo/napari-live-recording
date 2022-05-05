@@ -15,7 +15,6 @@ on:
 jobs:
   deploy:
     runs-on: windows-latest
-    timeout-minutes: 8
     steps:
       if: ${{ github.ref == "refs/heads/main" }}
       - uses: actions/checkout@v2
