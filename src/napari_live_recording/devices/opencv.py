@@ -5,7 +5,7 @@ from napari_live_recording.common import ONE_SECOND_IN_MS, ROI
 from napari_live_recording.widgets import WidgetEnum, Timer
 from napari_live_recording.devices.interface import ICamera
 from dataclasses import dataclass
-from typing import Union
+from typing import Union, List
 from copy import copy
 
 class OpenCV(ICamera):
@@ -99,7 +99,7 @@ class OpenCV(ICamera):
     def changeROI(self, newROI: ROI):
         self.__ROI = copy(newROI)
     
-    def cameraInfo(self) -> list[str]:
+    def cameraInfo(self) -> List[str]:
         # todo: implement
         return []
     

@@ -18,8 +18,9 @@ from napari_live_recording.widgets import (
     WidgetEnum,
     Timer
 )
+from typing import Dict, List, Tuple
 
-ParameterType = Union[str, list[str], tuple[int, int, int], tuple[float, float, float]]
+ParameterType = Union[str, List[str], Tuple[int, int, int], Tuple[float, float, float]]
 
 class ICamera(QObject):
     availableWidgets = {
@@ -35,7 +36,7 @@ class ICamera(QObject):
     record = Signal(np.ndarray)
     deleted = Signal(str)
 
-    def __init__(self, name: str, deviceID: Union[str, int], paramDict: dict[str, LocalWidget], sensorShape: ROI) -> None:
+    def __init__(self, name: str, deviceID: Union[str, int], paramDict: Dict[str, LocalWidget], sensorShape: ROI) -> None:
         """Generic camera device interface. Each device has a set of common widgets:
 
         - ROI handling widget;
@@ -49,7 +50,7 @@ class ICamera(QObject):
         Args:
             name (str): name of the camera device.
             deviceID (Union[str, int]): device ID.
-            paramDict (dict[str, LocalWidget]): dictionary of parameters' widgets initialized for the specific device.
+            paramDict (Dict[str, LocalWidget]): dictionary of parameters' widgets initialized for the specific device.
             sensorShape (ROI): camera physical shape and information related to the widget steps.
         """
         QObject.__init__(self)
@@ -135,8 +136,8 @@ class ICamera(QObject):
         raise NotImplementedError()
 
     @abstractmethod
-    def cameraInfo(self) -> list[str]:
-        """Returns a list of strings containing relevant device informations.
+    def cameraInfo(self) -> List[str]:
+        """Returns a List of strings containing relevant device informations.
         """
         raise NotImplementedError()
 
@@ -145,9 +146,9 @@ class ICamera(QObject):
         """
         pass
 
-    def addParameter(self, widgetType: WidgetEnum, name: str, unit: str, param: ParameterType, paramDict: dict[str, ParameterType], orientation="left") -> None:
+    def addParameter(self, widgetType: WidgetEnum, name: str, unit: str, param: ParameterType, paramDict: Dict[str, ParameterType], orientation="left") -> None:
         """Adds a parameter in the form of a widget, exposing the respective signals to enable connections to user-defined slots.
-        If the parameter already exists, it will not be added to the parameter list.
+        If the parameter already exists, it will not be added to the parameter List.
 
         Args:
             - widgetType (WidgetEnum): type of widget created.
@@ -155,12 +156,12 @@ class ICamera(QObject):
                 - this will be the name shown in the GUI
             - unit (str): unit measure of the added parameter (i.e. \"ms\")
             - param (ParameterType): actual parameter items; parameters can be of the following type:
-            ParameterType = Union[str, list[str], tuple[int, int, int], tuple[float, float, float]]
+            ParameterType = Union[str, List[str], Tuple[int, int, int], Tuple[float, float, float]]
                 - str
-                - list[str]
-                - tuple[int, int, int]
-                - tuple[float, float, float]
-            - paramDict (dict[str, ParameterType]): dictionary to store all parameters.
+                - List[str]
+                - Tuple[int, int, int]
+                - Tuple[float, float, float]
+            - paramDict (Dict[str, ParameterType]): dictionary to store all parameters.
             - orientation (str, optional): orientation of the label for the parameter (can either be "left" or "right"). Default is "left".
         """
         if not name in paramDict:

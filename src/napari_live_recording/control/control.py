@@ -9,7 +9,7 @@ class LocalController(NamedTuple):
     thread : QThread
     device : ICamera
 
-class Controller(QObject):
+class MainController(QObject):
     cameraDeleted = Signal(QGroupBox)
 
     def __init__(self, plugin) -> None:
@@ -19,7 +19,7 @@ class Controller(QObject):
             plugin: reference to the plugin,
             acting as interface to napari viewer viewer.
         """
-        super(Controller, self).__init__()
+        super(MainController, self).__init__()
         self.localControllers : dict[str, LocalController] = {}
         self.plugin = plugin
 

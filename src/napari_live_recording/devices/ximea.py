@@ -11,7 +11,7 @@ try:
     from napari_live_recording.widgets import WidgetEnum, Timer
     from napari_live_recording.common import ROI, ONE_SECOND_IN_MS
     from dataclasses import dataclass
-    from typing import Union
+    from typing import Union, List
 
     class Ximea(ICamera):
 
@@ -136,7 +136,7 @@ try:
                     self.__ROI.width_step  = width_incr
                     self.__ROI.height_step = height_incr 
         
-        def cameraInfo(self) -> list[str]:
+        def cameraInfo(self) -> List[str]:
             # todo: implement
             return []
         
