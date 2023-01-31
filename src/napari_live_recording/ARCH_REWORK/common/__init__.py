@@ -2,11 +2,17 @@ from enum import IntEnum, auto
 from dataclasses import dataclass
 
 class WidgetEnum(IntEnum):
-    ComboBox = 0,
-    SpinBox = auto(),
-    DoubleSpinBox = auto(),
-    LabeledSlider = auto(),
+    ComboBox = 0
+    SpinBox = auto()
+    DoubleSpinBox = auto()
+    LabeledSlider = auto()
     LineEdit = auto()
+
+class FileFormat(IntEnum):
+    TIFF = 0
+    # todo: add support for HDF5 storage
+    # in the recording
+    # HDF5 = auto()
 
 @dataclass
 class ROI:
@@ -20,3 +26,11 @@ class ROI:
     ofs_y_step: int = 1
     width_step: int = 1
     height_step: int = 1
+
+    def getPixelSizes(self) -> tuple:
+        """Returns the number of pixels along width and height of the current ROI.
+
+        Returns:
+            tuple: (height, width) of the ROI.
+        """
+        return (self.height - self.offset_y, self.width - self.offset_x)
