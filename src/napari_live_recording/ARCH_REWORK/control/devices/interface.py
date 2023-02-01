@@ -76,16 +76,11 @@ class ICamera(QObject):
     @abstractmethod
     def setAcquisitionStatus(self, started: bool) -> bool:
         """Sets the current acquisition status of the camera device.
-        If `started` is True, camera will start acquiring, otherwise the camera will stop acquiring.
 
         Args:
-            started (bool): _description_
-
-        Raises:
-            NotImplementedError: _description_
-            NotImplementedError: _description_
-            NotImplementedError: _description_
+            started (bool): if is True, camera will start acquiring, otherwise the camera will stop acquiring.
         """
+        raise NotImplementedError()
 
     @abstractmethod
     def grabFrame(self) -> np.ndarray:

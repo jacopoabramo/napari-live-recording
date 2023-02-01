@@ -58,8 +58,8 @@ class MainController(QObject):
         """Deletes a camera device.
         """
         self.deviceControllers[cameraKey].thread.quit()
-        self.deviceControllers[cameraKey].thread.deleteLater()
         self.deviceControllers[cameraKey].device.deleteLater()
+        self.deviceControllers[cameraKey].thread.deleteLater()
         self.recordSignalCounter.maxCount -= 1
         del self.deviceControllers[cameraKey]
         del self.deviceLiveBuffer[cameraKey]
