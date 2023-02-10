@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
-from napari_live_recording.ARCH_REWORK.common import ROI, WidgetEnum
-from napari_live_recording.ARCH_REWORK.control.devices.interface import (
+from dataclasses import replace
+from napari_live_recording.common import ROI
+from napari_live_recording.control.devices.interface import (
     ICamera,
     NumberParameter,
     ListParameter
@@ -58,24 +59,23 @@ class OpenCV(ICamera):
         # exposure time in OpenCV is treated differently on Windows, 
         # as exposure times may only have a finite set of values
         if platform.startswith("win"):
-            parameters["Exposure time"] = ListParameter(widget=WidgetEnum.ComboBox, 
-                                                            value=self.msExposure["15.6 ms"], 
-                                                            unit="", 
-                                                            options=list(self.msExposure.keys()), 
-                                                            editable=True)
+            parameters["Exposure time"] = ListParameter(value=self.msExposure["15.6 ms"], 
+                                                        options=list(self.msExposure.keys()), 
+                                                        editable=True)
         else:
-            parameters["Exposure time"] = NumberParameter(widget=WidgetEnum.LabeledSlider,
-                                                            value=10e-3,
-                                                            valueLimits=(100e-6, 1),
-                                                            unit="s",
-                                                            editable=True)
-        parameters["Pixel format"] = ListParameter(widget=WidgetEnum.ComboBox,
-                                                    value=self.pixelFormats["RGB"],
-                                                    options=list(self.pixelFormats.keys()),
-                                                    editable=True)
+            parameters["Exposure time"] = NumberParameter(value=10e-3,
+                                                        valueLimits=(100e-6, 1),
+                                                        unit="s",
+                                                        editable=True)
+        parameters["Pixel format"] = ListParameter(value=self.pixelFormats["RGB"],
+                                                options=list(self.pixelFormats.keys()),
+                                                editable=True)
 
         self.__format = self.pixelFormats["RGB"]
         super().__init__(name, deviceID, parameters, sensorShape)
+    
+    def setAcquisitionStatus(self, started: bool) -> None:
+        pass
     
     def grabFrame(self) -> np.ndarray:
         _, img = self.__capture.read()
@@ -94,10 +94,11 @@ class OpenCV(ICamera):
         else:
             raise ValueError(f"Unrecognized value \"{value}\" for parameter \"{name}\"")
     
-    def changeROI(self, newROI: ROI) -> bool:
+    def changeROI(self, newROI: ROI):
+        print(f"Setting new ROI to: {newROI.__str__()}")
+        print(f"Old shape: {self.roiShape.__str__()}")
         if newROI <= self.fullShape:
-            self.roiShape = compile
-        return True
+            self.roiShape = newROI
     
     def close(self) -> None:
         self.__capture.release()

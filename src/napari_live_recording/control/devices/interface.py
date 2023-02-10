@@ -2,9 +2,9 @@ import numpy as np
 from abc import abstractmethod
 from typing import Union, Tuple
 from qtpy.QtCore import QObject
-from napari_live_recording.ARCH_REWORK.common import ROI, WidgetEnum
+from napari_live_recording.common import ROI
 from typing import Dict, List, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from abc import ABC
 
 # the camera interface and setting management is heavily inspired by the work of Xavier Casas Moreno in ImSwitch
@@ -12,14 +12,6 @@ from abc import ABC
 # Xavier Casas Moreno GitHub profile: https://github.com/kasasxav
 @dataclass
 class Parameter(ABC):
-    widget: WidgetEnum
-    """Widget type associated with the parameter.
-    """
-
-    unit: str
-    """Unit measure of the specific parameter.
-    """
-
     editable: bool
     """Wether the parameter is readonly or not.
     """
@@ -28,6 +20,10 @@ class Parameter(ABC):
 class NumberParameter(Parameter):
     value: Union[int, float]
     """Value of the parameter.
+    """
+
+    unit: str
+    """Unit measure of the specific parameter.
     """
 
     valueLimits: Tuple[Union[int, float], Union[int, float]]
@@ -56,7 +52,7 @@ class ICamera(QObject):
             parameters (`Dict[str, Any]`): dictionary of parameters of the specific device.
             sensorShape (`ROI`): camera physical shape and information related to the widget steps.
         """
-        super().__init__(self)
+        QObject.__init__(self)
         self.name = name
         self.deviceID = deviceID
         self.cameraKey = f"{self.name}:{self.__class__.__name__}:{str(self.deviceID)}"
@@ -70,15 +66,16 @@ class ICamera(QObject):
         return self._fullShape
     
     @property
-    def roi(self) -> ROI:
+    def roiShape(self) -> ROI:
         return self._roiShape
     
+    @roiShape.setter
+    def roiShape(self, newROI: ROI) -> None:
+        self._roiShape = replace(newROI)
+    
     @abstractmethod
-    def setAcquisitionStatus(self, started: bool) -> bool:
+    def setAcquisitionStatus(self, started: bool) -> None:
         """Sets the current acquisition status of the camera device.
-
-        Args:
-            started (bool): if is True, camera will start acquiring, otherwise the camera will stop acquiring.
         """
         raise NotImplementedError()
 
@@ -89,14 +86,8 @@ class ICamera(QObject):
         raise NotImplementedError()
     
     @abstractmethod
-    def changeROI(self, newROI: ROI) -> bool:
+    def changeROI(self, newROI: ROI) -> None:
         """Changes the Region Of Interest of the sensor's device.
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def cameraInfo(self) -> List[str]:
-        """Returns a List of strings containing relevant device informations.
         """
         raise NotImplementedError()
     
