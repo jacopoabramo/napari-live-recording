@@ -401,14 +401,14 @@ class RecordHandling(QObject):
             "recordRequested" : self.record.clicked,
         }
 
-class ROIHandling(QObject):
+class ROIHandling(QWidget):
     changeROIRequested = Signal(ROI)
     fullROIRequested = Signal(ROI)
     def __init__(self, sensorShape : ROI) -> None:
         """ROI Handling widget. Defines a set of non-custom widgets to set the Region Of Interest of the device.
         This widget is common for all devices.
         """
-        QObject.__init__(self)
+        QWidget.__init__(self)
 
         self.sensorFullROI = replace(sensorShape)
         
@@ -451,18 +451,18 @@ class ROIHandling(QObject):
         self.changeROIButton = QPushButton("Set ROI")
         self.fullROIButton = QPushButton("Full frame")
 
-        self.layout = QGridLayout()
-        self.layout.addWidget(self.offsetXLabel, 0, 0)
-        self.layout.addWidget(self.offsetXSpinBox, 0, 1)
-        self.layout.addWidget(self.offsetYSpinBox, 0, 2)
-        self.layout.addWidget(self.offsetYLabel, 0, 3)
+        layout = QGridLayout()
+        layout.addWidget(self.offsetXLabel, 0, 0)
+        layout.addWidget(self.offsetXSpinBox, 0, 1)
+        layout.addWidget(self.offsetYSpinBox, 0, 2)
+        layout.addWidget(self.offsetYLabel, 0, 3)
         
-        self.layout.addWidget(self.widthLabel, 1, 0)
-        self.layout.addWidget(self.widthSpinBox, 1, 1)
-        self.layout.addWidget(self.heightSpinBox, 1, 2)
-        self.layout.addWidget(self.heightLabel, 1, 3)
-        self.layout.addWidget(self.changeROIButton, 2, 0, 1, 2)
-        self.layout.addWidget(self.fullROIButton, 2, 2, 1, 2)
+        layout.addWidget(self.widthLabel, 1, 0)
+        layout.addWidget(self.widthSpinBox, 1, 1)
+        layout.addWidget(self.heightSpinBox, 1, 2)
+        layout.addWidget(self.heightLabel, 1, 3)
+        layout.addWidget(self.changeROIButton, 2, 0, 1, 2)
+        layout.addWidget(self.fullROIButton, 2, 2, 1, 2)
 
         # "clicked" signals are connected to private slots.
         # These slots expose the signals available to the user
@@ -470,8 +470,7 @@ class ROIHandling(QObject):
         self.changeROIButton.clicked.connect(self._onROIChanged)
         self.fullROIButton.clicked.connect(self._onFullROI)
 
-        self.group = QGroupBox()
-        self.group.setLayout(self.layout)
+        self.setLayout(layout)
     
     def changeWidgetSettings(self, settings : ROI):
         """ROI handling update widget settings method.

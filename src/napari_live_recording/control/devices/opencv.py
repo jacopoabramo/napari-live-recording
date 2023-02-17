@@ -95,8 +95,6 @@ class OpenCV(ICamera):
             raise ValueError(f"Unrecognized value \"{value}\" for parameter \"{name}\"")
     
     def changeROI(self, newROI: ROI):
-        print(f"Setting new ROI to: {newROI.__str__()}")
-        print(f"Old shape: {self.roiShape.__str__()}")
         if newROI <= self.fullShape:
             self.roiShape = newROI
     

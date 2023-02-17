@@ -70,7 +70,7 @@ class ViewerAnchor:
         deleteButton = QPushButton("Delete camera")
         deleteButton.clicked.connect(lambda: self.deleteCameraUI(cameraKey))
         settingsLayout.addRow(deleteButton)
-        settingsLayout.addRow(roiWidget.group)
+        settingsLayout.addRow(roiWidget)
         settingsGroup.setLayout(settingsLayout)
 
         cameraCollapsible.addWidget(settingsGroup)
@@ -82,6 +82,7 @@ class ViewerAnchor:
     def deleteCameraUI(self, cameraKey: str) -> None:
         self.mainController.deleteCamera(cameraKey)
         self.mainLayout.removeRow(self.cameraWidgetGroups[cameraKey])
+        del self.cameraWidgetGroups[cameraKey]
     
     def snap(self) -> None:
         for key in self.mainController.deviceControllers.keys():
