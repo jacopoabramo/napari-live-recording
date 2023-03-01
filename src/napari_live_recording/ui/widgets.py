@@ -4,17 +4,17 @@ from qtpy.QtWidgets import (
     QWidget, 
     QLabel, 
     QComboBox, 
-    QSpinBox, 
-    QDoubleSpinBox, 
+    QSpinBox,
     QLineEdit, 
     QPushButton
 )
-from superqt import QLabeledSlider
-from qtpy.QtWidgets import QFormLayout, QGridLayout, QGroupBox
+from superqt import QLabeledSlider, QLabeledDoubleSlider
+from qtpy.QtWidgets import QFormLayout, QHBoxLayout, QGridLayout, QGroupBox
 from abc import ABC, abstractmethod
 from dataclasses import replace
 from napari_live_recording.common import ROI
 from enum import Enum
+from typing import Dict, List, Tuple
 
 class Timer(QTimer):
     pass
@@ -36,6 +36,7 @@ class LocalWidget(ABC):
             unit (str, optional): parameter unit measure. Defaults to "".
             orientation (str, optional): label orientation on the layout. Defaults to "left".
         """
+        super().__init__()
         self.__name = name
         self.__unit = unit
         labelStr = (self.__name + " (" + self.__unit + ")" if self.__unit != "" else self.__name)
@@ -77,17 +78,17 @@ class LocalWidget(ABC):
     
     @property
     @abstractmethod
-    def signals(self) -> dict[str, Signal]:
+    def signals(self) -> Dict[str, Signal]:
         """Common widget method to expose signals to the device.
         """
         pass
 
 class ComboBox(LocalWidget):
-    def __init__(self, param : list[str], name : str, unit : str = "", orientation: str = "left") -> None:
+    def __init__(self, param : List[str], name : str, unit : str = "", orientation: str = "left") -> None:
         """ComboBox widget.
 
         Args:
-            param (list[str]): list of parameters added to the ComboBox.
+            param (List[str]): List of parameters added to the ComboBox.
             name (str): parameter label description.
             unit (str, optional): parameter unit measure. Defaults to "".
             orientation (str, optional): label orientation on the layout. Defaults to "left".
@@ -96,18 +97,18 @@ class ComboBox(LocalWidget):
         self.combobox.addItems(param)
         super().__init__(self.combobox, name, unit, orientation)
     
-    def changeWidgetSettings(self, newParam: list[str]) -> None:
-        """ComboBox update widget parameter method. Old list of items is deleted.
+    def changeWidgetSettings(self, newParam: List[str]) -> None:
+        """ComboBox update widget parameter method. Old List of items is deleted.
 
         Args:
-            newParam (list[str]): new list of parameters to add to the ComboBox.
+            newParam (List[str]): new List of parameters to add to the ComboBox.
         """
         self.combobox.clear()
         self.combobox.addItems(newParam)
     
     @property
-    def value(self) -> tuple[str, int]:
-        """Returns a tuple containing the ComboBox current text and index.
+    def value(self) -> Tuple[str, int]:
+        """Returns a Tuple containing the ComboBox current text and index.
         """
         return (self.combobox.currentText(), self.combobox.currentIndex())
     
@@ -121,7 +122,7 @@ class ComboBox(LocalWidget):
         self.combobox.setCurrentIndex(value)
     
     @property
-    def signals(self) -> dict[str, Signal]:
+    def signals(self) -> Dict[str, Signal]:
         """Returns a dictionary of signals available for the ComboBox widget.
         Exposed signals are:
         
@@ -129,145 +130,36 @@ class ComboBox(LocalWidget):
         - currentTextChanged
 
         Returns:
-            dict: dict of signals (key: function name, value: function objects).
+            Dict: Dict of signals (key: function name, value: function objects).
         """
         return {
             "currentIndexChanged" : self.combobox.currentIndexChanged,
             "currentTextChanged" : self.combobox.currentTextChanged
         }
-        
-
-class SpinBox(LocalWidget):
-    def __init__(self, param: tuple[int, int, int], name: str, unit: str = "", orientation: str = "left") -> None:
-        """SpinBox widget.
-
-        Args:
-            param (tuple[int, int, int]): parameters for SpinBox settings: (<minimum_value>, <maximum_value>, <starting_value>)
-            name (str): parameter label description.
-            unit (str, optional): parameter unit measure. Defaults to "".
-            orientation (str, optional): label orientation on the layout. Defaults to "left".
-        """
-        self.spinbox = QSpinBox()
-        self.spinbox.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.spinbox.setRange(param[0], param[1])
-        self.spinbox.setValue(param[2])
-        super().__init__(self.spinbox, name, unit, orientation)
-    
-    def changeWidgetSettings(self, newParam : tuple[int, int, int]) -> None:
-        """SpinBox update widget parameter method.
-
-        Args:
-            newParam (tuple(int, int, int)): new parameters for SpinBox settings: (<minimum_value>, <maximum_value>, <starting_value>)
-        """
-        self.spinbox.setRange(newParam[0], newParam[1])
-        self.spinbox.setValue(newParam[2])
-    
-    @property
-    def value(self) -> int:
-        """Returns the SpinBox current value.
-        """
-        return self.spinbox.value()
-    
-    @value.setter
-    def value(self, value: int) -> None:
-        """Sets the SpinBox current value to show on the widget.
-
-        Args:
-            value (int): value to set.
-        """
-        self.spinbox.setValue(value)
-    
-    @property
-    def signals(self) -> dict[str, Signal]:
-        """Returns a dictionary of signals available for the SpinBox widget.
-        Exposed signals are:
-        
-        - valueChanged,
-        - textChanged
-
-        Returns:
-            dict: dict of signals (key: function name, value: function objects).
-        """
-        return {
-            "valueChanged" : self.spinbox.valueChanged,
-            "textChanged" : self.spinbox.textChanged
-        }
-
-class DoubleSpinBox(LocalWidget):
-    def __init__(self, param: tuple[float, float, float], name: str, unit: str = "", orientation: str = "left") -> None:
-        """DoubleSpinBox widget.
-
-        Args:
-            param (tuple[float, float, float]): parameters for spinbox settings: (<minimum_value>, <maximum_value>, <starting_value>)
-            name (str): parameter label description.
-            unit (str, optional): parameter unit measure. Defaults to "".
-            orientation (str, optional): label orientation on the layout. Defaults to "left".
-        """
-        self.__spinbox = QDoubleSpinBox()
-        self.__spinbox.setRange(param[0], param[1])
-        self.__spinbox.setValue(param[2])
-        super().__init__(self.__spinbox, name, unit, orientation)
-
-    def changeWidgetSettings(self, newParam : tuple[float, float, float]) -> None:
-        """DoubleSpinBox update widget parameter method.
-
-        Args:
-            newParam (tuple[float, float, float]): new parameters for SpinBox settings: (<minimum_value>, <maximum_value>, <starting_value>)
-        """
-        self.__spinbox.setRange(newParam[0], newParam[1])
-        self.__spinbox.setValue(newParam[2])
-    
-    @property
-    def value(self) -> float:
-        """Returns the DoubleSpinBox current value.
-        """
-        return self.__spinbox.value()
-    
-    @value.setter
-    def value(self, value: float) -> None:
-        """Sets the DoubleSpinBox current value to show on the widget.
-
-        Args:
-            value (float): value to set.
-        """
-        self.__spinbox.setValue(value)
-
-    @property
-    def signals(self) -> dict[str, Signal]:
-        """Returns a dictionary of signals available for the SpinBox widget.
-        Exposed signals are:
-        
-        - valueChanged,
-        - textChanged
-
-        Returns:
-            dict: dict of signals (key: function name, value: function objects).
-        """
-        return {
-            "valueChanged" : self.__spinbox.valueChanged,
-            "textChanged" : self.__spinbox.textChanged
-        }
 
 class LabeledSlider(LocalWidget):
-    def __init__(self, param: tuple[int, int, int], name: str, unit: str = "", orientation: str = "left") -> None:
+    def __init__(self, param: Union[Tuple[int, int, int], Tuple[float, float, float]], name: str, unit: str = "", orientation: str = "left") -> None:
         """Slider widget.
 
         Args:
-            param (tuple[int, int, int])): parameters for spinbox settings: (<minimum_value>, <maximum_value>, <starting_value>)
+            param (Tuple[int, int, int])): parameters for spinbox settings: (<minimum_value>, <maximum_value>, <starting_value>)
             name (str): parameter label description.
             unit (str, optional): parameter unit measure. Defaults to "".
             orientation (str, optional): label orientation on the layout. Defaults to "left".
         """
-        self.__slider = QLabeledSlider(Qt.Horizontal)
+        if any(type(param) == float):
+            self.__slider = QLabeledDoubleSlider(Qt.Horizontal)
+        else:
+            self.__slider = QLabeledSlider(Qt.Horizontal)
         self.__slider.setRange(param[0], param[1])
         self.__slider.setValue(param[2])
         super().__init__(self.__slider, name, unit, orientation)
     
-    def changeWidgetSettings(self, newParam : tuple[int, int, int]) -> None:
+    def changeWidgetSettings(self, newParam : Tuple[int, int, int]) -> None:
         """Slider update widget parameter method.
 
         Args:
-            newParam (tuple[int, int, int]): new parameters for SpinBox settings: (<minimum_value>, <maximum_value>, <starting_value>)
+            newParam (Tuple[int, int, int]): new parameters for SpinBox settings: (<minimum_value>, <maximum_value>, <starting_value>)
         """
         self.__slider.setRange(newParam[0], newParam[1])
         self.__slider.setValue(newParam[2])
@@ -288,14 +180,14 @@ class LabeledSlider(LocalWidget):
         self.__slider.setValue(value)
 
     @property
-    def signals(self) -> dict[str, Signal]:
+    def signals(self) -> Dict[str, Signal]:
         """Returns a dictionary of signals available for the SpinBox widget.
         Exposed signals are:
         
         - valueChanged
 
         Returns:
-            dict: dict of signals (key: function name, value: function objects).
+            Dict: Dict of signals (key: function name, value: function objects).
         """
         return {
             "valueChanged" : self.__slider.valueChanged
@@ -340,7 +232,7 @@ class LineEdit(LocalWidget):
         self.__lineEdit.setText(value)
     
     @property
-    def signals(self) -> dict[str, Signal]:
+    def signals(self) -> Dict[str, Signal]:
         """Returns a dictionary of signals available for the LineEdit widget.
         Exposed signals are:
         
@@ -348,7 +240,7 @@ class LineEdit(LocalWidget):
         - textEdited
 
         Returns:
-            dict: dict of signals (key: function name, value: function objects).
+            Dict: Dict of signals (key: function name, value: function objects).
         """
         return {
             "textChanged" : self.__lineEdit.textChanged,
@@ -391,13 +283,13 @@ class CameraSelection(QObject):
         self.group.setLayout(self.formLayout)
         self.group.setFlat(True)
 
-    def setAvailableCameras(self, cameras: list[str]) -> None:
-        """Sets the ComboBox with the list of available camera devices.
+    def setAvailableCameras(self, cameras: List[str]) -> None:
+        """Sets the ComboBox with the List of available camera devices.
 
         Args:
-            cameras (list[str]): list of available camera devices.
+            cameras (List[str]): List of available camera devices.
         """
-        # we need to extend the list of available cameras with a selection text
+        # we need to extend the List of available cameras with a selection text
         cameras.insert(0, "Select device")
         self.camerasComboBox.changeWidgetSettings(cameras)
         self.camerasComboBox.isEnabled = True
@@ -424,8 +316,9 @@ class RecordHandling(QObject):
         - album stacking snap.
 
         Widget layout:
-        |(0,0) QPushButton (Snap)|(0,1) QPushButton (Album)|(0,2) QPushButton  (Live) |
-        |(1,0-1)          QSpinBox (Record size)           |(0,2) QPushButton (Record)| 
+        |(0,0) QPushButton (Snap)     |(0,1) QPushButton (Album)| |
+        |(1,0-1)              QPushButton (Live)                  |
+        |(2,0) QSpinBox (Record size) |(2,1) QPushButton (Record) | 
 
         """
         QObject.__init__(self)
@@ -453,9 +346,9 @@ class RecordHandling(QObject):
         
         self.layout.addWidget(self.snap, 0, 0)
         self.layout.addWidget(self.album, 0, 1)
-        self.layout.addWidget(self.live, 0, 2)
-        self.layout.addWidget(self.recordSpinBox, 1, 0, 1, 2)
-        self.layout.addWidget(self.record, 1, 2)
+        self.layout.addWidget(self.live, 1, 0, 1, 2)
+        self.layout.addWidget(self.recordSpinBox, 2, 0)
+        self.layout.addWidget(self.record, 2, 1)
         self.group.setLayout(self.layout)
 
         # whenever the live button is toggled,
@@ -489,7 +382,7 @@ class RecordHandling(QObject):
         return self.recordSpinBox.value()
 
     @property
-    def signals(self) -> dict[str, Signal]:
+    def signals(self) -> Dict[str, Signal]:
         """Returns a dictionary of signals available for the RecordHandling widget.
         Exposed signals are:
         
@@ -499,7 +392,7 @@ class RecordHandling(QObject):
         - recordRequested
 
         Returns:
-            dict: dict of signals (key: function name, value: function objects).
+            Dict: Dict of signals (key: function name, value: function objects).
         """
         return {
             "snapRequested" : self.snap.clicked,
@@ -508,31 +401,17 @@ class RecordHandling(QObject):
             "recordRequested" : self.record.clicked,
         }
 
-class ROIHandling(QObject):
+class ROIHandling(QWidget):
     changeROIRequested = Signal(ROI)
     fullROIRequested = Signal(ROI)
     def __init__(self, sensorShape : ROI) -> None:
         """ROI Handling widget. Defines a set of non-custom widgets to set the Region Of Interest of the device.
         This widget is common for all devices.
-
-        Args:
-            cameraROI (ROI): data describing the device sensor shape and step value to increment/decrement each parameter.
         """
-        QObject.__init__(self)
-        # todo: maybe this is inefficient...
-        # in previous implementation
-        # copying the reference would cause
-        # issues when changing the ROI
-        # so we'll create a local copy
-        # and discard the input
-        self.sensorFullROI = replace(sensorShape)
+        QWidget.__init__(self)
 
-        # todo: these widgets are not
-        # our custom LocalWidgets
-        # but since they are common
-        # for all types of cameras
-        # it is not worth to customize them...
-        # ... right?
+        self.sensorFullROI = replace(sensorShape)
+        
         self.offsetXLabel = QLabel("Offset X (px)")
         self.offsetXLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -572,18 +451,18 @@ class ROIHandling(QObject):
         self.changeROIButton = QPushButton("Set ROI")
         self.fullROIButton = QPushButton("Full frame")
 
-        self.layout = QGridLayout()
-        self.layout.addWidget(self.offsetXLabel, 0, 0)
-        self.layout.addWidget(self.offsetXSpinBox, 0, 1)
-        self.layout.addWidget(self.offsetYSpinBox, 0, 2)
-        self.layout.addWidget(self.offsetYLabel, 0, 3)
+        layout = QGridLayout()
+        layout.addWidget(self.offsetXLabel, 0, 0)
+        layout.addWidget(self.offsetXSpinBox, 0, 1)
+        layout.addWidget(self.offsetYSpinBox, 0, 2)
+        layout.addWidget(self.offsetYLabel, 0, 3)
         
-        self.layout.addWidget(self.widthLabel, 1, 0)
-        self.layout.addWidget(self.widthSpinBox, 1, 1)
-        self.layout.addWidget(self.heightSpinBox, 1, 2)
-        self.layout.addWidget(self.heightLabel, 1, 3)
-        self.layout.addWidget(self.changeROIButton, 2, 0, 1, 2)
-        self.layout.addWidget(self.fullROIButton, 2, 2, 1, 2)
+        layout.addWidget(self.widthLabel, 1, 0)
+        layout.addWidget(self.widthSpinBox, 1, 1)
+        layout.addWidget(self.heightSpinBox, 1, 2)
+        layout.addWidget(self.heightLabel, 1, 3)
+        layout.addWidget(self.changeROIButton, 2, 0, 1, 2)
+        layout.addWidget(self.fullROIButton, 2, 2, 1, 2)
 
         # "clicked" signals are connected to private slots.
         # These slots expose the signals available to the user
@@ -591,8 +470,7 @@ class ROIHandling(QObject):
         self.changeROIButton.clicked.connect(self._onROIChanged)
         self.fullROIButton.clicked.connect(self._onFullROI)
 
-        self.group = QGroupBox()
-        self.group.setLayout(self.layout)
+        self.setLayout(layout)
     
     def changeWidgetSettings(self, settings : ROI):
         """ROI handling update widget settings method.
@@ -639,7 +517,7 @@ class ROIHandling(QObject):
         self.fullROIRequested.emit(replace(self.sensorFullROI))
     
     @property
-    def signals(self) -> dict[str, Signal]:
+    def signals(self) -> Dict[str, Signal]:
         """Returns a dictionary of signals available for the ROIHandling widget.
         Exposed signals are:
         
@@ -647,7 +525,7 @@ class ROIHandling(QObject):
         - fullROIRequested,
 
         Returns:
-            dict: dict of signals (key: function name, value: function objects).
+            Dict: Dict of signals (key: function name, value: function objects).
         """
         return {
             "changeROIRequested" : self.changeROIRequested,
