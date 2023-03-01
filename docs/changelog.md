@@ -1,8 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+- Full rework of the plugin architecture ad user interface (hopefully for the last time)
+  - Recording features currently not working as is still under development
+- Removed old device interface documentation
+
 ## 0.2.1
 
-- Added documentation of new architecture.
+- Added documentation of new architecture
 
 ## 0.2.0
 
