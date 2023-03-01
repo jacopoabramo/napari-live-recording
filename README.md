@@ -26,6 +26,12 @@ You can install `napari-live-recording` via [pip]:
 
     pip install napari-live-recording
 
+If you want to install the plugin using the source code, you can do so by cloning the project and installing locally:
+
+    git clone https://github.com/jacopoabramo/napari-live-recording
+    cd napari-live-recording
+    pip install .
+
 ## Documentation
 
 You can review the documentation of this plugin [here](./docs/README.md)
