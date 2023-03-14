@@ -1,7 +1,13 @@
 from napari.viewer import Viewer
 from qtpy.QtCore import QTimer
+from qtpy.QtWidgets import QFileDialog 
 from superqt import QCollapsible
-from napari_live_recording.common import THIRTY_FPS
+from napari_live_recording.common import (
+    THIRTY_FPS,
+    WriterInfo,
+    RecordType,
+    FileFormat
+)
 from napari_live_recording.control.devices import devicesDict, ICamera
 from napari_live_recording.control.devices.interface import NumberParameter
 from napari_live_recording.control import MainController
@@ -17,6 +23,7 @@ from napari_live_recording.ui.widgets import (
 )
 
 import numpy as np
+import os
 
 class ViewerAnchor:
     """Class which handles the UI elements of the plugin.
@@ -38,6 +45,8 @@ class ViewerAnchor:
         self.selectionWidget.newCameraRequested.connect(self.addCameraUI)
         self.recordingWidget.signals["snapRequested"].connect(self.snap)
         self.recordingWidget.signals["liveRequested"].connect(self.live)
+        self.recordingWidget.signals["recordRequested"].connect(self.record)
+        self.mainController.recordFinished.connect(lambda: self.recordingWidget.record.setChecked(False))
 
         self.liveTimer = QTimer()
         self.liveTimer.timeout.connect(self._updateLiveLayers)
@@ -83,6 +92,24 @@ class ViewerAnchor:
         self.mainController.deleteCamera(cameraKey)
         self.mainLayout.removeRow(self.cameraWidgetGroups[cameraKey])
         del self.cameraWidgetGroups[cameraKey]
+    
+    def record(self, status: bool) -> None:
+        if status:
+            # todo: add dynamic control
+            cameraKeys = list(self.cameraWidgetGroups.keys())
+            fullPath, _ = QFileDialog.getSaveFileName(caption='Store recording', filter="TIFF (*.tiff *.tif)")
+            filename = os.path.basename(fullPath)
+            folder = os.path.dirname(fullPath)
+            writerInfo = WriterInfo(
+                folder=folder,
+                filename=filename,
+                fileFormat=FileFormat.TIFF,
+                recordType=RecordType.FRAME,
+                stackSize=self.recordingWidget.recordSize,
+            )
+            self.mainController.record(cameraKeys, writerInfo)
+        else:
+            self.mainController.stopRecord()
     
     def snap(self) -> None:
         for key in self.mainController.deviceControllers.keys():

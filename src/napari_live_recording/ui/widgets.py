@@ -329,9 +329,10 @@ class RecordHandling(QObject):
         self.snap = QPushButton("Snap")
         self.album = QPushButton("Album")
         self.live = QPushButton("Live")
+        self.record = QPushButton("Record")
 
-        # the live button is implemented as a toggle button
         self.live.setCheckable(True)
+        self.record.setCheckable(True)
 
         self.recordSpinBox = QSpinBox()
         self.recordSpinBox.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -341,8 +342,6 @@ class RecordHandling(QObject):
         # from outside the instance?
         self.recordSpinBox.setRange(1, 5000)
         self.recordSpinBox.setValue(100)
-
-        self.record = QPushButton("Record")
         
         self.layout.addWidget(self.snap, 0, 0)
         self.layout.addWidget(self.album, 0, 1)
@@ -351,11 +350,8 @@ class RecordHandling(QObject):
         self.layout.addWidget(self.record, 2, 1)
         self.group.setLayout(self.layout)
 
-        # whenever the live button is toggled,
-        # the other pushbutton must be enabled/disabled
-        # in order to avoid undefined behaviors
-        # when grabbing frames from the device
-        self.live.toggled.connect(self._handleLiveToggled)
+        self.live.toggled.connect(self.handleLiveToggled)
+        self.record.toggled.connect(self.handleRecordToggled)        
     
     def setWidgetsEnabling(self, isEnabled : bool) -> None:
         """ Enables/Disables all record handling widgets. """
@@ -365,7 +361,7 @@ class RecordHandling(QObject):
         self.record.setEnabled(isEnabled)
         self.recordSpinBox.setEnabled(isEnabled)
 
-    def _handleLiveToggled(self, status: bool) -> None:
+    def handleLiveToggled(self, status: bool) -> None:
         """Enables/Disables pushbuttons when the live button is toggled.
 
         Args:
@@ -374,6 +370,17 @@ class RecordHandling(QObject):
         self.snap.setEnabled(not status)
         self.album.setEnabled(not status)
         self.record.setEnabled(not status)
+    
+    def handleRecordToggled(self, status: bool) -> None:
+        """Enables/Disables pushbuttons when the record button is toggled.
+
+        Args:
+            status (bool): new live button status.
+        """
+        self.snap.setEnabled(not status)
+        self.album.setEnabled(not status)
+        self.live.setEnabled(not status)
+        self.recordSpinBox.setEnabled(not status)
     
     @property
     def recordSize(self) -> int:
@@ -398,7 +405,7 @@ class RecordHandling(QObject):
             "snapRequested" : self.snap.clicked,
             "albumRequested" : self.album.clicked,
             "liveRequested" : self.live.toggled,
-            "recordRequested" : self.record.clicked,
+            "recordRequested" : self.record.toggled,
         }
 
 class ROIHandling(QWidget):
