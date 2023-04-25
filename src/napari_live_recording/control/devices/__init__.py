@@ -10,7 +10,7 @@ devicesDict = {}
 # iterate through the modules of the devices module
 # in order to find all submodules containing the class definitions
 # of all cameras
-for (_, module_name, _) in iter_modules([package_dir]):
+for (_, module_name, _) in iter_modules([str(package_dir)]):
     # import the modulte and iterate through the attributes
     try:
         # we skip the interface module
