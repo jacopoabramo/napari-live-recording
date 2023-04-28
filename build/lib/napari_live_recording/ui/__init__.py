@@ -29,6 +29,7 @@ class ViewerAnchor:
         self.mainLayout = QFormLayout()
         self.selectionWidget = CameraSelection()
         self.selectionWidget.setAvailableCameras(list(devicesDict.keys()))
+        self.selectionWidget.updateCameraSelectionUI()
         self.recordingWidget = RecordHandling()
         
         self.mainLayout.addRow(self.selectionWidget.group)
@@ -38,6 +39,7 @@ class ViewerAnchor:
         self.selectionWidget.newCameraRequested.connect(self.addCameraUI)
         self.recordingWidget.signals["snapRequested"].connect(self.snap)
         self.recordingWidget.signals["liveRequested"].connect(self.live)
+        self.recordingWidget.live.toggled.connect(self._enableDeleteButton)
 
         self.liveTimer = QTimer()
         self.liveTimer.timeout.connect(self._updateLiveLayers)
@@ -67,9 +69,9 @@ class ViewerAnchor:
                 widget = ComboBox(parameter.options, name)
                 widget.signals["currentTextChanged"].connect(lambda text, name=name: camera.changeParameter(name, text))
             settingsLayout.addRow(widget.label, widget.widget)
-        deleteButton = QPushButton("Delete camera")
-        deleteButton.clicked.connect(lambda: self.deleteCameraUI(cameraKey))
-        settingsLayout.addRow(deleteButton)
+        self.deleteButton = QPushButton("Delete camera")
+        self.deleteButton.clicked.connect(lambda: self.deleteCameraUI(cameraKey))
+        settingsLayout.addRow(self.deleteButton)
         settingsLayout.addRow(roiWidget)
         settingsGroup.setLayout(settingsLayout)
 
@@ -83,7 +85,10 @@ class ViewerAnchor:
         self.mainController.deleteCamera(cameraKey)
         self.mainLayout.removeRow(self.cameraWidgetGroups[cameraKey])
         del self.cameraWidgetGroups[cameraKey]
-    
+
+    def _enableDeleteButton(self, status: bool):
+        self.deleteButton.setEnabled(not status)
+        
     def snap(self) -> None:
         for key in self.mainController.deviceControllers.keys():
             self._updateLayer(f"Snap {key}", self.mainController.snap(key))

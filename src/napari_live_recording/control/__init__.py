@@ -61,6 +61,7 @@ class MainController(QObject):
     def deleteCamera(self, cameraKey: str) -> None:
         """Deletes a camera device.
         """
+        self.deviceControllers[cameraKey].device.close()
         self.deviceControllers[cameraKey].thread.quit()
         self.deviceControllers[cameraKey].device.deleteLater()
         self.deviceControllers[cameraKey].thread.deleteLater()
@@ -69,6 +70,10 @@ class MainController(QObject):
         del self.deviceLiveBuffer[cameraKey]
     
     def snap(self, cameraKey: str) -> np.ndarray:
+        for key in self.deviceControllers.keys():
+            self.deviceControllers[key].device.setAcquisitionStatus(True)
+        for key in self.deviceControllers.keys():
+            self.deviceControllers[key].device.setAcquisitionStatus(False)
         return self.deviceControllers[cameraKey].device.grabFrame()
     
     def live(self, toggle: bool) -> None:
