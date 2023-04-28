@@ -88,7 +88,7 @@ class ViewerAnchor:
 
     def _enableDeleteButton(self, status: bool):
         self.deleteButton.setEnabled(not status)
-        
+
     def snap(self) -> None:
         for key in self.mainController.deviceControllers.keys():
             self._updateLayer(f"Snap {key}", self.mainController.snap(key))

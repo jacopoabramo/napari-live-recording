@@ -69,10 +69,17 @@ class MMC(ICamera):
         
         for property in properties:
             if not self.__capture.isPropertyReadOnly(name, property):
-                if len(self.__capture.getAllowedPropertyValues(name, property)) !=0:
+                if property == "Exposure":
+                    parameters[property] = NumberParameter(value = float(self.__capture.getProperty(name, property)),
+                                    valueLimits=(self.__capture.getPropertyLowerLimit(name, property), self.__capture.getPropertyUpperLimit(name, property)),
+                                unit="ms",
+                                editable=True)
+
+                elif len(self.__capture.getAllowedPropertyValues(name, property)) !=0:
                     parameters[property] = ListParameter(value = self.__capture.getProperty(name, property),
                                                          options= list(self.__capture.getAllowedPropertyValues(name, property)),
                                                          editable=True)
+                    
                 elif self.__capture.hasPropertyLimits(name, property):
                     try:
                         parameters[property] = NumberParameter(value = float(self.__capture.getProperty(name, property)),
@@ -106,20 +113,16 @@ class MMC(ICamera):
     
     def changeParameter(self, name: str, value: Any) -> None:
         self.setAcquisitionStatus(False)
-        '''self.__capture.waitForDevice(self.name)
-        if name == "Exposure time":
-            self.__capture.setExposure(value)
+        self.__capture.waitForDevice(self.name)
+        if name == "Exposure":
+            self.__capture.setExposure(self.name, value)
 
-        elif name == "Pixel type":
-            #self.__format = self.pixelFormats[value]
-
-            self.__capture.setProperty(self.name, 'PixelType', self.__format)'''
-
-        if name in self.parameters.keys():
+        elif name in self.parameters.keys():
             self.__capture.setProperty(self.name, name, value)
 
         else:
             raise ValueError(f"Unrecognized value \"{value}\" for parameter \"{name}\"")
+        
         self.__capture.waitForDevice(self.name)
         self.setAcquisitionStatus(True)
     
