@@ -11,27 +11,27 @@ from napari_live_recording.ui.widgets import (
     QPushButton,
     LabeledSlider,
     ComboBox,
-    RecordHandling, 
-    CameraSelection, 
-    ROIHandling
+    RecordHandling,
+    CameraSelection,
+    ROIHandling,
 )
 
 import numpy as np
 
-class ViewerAnchor:
-    """Class which handles the UI elements of the plugin.
-    """
 
-    def __init__(self, napari_viewer : Viewer, mainController: MainController) -> None:
+class ViewerAnchor:
+    """Class which handles the UI elements of the plugin."""
+
+    def __init__(self, napari_viewer: Viewer, mainController: MainController) -> None:
         self.viewer = napari_viewer
-        
+
         self.mainController = mainController
         self.mainLayout = QFormLayout()
         self.selectionWidget = CameraSelection()
         self.selectionWidget.setAvailableCameras(list(devicesDict.keys()))
         self.selectionWidget.updateCameraSelectionUI()
         self.recordingWidget = RecordHandling()
-        
+
         self.mainLayout.addRow(self.selectionWidget.group)
         self.mainLayout.addRow(self.recordingWidget.group)
 
@@ -44,10 +44,9 @@ class ViewerAnchor:
         self.liveTimer = QTimer()
         self.liveTimer.timeout.connect(self._updateLiveLayers)
         self.liveTimer.setInterval(THIRTY_FPS)
-    
-    def addCameraUI(self, interface: str, name: str, idx: int):
 
-        camera : ICamera = devicesDict[interface](name, idx)
+    def addCameraUI(self, interface: str, name: str, idx: int):
+        camera: ICamera = devicesDict[interface](name, idx)
         cameraKey = f"{camera.name}:{camera.__class__.__name__}:{str(idx)}"
 
         cameraCollapsible = QCollapsible(cameraKey)
@@ -57,21 +56,29 @@ class ViewerAnchor:
         settingsGroup = QGroupBox("Settings")
 
         self.mainController.addCamera(cameraKey, camera)
-        
+
         roiWidget = ROIHandling(camera.fullShape)
-        roiWidget.signals["changeROIRequested"].connect(lambda roi: camera.changeROI(roi))
+        roiWidget.signals["changeROIRequested"].connect(
+            lambda roi: camera.changeROI(roi)
+        )
         roiWidget.signals["fullROIRequested"].connect(lambda roi: camera.changeROI(roi))
         for name, parameter in camera.parameters.items():
             if type(parameter) == NumberParameter:
-                widget = LabeledSlider((*parameter.valueLimits, parameter.value), name, parameter.unit)
-                widget.signals["valueChanged"].connect(lambda value, name=name: camera.changeParameter(name, value))
-            else: # ListParameter
+                widget = LabeledSlider(
+                    (*parameter.valueLimits, parameter.value), name, parameter.unit
+                )
+                widget.signals["valueChanged"].connect(
+                    lambda value, name=name: camera.changeParameter(name, value)
+                )
+            else:  # ListParameter
                 widget = ComboBox(parameter.options, name)
-                widget.signals["currentTextChanged"].connect(lambda text, name=name: camera.changeParameter(name, text))
+                widget.signals["currentTextChanged"].connect(
+                    lambda text, name=name: camera.changeParameter(name, text)
+                )
             settingsLayout.addRow(widget.label, widget.widget)
-        self.deleteButton = QPushButton("Delete camera")
-        self.deleteButton.clicked.connect(lambda: self.deleteCameraUI(cameraKey))
-        settingsLayout.addRow(self.deleteButton)
+        deleteButton = QPushButton("Delete camera")
+        deleteButton.clicked.connect(lambda: self.deleteCameraUI(cameraKey))
+        settingsLayout.addRow(deleteButton)
         settingsLayout.addRow(roiWidget)
         settingsGroup.setLayout(settingsLayout)
 
@@ -86,36 +93,32 @@ class ViewerAnchor:
         self.mainLayout.removeRow(self.cameraWidgetGroups[cameraKey])
         del self.cameraWidgetGroups[cameraKey]
 
-    def _enableDeleteButton(self, status: bool):
-        self.deleteButton.setEnabled(not status)
-
     def snap(self) -> None:
         for key in self.mainController.deviceControllers.keys():
             self._updateLayer(f"Snap {key}", self.mainController.snap(key))
-    
+
     def live(self, status: bool) -> None:
         self.mainController.live(status)
         if status:
             self.liveTimer.start()
         else:
             self.liveTimer.stop()
-    
+
     def _updateLiveLayers(self):
         for key, buffer in self.mainController.deviceLiveBuffer.items():
             # this copy may not be truly necessary
             # but it does not impact performance too much
             # so we keep it to avoid possible data corruption
             self._updateLayer(f"Live {key}", np.copy(buffer))
-    
 
     def _updateLayer(self, layerKey: str, data: np.ndarray) -> None:
         try:
             # layer is recreated in case the image changes type (i.e. grayscale -> RGB and viceversa)
             if data.ndim != self.viewer.layers[layerKey].data.ndim:
                 self.viewer.layers.remove(layerKey)
-                self.viewer.add_image(data, name = layerKey)
+                self.viewer.add_image(data, name=layerKey)
             else:
                 self.viewer.layers[layerKey].data = data
         except KeyError:
             # needed in case the layer of that live recording does not exist
-            self.viewer.add_image(data, name = layerKey)
+            self.viewer.add_image(data, name=layerKey)
