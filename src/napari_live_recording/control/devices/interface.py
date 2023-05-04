@@ -79,7 +79,9 @@ class ICamera(QObject):
     
     @abstractmethod
     def setAcquisitionStatus(self, started: bool) -> None:
-        """Sets the current acquisition status of the camera device.
+        """Sets the current acquisition status of the camera device. 
+            - True: acquisition started;
+            - False: acquisition stopped.
         """
         raise NotImplementedError()
 

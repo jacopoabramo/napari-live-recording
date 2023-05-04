@@ -91,21 +91,18 @@ class ViewerAnchor:
     def deleteCameraUI(self, cameraKey: str) -> None:
         self.mainController.deleteCamera(cameraKey)
         self.mainLayout.removeRow(self.cameraWidgetGroups[cameraKey])
-        del self.cameraWidgetGroups[cameraKey]
     
     def record(self, status: bool) -> None:
         if status:
             # todo: add dynamic control
-            cameraKeys = list(self.cameraWidgetGroups.keys())
-            fullPath, _ = QFileDialog.getSaveFileName(caption='Store recording', filter="TIFF (*.tiff *.tif)")
-            filename = os.path.basename(fullPath)
-            folder = os.path.dirname(fullPath)
+            cameraKeys = list(self.cameraWidgetGroups.keys())            
             writerInfo = WriterInfo(
-                folder=folder,
-                filename=filename,
-                fileFormat=FileFormat.TIFF,
-                recordType=RecordType.FRAME,
+                folder=self.recordingWidget.folderTextEdit.text(),
+                filename=self.recordingWidget.filenameTextEdit.text(),
+                fileFormat=self.recordingWidget.formatComboBox.currentEnum(),
+                recordType=self.recordingWidget.recordComboBox.currentEnum(),
                 stackSize=self.recordingWidget.recordSize,
+                acquisitionTime=self.recordingWidget.recordSize
             )
             self.mainController.record(cameraKeys, writerInfo)
         else:

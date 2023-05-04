@@ -1,3 +1,5 @@
+import os
+import numpy as np
 from typing import Union
 from qtpy.QtCore import Qt, QObject, Signal, QTimer
 from qtpy.QtWidgets import (
@@ -6,13 +8,14 @@ from qtpy.QtWidgets import (
     QComboBox, 
     QSpinBox,
     QLineEdit, 
-    QPushButton
+    QPushButton,
+    QFileDialog
 )
-from superqt import QLabeledSlider, QLabeledDoubleSlider
-from qtpy.QtWidgets import QFormLayout, QHBoxLayout, QGridLayout, QGroupBox
+from superqt import QLabeledSlider, QLabeledDoubleSlider, QEnumComboBox
+from qtpy.QtWidgets import QFormLayout, QGridLayout, QGroupBox
 from abc import ABC, abstractmethod
 from dataclasses import replace
-from napari_live_recording.common import ROI
+from napari_live_recording.common import ROI, FileFormat, RecordType
 from enum import Enum
 from typing import Dict, List, Tuple
 
@@ -313,12 +316,15 @@ class RecordHandling(QObject):
         - live viewing;
         - recording to output file;
         - single frame snap;
-        - album stacking snap.
 
         Widget layout:
-        |(0,0) QPushButton (Snap)     |(0,1) QPushButton (Album)| |
-        |(1,0-1)              QPushButton (Live)                  |
-        |(2,0) QSpinBox (Record size) |(2,1) QPushButton (Record) | 
+        |(0,1-2)   QComboBox (File Format)               |(0,2)   QLabel   |
+        |(1,0-1)   QLineEdit (Folder selection)          |(1,2) QPushButton|
+        |(2,0-2)   QLineEdit (Record filename)           |(2,2)   QLabel   |
+        |(3,0-2)   QSpinBox (Record size)                |(3,2)   QLabel   |
+        |(4,0-2)                  QPushButton (Snap)                       |
+        |(5,0-2)                  QPushButton (Live)                       |
+        |(6,0-2)                  QPushButton (Record)                     |
 
         """
         QObject.__init__(self)
@@ -326,8 +332,26 @@ class RecordHandling(QObject):
         self.group = QGroupBox()
         self.layout = QGridLayout()
 
+        self.formatLabel = QLabel("File format")
+        self.formatComboBox = QEnumComboBox(enum_class=FileFormat)
+        self.formatLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.folderTextEdit = QLineEdit(os.path.join(os.path.expanduser("~"), "Documents"))
+        self.folderTextEdit.setReadOnly(True)
+        self.folderButton = QPushButton("Select record folder")
+
+        self.filenameTextEdit = QLineEdit("Filename")
+        self.filenameLabel = QLabel("Record filename")
+        self.filenameLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.recordComboBox = QEnumComboBox(enum_class=RecordType)
+
+        self.recordSpinBox = QSpinBox()
+        self.recordSpinBox.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.recordSpinBox.setRange(1, np.iinfo(np.uint16).max)
+        self.recordSpinBox.setValue(100)
+
         self.snap = QPushButton("Snap")
-        self.album = QPushButton("Album")
         self.live = QPushButton("Live")
         self.record = QPushButton("Record")
 
@@ -342,21 +366,56 @@ class RecordHandling(QObject):
         # from outside the instance?
         self.recordSpinBox.setRange(1, 5000)
         self.recordSpinBox.setValue(100)
+        self.record.setCheckable(True)
         
-        self.layout.addWidget(self.snap, 0, 0)
-        self.layout.addWidget(self.album, 0, 1)
-        self.layout.addWidget(self.live, 1, 0, 1, 2)
-        self.layout.addWidget(self.recordSpinBox, 2, 0)
-        self.layout.addWidget(self.record, 2, 1)
+        self.layout.addWidget(self.formatComboBox, 0, 0, 1, 2)
+        self.layout.addWidget(self.formatLabel, 0, 2)
+        self.layout.addWidget(self.folderTextEdit, 1, 0, 1, 2)
+        self.layout.addWidget(self.folderButton, 1, 2)
+        self.layout.addWidget(self.filenameTextEdit, 2, 0, 1, 2)
+        self.layout.addWidget(self.filenameLabel, 2, 2)
+        self.layout.addWidget(self.recordSpinBox, 3, 0, 1, 2)
+        self.layout.addWidget(self.recordComboBox, 3, 2)
+        self.layout.addWidget(self.snap, 4, 0, 1, 3)
+        self.layout.addWidget(self.live, 5, 0, 1, 3)
+        self.layout.addWidget(self.record, 6, 0, 1, 3)
         self.group.setLayout(self.layout)
-
-        self.live.toggled.connect(self.handleLiveToggled)
-        self.record.toggled.connect(self.handleRecordToggled)        
+        self.group.setFlat(True)
     
+        self.live.toggled.connect(self.handleLiveToggled)
+        self.record.toggled.connect(self.handleRecordToggled)
+        
+        self.folderButton.clicked.connect(self.handleFolderSelection)
+        self.recordComboBox.currentEnumChanged.connect(self.handleRecordTypeChanged)
+    
+    def handleFolderSelection(self) -> None:
+        """Handles the selection of the output folder for the recording.
+        """
+        folder = QFileDialog.getExistingDirectory(self.group, "Select output folder", self.folderTextEdit.text())
+        if folder:
+            self.folderTextEdit.setText(folder)
+
+    def handleRecordTypeChanged(self, recordType: RecordType) -> None:
+        """Handles the change of the record type.
+
+        Args:
+            recordType (RecordType): new record type.
+        """
+        if recordType == RecordType["Toggled"]:
+            self.recordSpinBox.setEnabled(False)
+            self.recordSpinBox.hide()
+        else:
+            self.recordSpinBox.show()
+            self.recordSpinBox.setEnabled(True)
+            if recordType == RecordType["Number of frames"]:
+                newVal = 100
+            elif recordType == RecordType["Time (seconds)"]:
+                newVal = 1
+            self.recordSpinBox.setValue(newVal)
+
     def setWidgetsEnabling(self, isEnabled : bool) -> None:
         """ Enables/Disables all record handling widgets. """
         self.snap.setEnabled(isEnabled)
-        self.album.setEnabled(isEnabled)
         self.live.setEnabled(isEnabled)
         self.record.setEnabled(isEnabled)
         self.recordSpinBox.setEnabled(isEnabled)
@@ -368,7 +427,6 @@ class RecordHandling(QObject):
             status (bool): new live button status.
         """
         self.snap.setEnabled(not status)
-        self.album.setEnabled(not status)
         self.record.setEnabled(not status)
     
     def handleRecordToggled(self, status: bool) -> None:
@@ -378,7 +436,6 @@ class RecordHandling(QObject):
             status (bool): new live button status.
         """
         self.snap.setEnabled(not status)
-        self.album.setEnabled(not status)
         self.live.setEnabled(not status)
         self.recordSpinBox.setEnabled(not status)
     
@@ -403,7 +460,6 @@ class RecordHandling(QObject):
         """
         return {
             "snapRequested" : self.snap.clicked,
-            "albumRequested" : self.album.clicked,
             "liveRequested" : self.live.toggled,
             "recordRequested" : self.record.toggled,
         }
