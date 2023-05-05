@@ -18,6 +18,7 @@ from dataclasses import replace
 from napari_live_recording.common import ROI, FileFormat, RecordType
 from enum import Enum
 from typing import Dict, List, Tuple
+from pymmcore_plus import CMMCorePlus
 
 class Timer(QTimer):
     pass
@@ -270,13 +271,16 @@ class CameraSelection(QObject):
         self.group = QGroupBox()
         self.camerasComboBox = ComboBox([], "Interface")
         self.nameLineEdit = LineEdit(param="MyCamera", name="Camera name")
-        self.idLineEdit = LineEdit(param="0", name="Camera ID/SN", orientation="right")
+        self.idLineEdit = LineEdit(param="DemoCamera", name="Camera ID/SN", orientation="right")
         self.addButton = QPushButton("Add camera")
         self.addButton.setEnabled(False)
+        self.mmcIsChosen = False
 
         # create widget layout
+        self.camerasComboBox.signals["currentIndexChanged"].connect(self.updateCameraSelectionUI)
         self.camerasComboBox.signals["currentIndexChanged"].connect(self._setAddEnabled)
-        self.addButton.clicked.connect(lambda: self.newCameraRequested.emit(self.camerasComboBox.value[0], self.nameLineEdit.value, self.idLineEdit.value))
+        self.idLineEdit.signals["textChanged"].connect(self.updateCameraSelectionUI)
+        self.addButton.clicked.connect(lambda: self.newCameraRequested.emit(self.camerasComboBox.value[0], self.nameLineEdit.value, (self.idLineEdit.value + " "+ self.deviceComboBox.value[0]) if self.mmcIsChosen else self.idLineEdit.value))
 
         self.formLayout = QFormLayout()
         self.formLayout.addRow(self.camerasComboBox.label, self.camerasComboBox.widget)
@@ -296,6 +300,32 @@ class CameraSelection(QObject):
         cameras.insert(0, "Select device")
         self.camerasComboBox.changeWidgetSettings(cameras)
         self.camerasComboBox.isEnabled = True
+
+    def updateCameraSelectionUI(self):
+        print("Function called")
+        if self.camerasComboBox.value[0] == "MMC":
+            try:
+                self.mmc = CMMCorePlus.instance()
+                availableDevices = self.mmc.getAvailableDevices(self.idLineEdit.value)
+                if self.mmcIsChosen:
+                    print("Line edit edited")
+                    self.mmcIsChosen = True
+                    self.formLayout.removeRow(self.deviceComboBox.widget)
+                    self.deviceComboBox = ComboBox(param=availableDevices, name="Device Name", orientation="right")
+                    self.formLayout.insertRow(3, self.deviceComboBox.label, self.deviceComboBox.widget)
+                elif not self.mmcIsChosen:
+                    self.mmcIsChosen = True
+                    self.deviceComboBox = ComboBox(param=availableDevices, name="Device Name", orientation="right")
+                    self.formLayout.insertRow(3, self.deviceComboBox.label, self.deviceComboBox.widget)
+                self.deviceComboBox.isEnabled = True
+            except:
+                self.deviceComboBox.isEnabled = False
+        else:
+            self.mmcIsChosen = False
+            try:
+                self.formLayout.removeRow(self.deviceComboBox.widget)
+            except:
+                pass
     
     def _setAddEnabled(self, idx: int):
         """Private method serving as an enable/disable mechanism for the Add button widget.

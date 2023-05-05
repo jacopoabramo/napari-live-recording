@@ -16,6 +16,7 @@ from typing import Dict, NamedTuple
 from functools import partial
 from time import time
 
+
 class SignalCounter(QObject):
     maxCountReached = Signal()
 
@@ -23,28 +24,29 @@ class SignalCounter(QObject):
         self.maxCount = 0
         self.count = 0
         super().__init__()
-    
+
     def increaseCounter(self):
         self.count += 1
         if self.count == self.maxCount:
             self.maxCountReached.emit()
             self.count = 0
 
+
 class LocalController(NamedTuple):
-    """Named tuple to wrap a camera device and the relative thread into which the device lives.
-    """
-    thread : QThread
-    device : ICamera
+    """Named tuple to wrap a camera device and the relative thread into which the device lives."""
+
+    thread: QThread
+    device: ICamera
+
 
 class MainController(QObject):
     recordFinished = Signal()
 
     def __init__(self) -> None:
-        """Main Controller class. Stores all camera objects to access live and stack recordings.
-        """
+        """Main Controller class. Stores all camera objects to access live and stack recordings."""
         super().__init__()
-        self.deviceControllers : Dict[str, LocalController] = {}
-        self.deviceLiveBuffer : Dict[str, np.ndarray] = {}
+        self.deviceControllers: Dict[str, LocalController] = {}
+        self.deviceLiveBuffer: Dict[str, np.ndarray] = {}
         self.liveWorker = None
         self.__isLive = False
         self.recordLoopEnabled = False
@@ -67,24 +69,25 @@ class MainController(QObject):
             yield
 
     def addCamera(self, cameraKey: str, camera: ICamera) -> str:
-        """Adds a new device in the controller, with a thread in which the device operates.
-        """
+        """Adds a new device in the controller, with a thread in which the device operates."""
         thread = QThread()
         camera.moveToThread(thread)
         deviceController = LocalController(thread, camera)
         self.deviceControllers[cameraKey] = deviceController
         self.deviceControllers[cameraKey].thread.start()
-        self.deviceLiveBuffer[cameraKey] = np.zeros(shape=camera.roiShape.pixelSizes, dtype=np.uint16)
+        self.deviceLiveBuffer[cameraKey] = np.zeros(
+            shape=camera.roiShape.pixelSizes, dtype=np.uint16
+        )
         self.recordSignalCounter.maxCount += 1
         return cameraKey
 
     def changeCameraROI(self, cameraKey: str, newROI: ROI) -> None:
         self.deviceControllers[cameraKey].device.changeROI(newROI)
         self.deviceLiveBuffer[cameraKey] = np.zeros(shape=newROI.pixelSizes)
-    
+
     def deleteCamera(self, cameraKey: str) -> None:
-        """Deletes a camera device.
-        """
+
+        """Deletes a camera device. """
         with self.livePaused():
             try:
                 self.deviceControllers[cameraKey].device.close()
@@ -95,20 +98,19 @@ class MainController(QObject):
             except RuntimeError:
                 # camera already deleted
                 pass
-            
-        
     def snap(self, cameraKey: str) -> np.ndarray:
         return self.deviceControllers[cameraKey].device.grabFrame()
-    
-    def live(self, toggle: bool) -> None:
 
+    def live(self, toggle: bool) -> None:
         self.__isLive = toggle
 
         @thread_worker(worker_class=FunctionWorker, start_thread=False)
         def liveLoop():
             while True:
                 for key in self.deviceControllers.keys():
-                    self.deviceLiveBuffer[key] = np.copy(self.deviceControllers[key].device.grabFrame())
+                    self.deviceLiveBuffer[key] = np.copy(
+                        self.deviceControllers[key].device.grabFrame()
+                    )
 
         if self.isLive:
             for key in self.deviceControllers.keys():
@@ -119,12 +121,12 @@ class MainController(QObject):
             self.liveWorker.quit()
             for key in self.deviceControllers.keys():
                 self.deviceControllers[key].device.setAcquisitionStatus(False)
+
     
     def record(self, camNames: list, writerInfo: WriterInfo) -> None:
-
         def closeFile(filename) -> None:
             files[filename].close()
-        
+
         def closeWorkerConnection(worker: FunctionWorker) -> None:
             self.recordSignalCounter.increaseCounter()
             worker.finished.disconnect()
@@ -184,7 +186,7 @@ class MainController(QObject):
         else:
             # todo: implement HDF5 writing
             raise ValueError("Unsupported file format selected for recording!")
-        
+
         workers = []
         if writerInfo.recordType == RecordType["Number of frames"]:
             workers = [recordFixedStack(filename, camName, writerInfo.stackSize, writeFunc) 
@@ -211,4 +213,3 @@ class MainController(QObject):
             self.live(False)
         for key in self.deviceControllers.keys():
             self.deleteCamera(key)
-        
