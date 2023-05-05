@@ -2,17 +2,68 @@ from __future__ import annotations
 from enum import IntEnum
 from dataclasses import dataclass
 from functools import total_ordering
+from tifffile.tifffile import PHOTOMETRIC
 
 # equivalent number of milliseconds
 # for 30 Hz and 60 Hz refresh rates
 THIRTY_FPS = 33
 SIXTY_FPS  = 16
 
-class FileFormat(IntEnum):
-    TIFF = 0
-    # todo: add support for HDF5 storage
-    # in the recording
-    # HDF5 = auto()
+FileFormat = IntEnum(
+    value='FileFormat',
+    names=[
+        ('ImageJ TIFF', 1),
+        ('OME-TIFF', 2),
+        ('HDF5', 3)
+    ]
+)
+
+RecordType = IntEnum(
+    value='RecordType',
+    names = [
+        ("Number of frames", 1),
+        ("Time (seconds)", 2),
+        ("Toggled", 3)
+    ]
+)
+
+class ColorType(IntEnum):
+    GRAYLEVEL = 0
+    RGB = 1
+
+TIFF_PHOTOMETRIC_MAP = {
+    # ColorType -> photometric, number of channels
+    ColorType.GRAYLEVEL : (PHOTOMETRIC.MINISBLACK, 1),
+    ColorType.RGB: (PHOTOMETRIC.RGB, 3)
+}
+
+@dataclass(frozen=True)
+class WriterInfo:
+    folder: str
+    filename: str
+    fileFormat: FileFormat
+    recordType: RecordType
+    stackSize: int = 0
+    acquisitionTime: float = 0
+
+class ColorType(IntEnum):
+    GRAYLEVEL = 0
+    RGB = 1
+
+TIFF_PHOTOMETRIC_MAP = {
+    # ColorType -> photometric, number of channels
+    ColorType.GRAYLEVEL : (PHOTOMETRIC.MINISBLACK, 1),
+    ColorType.RGB: (PHOTOMETRIC.RGB, 3)
+}
+
+@dataclass(frozen=True)
+class WriterInfo:
+    folder: str
+    filename: str
+    fileFormat: FileFormat
+    recordType: RecordType
+    stackSize: int = 0
+    acquisitionTime: float = 0
 
 @total_ordering
 @dataclass

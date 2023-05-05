@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from dataclasses import replace
-from napari_live_recording.common import ROI
+from napari_live_recording.common import ROI, ColorType
 from napari_live_recording.control.devices.interface import (
     ICamera,
     NumberParameter,
@@ -30,10 +30,10 @@ class OpenCV(ICamera):
     }
 
     pixelFormats = {
-        "RGB" : cv2.COLOR_BGR2RGB, # default
-        "RGBA" : cv2.COLOR_BGR2RGBA,
-        "BGR" : None,
-        "Grayscale" : cv2.COLOR_RGB2GRAY
+        "RGB" : (cv2.COLOR_BGR2RGB, ColorType.RGB), # default
+        "RGBA" : (cv2.COLOR_BGR2RGBA, ColorType.RGB),
+        "BGR" : (None, ColorType.RGB),
+        "Grayscale" : (cv2.COLOR_RGB2GRAY, ColorType.GRAYLEVEL)
     }
 
     def __init__(self, name: str, deviceID: Union[str, int]) -> None:
@@ -71,8 +71,10 @@ class OpenCV(ICamera):
                                                 options=list(self.pixelFormats.keys()),
                                                 editable=True)
 
-        self.__format = self.pixelFormats["RGB"]
         super().__init__(name, deviceID, parameters, sensorShape)
+        format = self.pixelFormats["RGB"]
+        self.__format = format[0]
+        self._colorType = format[1]
     
     def setAcquisitionStatus(self, started: bool) -> None:
         pass
@@ -90,7 +92,9 @@ class OpenCV(ICamera):
             value = (self.msExposure[value] if platform.startswith("win") else value)
             self.__capture.set(cv2.CAP_PROP_EXPOSURE, value)
         elif name == "Pixel format":
-            self.__format = self.pixelFormats[value]
+            newFormat = self.pixelFormats[value]
+            self.__format = newFormat[0]
+            self._colorType = newFormat[1]
         else:
             raise ValueError(f"Unrecognized value \"{value}\" for parameter \"{name}\"")
     

@@ -1,7 +1,13 @@
 from napari.viewer import Viewer
 from qtpy.QtCore import QTimer
+from qtpy.QtWidgets import QFileDialog 
 from superqt import QCollapsible
-from napari_live_recording.common import THIRTY_FPS
+from napari_live_recording.common import (
+    THIRTY_FPS,
+    WriterInfo,
+    RecordType,
+    FileFormat
+)
 from napari_live_recording.control.devices import devicesDict, ICamera
 from napari_live_recording.control.devices.interface import NumberParameter
 from napari_live_recording.control import MainController
@@ -17,6 +23,7 @@ from napari_live_recording.ui.widgets import (
 )
 
 import numpy as np
+import os
 
 
 class ViewerAnchor:
@@ -39,7 +46,8 @@ class ViewerAnchor:
         self.selectionWidget.newCameraRequested.connect(self.addCameraUI)
         self.recordingWidget.signals["snapRequested"].connect(self.snap)
         self.recordingWidget.signals["liveRequested"].connect(self.live)
-        self.recordingWidget.live.toggled.connect(self._enableDeleteButton)
+        self.recordingWidget.signals["recordRequested"].connect(self.record)
+        self.mainController.recordFinished.connect(lambda: self.recordingWidget.record.setChecked(False))
 
         self.liveTimer = QTimer()
         self.liveTimer.timeout.connect(self._updateLiveLayers)
@@ -91,8 +99,23 @@ class ViewerAnchor:
     def deleteCameraUI(self, cameraKey: str) -> None:
         self.mainController.deleteCamera(cameraKey)
         self.mainLayout.removeRow(self.cameraWidgetGroups[cameraKey])
-        del self.cameraWidgetGroups[cameraKey]
-
+ 
+    def record(self, status: bool) -> None:
+        if status:
+            # todo: add dynamic control
+            cameraKeys = list(self.cameraWidgetGroups.keys())            
+            writerInfo = WriterInfo(
+                folder=self.recordingWidget.folderTextEdit.text(),
+                filename=self.recordingWidget.filenameTextEdit.text(),
+                fileFormat=self.recordingWidget.formatComboBox.currentEnum(),
+                recordType=self.recordingWidget.recordComboBox.currentEnum(),
+                stackSize=self.recordingWidget.recordSize,
+                acquisitionTime=self.recordingWidget.recordSize
+            )
+            self.mainController.record(cameraKeys, writerInfo)
+        else:
+            self.mainController.stopRecord()
+            
     def snap(self) -> None:
         for key in self.mainController.deviceControllers.keys():
             self._updateLayer(f"Snap {key}", self.mainController.snap(key))

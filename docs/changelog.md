@@ -5,6 +5,7 @@
 - Full rework of the plugin architecture ad user interface (hopefully for the last time)
   - Recording features currently not working as is still under development
 - Removed old device interface documentation
+- Fixed issues #16, #17
 
 ## 0.2.1
 

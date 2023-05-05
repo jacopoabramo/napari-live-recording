@@ -2,7 +2,7 @@ import numpy as np
 from abc import abstractmethod
 from typing import Union, Tuple
 from qtpy.QtCore import QObject
-from napari_live_recording.common import ROI
+from napari_live_recording.common import ROI, ColorType
 from typing import Dict, List, Any
 from dataclasses import dataclass, replace
 from abc import ABC
@@ -59,7 +59,11 @@ class ICamera(QObject):
         self.parameters = parameters
         self._roiShape = sensorShape
         self._fullShape = sensorShape
-        self.frameBuffer = None
+        self._colorType = ColorType.GRAYLEVEL
+
+    @property
+    def colorType(self) -> ColorType:
+        return self._colorType
     
     @property
     def fullShape(self) -> ROI:
@@ -75,7 +79,9 @@ class ICamera(QObject):
     
     @abstractmethod
     def setAcquisitionStatus(self, started: bool) -> None:
-        """Sets the current acquisition status of the camera device.
+        """Sets the current acquisition status of the camera device. 
+            - True: acquisition started;
+            - False: acquisition stopped.
         """
         raise NotImplementedError()
 
@@ -105,3 +111,9 @@ class ICamera(QObject):
         """Optional method to close the device.
         """
         pass
+
+    def __enter__(self):
+        self.setAcquisitionStatus(True)
+    
+    def __exit__(self, exc_type, exc_value, tb):
+        self.setAcquisitionStatus(False)
