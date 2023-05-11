@@ -91,9 +91,6 @@ class MMC(ICamera):
             pass
         rawImg = self.__capture.getLastImage()
         img = self.__capture.fixImage(rawImg)
-        y, h = self.roiShape.offset_y, self.roiShape.offset_y + self.roiShape.height
-        x, w = self.roiShape.offset_x, self.roiShape.offset_x + self.roiShape.width
-        img = img[y:h, x:w]
         return img
 
     def changeParameter(self, name: str, value: Any) -> None:
@@ -112,6 +109,12 @@ class MMC(ICamera):
         self.setAcquisitionStatus(True)
 
     def changeROI(self, newROI: ROI):
+        self.setAcquisitionStatus(False)
+        self.__capture.setROI(
+            self.name, newROI.offset_x, newROI.offset_y, newROI.width, newROI.height
+        )
+        self.__capture.waitForDevice(self.name)
+        self.setAcquisitionStatus(True)
         if newROI <= self.fullShape:
             self.roiShape = newROI
 
