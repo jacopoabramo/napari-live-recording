@@ -12,6 +12,14 @@ from typing import Union, Any
 from sys import platform
 
 
+"""
+Installed Versions:
+Micromanager: MMSetup_64bit_2.0.1_20230510
+pymmcore: 10.3.0.71.0
+pymmcore-plus: 0.6.7
+"""
+
+
 class MMC(ICamera):
     def __init__(self, name: str, deviceID: Union[str, int]) -> None:
         """MMC-Core VideoCapture wrapper.
@@ -95,17 +103,12 @@ class MMC(ICamera):
 
     def changeParameter(self, name: str, value: Any) -> None:
         self.setAcquisitionStatus(False)
-        self.__capture.waitForDevice(self.name)
-        if name == "Exposure":
-            self.__capture.setExposure(self.name, value)
-
-        elif name in self.parameters.keys():
+        if name in self.parameters.keys():
             self.__capture.setProperty(self.name, name, value)
 
         else:
             raise ValueError(f'Unrecognized value "{value}" for parameter "{name}"')
 
-        self.__capture.waitForDevice(self.name)
         self.setAcquisitionStatus(True)
 
     def changeROI(self, newROI: ROI):
@@ -113,7 +116,6 @@ class MMC(ICamera):
         self.__capture.setROI(
             self.name, newROI.offset_x, newROI.offset_y, newROI.width, newROI.height
         )
-        self.__capture.waitForDevice(self.name)
         self.setAcquisitionStatus(True)
         if newROI <= self.fullShape:
             self.roiShape = newROI
