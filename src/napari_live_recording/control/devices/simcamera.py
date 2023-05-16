@@ -32,21 +32,7 @@ class SimCamera(ICamera):
         "244.1 us": 244.1*10**(-6),
         "122.1 us":122.1*10**(-6)
      }
-  pixelFormats = {
-       "RGB" : 0, # default
-        "RGBA" : 1,
-        "BGR" : 2,
-        "Grayscale" : 3
-     }
-  methods = {
-     "noise": 0,
-       "gradient":1,
-       "sawtooth":2,
-       "one gaussian":3,
-       "black":4,
-       "white":5  
-     }
-   
+      
   def __init__(self, name: str, deviceID: Union[str, int]) -> None:
         """simulated VideoCapture PYME.
 
@@ -64,16 +50,16 @@ class SimCamera(ICamera):
         sensorShape = ROI(offset_x=0, offset_y=0, height=self.__camera._roi.height // self.__camera._binning.v, width=self.__camera._roi.width // self.__camera._binning.h)
         '''_binning.h & _binning.v default value = 1'''
         parameters = {}
-     
+        '''
         parameters["Exposure time"] = ListParameter(value=self.msExposure["15.6 ms"], 
                                                         options=list(self.msExposure.keys()), 
                                                         editable=True)
         ''' 
-        parameters["Exposure time"] = NumberParameter(value=10e-3,                   #use this one for slider
+        parameters["Exposure time"] = NumberParameter(value=self.msExposure["15.6 ms"],                   
                                                         valueLimits=(100e-6, 1),
                                                         unit="s",
                                                         editable=True)
-        '''
+        
         parameters["Pixel format"] = ListParameter(value=self.pixelFormats["RGB"],
                                                 options=list(self.pixelFormats.keys()),
                                                 editable=True)
