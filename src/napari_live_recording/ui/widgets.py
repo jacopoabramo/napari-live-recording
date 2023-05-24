@@ -94,7 +94,7 @@ class ComboBox(LocalWidget):
             orientation (str, optional): label orientation on the layout. Defaults to "left".
         """
         self.combobox = QComboBox()
-        self.combobox.addItems(param)
+        self.combobox.addItems([str(item) for item in param])
         super().__init__(self.combobox, name, unit, orientation)
     
     def changeWidgetSettings(self, newParam: List[str]) -> None:
