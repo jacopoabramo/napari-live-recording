@@ -13,7 +13,7 @@ from napari_live_recording.control.devices.interface import (
 )
 import queue
 
-class SimulCamera(ICamera):
+class SimCamera(ICamera):
 #uses time.sleep() therfore the exposure values have to be entered in sec
   msExposure = {
        "1 s":  1,
