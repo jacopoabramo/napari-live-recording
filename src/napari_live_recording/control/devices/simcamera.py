@@ -1,6 +1,7 @@
+import cv2
 import numpy as np
 from microscope.device_server import device
-from microscope.simulators import SimulatedCamera
+from microscope.simulators import SimulatedCamera, _ImageGenerator
 import typing
 from typing import Union, Any, Tuple
 from sys import platform
@@ -12,9 +13,7 @@ from napari_live_recording.control.devices.interface import (
 )
 import queue
 
-
-
-class SimCamera(ICamera):
+class SimulCamera(ICamera):
 #uses time.sleep() therfore the exposure values have to be entered in sec
   msExposure = {
        "1 s":  1,
@@ -32,40 +31,61 @@ class SimCamera(ICamera):
         "244.1 us": 244.1*10**(-6),
         "122.1 us":122.1*10**(-6)
      }
-      
+  temp_dic={}
+  dic = {}    
+ 
   def __init__(self, name: str, deviceID: Union[str, int]) -> None:
         """simulated VideoCapture PYME.
-
         Args:
             name (str): user-defined camera name.
             deviceID (Union[str, int]): camera identifier.
         """
         self.__camera = SimulatedCamera()
 
-        self.__camera.get_all_settings()
-
-        self.__camera.set_setting("display image number", False)
-        
-        #self._roi = microscope.ROI(0, 0, *sensor_shape)   
         sensorShape = ROI(offset_x=0, offset_y=0, height=self.__camera._roi.height // self.__camera._binning.v, width=self.__camera._roi.width // self.__camera._binning.h)
         '''_binning.h & _binning.v default value = 1'''
-        parameters = {}
-        '''
-        parameters["Exposure time"] = ListParameter(value=self.msExposure["15.6 ms"], 
-                                                        options=list(self.msExposure.keys()), 
-                                                        editable=True)
-        ''' 
-        parameters["Exposure time"] = NumberParameter(value=self.msExposure["15.6 ms"],                   
-                                                        valueLimits=(100e-6, 1),
-                                                        unit="s",
-                                                        editable=True)
-        
-        parameters["Pixel format"] = ListParameter(value=self.pixelFormats["RGB"],
-                                                options=list(self.pixelFormats.keys()),
-                                                editable=True)
-        
-        self.__format = self.pixelFormats["RGB"]
 
+        parameters = {}
+        
+        for key, values in self.__camera.get_all_settings().items():
+          describe = self.__camera.describe_setting(key)
+          if key == 'roi':
+               roi = values  
+         
+          elif self.__camera.describe_setting(key)['type'] == 'enum' :
+              
+              #create dictionary for combobox
+              test_keys = ([item[1] for item in self.__camera.describe_setting(key)['values']])
+              test_value = ([item[0] for item in self.__camera.describe_setting(key)['values']])
+              temp_dic = dict(zip(test_keys, test_value))
+              self.dic[key] = temp_dic
+
+              parameters[key] = ListParameter(value= values, 
+                                             options= list(self.dic[key].keys()), 
+                                             editable= not(self.__camera.describe_setting(key)['readonly']))
+          
+                         
+          elif self.__camera.describe_setting(key)['type'] == 'int':
+               min_value = self.__camera.describe_setting(key)['values'][0]
+               max_value = self.__camera.describe_setting(key)['values'][1]
+               parameters[key] = NumberParameter(value=self.__camera.describe_setting(key)['values'][0],                   
+                                                  valueLimits=(min_value, max_value),  unit="unknown unit",
+                                                  editable= not(self.__camera.describe_setting(key)['readonly']))    
+                  
+          elif self.__camera.describe_setting(key)['type'] == 'bool':
+               parameters[key] = ListParameter(value=self.__camera.describe_setting(key)['values'], 
+                                                       options=list(('True', 'False')), 
+                                                       editable= not(self.__camera.describe_setting(key)['readonly']))
+          '''
+          else:
+               parameters[key] = ListParameter(value= (self.__camera.describe_setting(key)['values']), 
+                                                       options=list(describe['values']), 
+                                                       editable= not(self.__camera.describe_setting(key)['readonly']))
+          '''
+        if 'Exposure' not in parameters:
+             parameters['Exposure time'] = NumberParameter(value= self.__camera.get_exposure_time(), 
+                                                            valueLimits=(2*10**(-3), 100*10**(-3)),  unit="s",  #min values was determined by try and error since it is not included in describe_settings()
+                                                            editable=True)
         super().__init__(name, deviceID, parameters, sensorShape )
 
  
@@ -77,30 +97,58 @@ class SimCamera(ICamera):
      buffer = queue.Queue()
      self.__camera.set_client(buffer)
      self.__camera.enable()
-     self.__camera.trigger()  # acquire image
-     img = buffer.get()  # retrieve image  
+     #self.__camera.trigger()  # acquire image
 
-     if img.dtype == np.uint8:
-          #assert img.dtype in (np.uint8, np.uint16)
-          img =np.asarray(img / np.iinfo(img.dtype).max, dtype='float64')
+     self.__camera._acquiring = True
+     self.__camera._triggered = 1
+     self.__camera._fetch_data() # acquire image'''
+
+     img = buffer.get()  # retrieve image'''  
 
      return img  
 
   def changeParameter(self, name: str, value: Any) -> None:
+       
        if name == "Exposure time":
-            value = (self.msExposure[value])
             self.__camera.set_exposure_time(value)
-       elif name == "Pixel format":
-            self.__format = self.__camera.set_setting('Pixel format', value)          
+       
+       elif name == "transform":        # parameter type = 'enum'
+            '''(False, False, False): 0, (False, False, True): 1, (False, True, False): 2, (False, True, True): 3,
+              (True, False, False): 4,(True, False, True): 5, (True, True, False): 6, (True, True, True): 7'''
+            value = eval((value))       #converts the datatype of value from str to tuple
+            self.__camera.set_transform(value)    #set_transform methode does not work with index like the other enum parameter
+            
+       elif name == "a_setting":
+            self.__camera.set_setting(name, value)
+
+       elif name== 'display image number':
+            self.__camera._image_generator.enable_numbering(value)
+           
+       elif name == "image pattern":    # parameter type = 'enum'
+            '''(0, 'noise'), (1, 'gradient'), (2, 'sawtooth'), (3, 'one_gaussian'), (4, 'black'), (5, 'white')'''
+            value = self.dic[name][value]
+            self.__camera._image_generator.set_method(value)
+            
+       elif name ==  "image data type":      # parameter type = 'enum'
+            '''(0, 'uint8'), (1, 'uint16'), (2, 'float')'''
+            value = self.dic[name][value] 
+            self.__camera._image_generator.set_data_type(value)
+           
+       elif name ==  "_error_percent":
+            '''In _fetch_data an exception is raised, if a random number between 0 and 100 is less than _error_percent.
+          This simulates an error condition during image acquisition.'''
+            self.__camera._set_error_percent(value)
+
+       elif name == "gain":
+            self.__camera._set_gain(value)
        else:
             raise ValueError(f"Unrecognized value \"{value}\" for parameter \"{name}\"")
       
   def changeROI(self, newROI: ROI):
-        #newROI = ROI(offset_x, offset_y, height, width)
         #newROI.height = newROI.height // self.__camera._binning.v
         #newROI.width= newROI.width // self.__camera._binning.h
         self.__camera._set_roi(newROI)
-        #return newROI
+        
   
   def close(self) -> None:
         self.__camera._do_shutdown()
