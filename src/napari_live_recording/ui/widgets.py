@@ -13,7 +13,7 @@ from qtpy.QtWidgets import (
     QStackedWidget,
 )
 from superqt import QLabeledSlider, QLabeledDoubleSlider, QEnumComboBox
-from qtpy.QtWidgets import QFormLayout, QGridLayout, QGroupBox
+from qtpy.QtWidgets import QFormLayout, QGridLayout, QGroupBox, QStackedLayout
 from abc import ABC, abstractmethod
 from dataclasses import replace
 from napari_live_recording.common import ROI, FileFormat, RecordType, MMC_DEVICE_MAP
@@ -303,7 +303,7 @@ class CameraSelection(QObject):
                 self.camerasComboBox.value[0],
                 self.nameLineEdit.value,
                 (self.adapterComboBox.value[0] + " " + self.deviceComboBox.value[0])
-                if self.camerasComboBox.value[0] == "MMC"
+                if self.camerasComboBox.value[0] == "MicroManager"
                 else self.idLineEdit.value,
             )
         )
@@ -326,7 +326,7 @@ class CameraSelection(QObject):
         for camera in cameras:
             self.stackWidgets[camera] = QWidget()
             self.stackLayouts[camera] = QFormLayout()
-            if camera == "MMC":
+            if camera == "MicroManager":
                 self.stackLayouts[camera].addRow(
                     self.adapterComboBox.label, self.adapterComboBox.widget
                 )
