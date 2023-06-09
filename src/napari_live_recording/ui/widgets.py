@@ -13,7 +13,7 @@ from qtpy.QtWidgets import (
     QStackedWidget,
 )
 from superqt import QLabeledSlider, QLabeledDoubleSlider, QEnumComboBox
-from qtpy.QtWidgets import QFormLayout, QGridLayout, QGroupBox, QStackedLayout
+from qtpy.QtWidgets import QFormLayout, QGridLayout, QGroupBox
 from abc import ABC, abstractmethod
 from dataclasses import replace
 from napari_live_recording.common import ROI, FileFormat, RecordType, MMC_DEVICE_MAP
