@@ -6,6 +6,7 @@
   - Recording features currently not working as is still under development
 - Removed old device interface documentation
 - Fixed issues #16, #17
+- Added MicroManager interface (@felixwanitschke)
 
 ## 0.2.1
 
