@@ -8,6 +8,11 @@
 
 A napari plugin for live video recording with a generic camera device and generate a stack of TIFF images from said device.
 
+The plugin provides a common interface for a generic camera device to be directly controlled from the napari GUI. The plugin can
+
+- acquire continously in live view;
+- record a stack of images and store them as ImageJ-compatible TIFF, OME-TIFF or HDF5 files.
+
 ----------------------------------
 
 This [napari] plugin was generated with [Cookiecutter] using with [@napari]'s [cookiecutter-napari-plugin] template.
