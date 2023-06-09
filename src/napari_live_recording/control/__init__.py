@@ -163,7 +163,6 @@ class MainController(QObject):
         # this job is handled by the user interface, so we do not need to add
         # any type of try-except clauses for the dictionary keys
         filenames = [os.path.join(writerInfo.folder, camName.replace(":", "-") + "_" + writerInfo.filename) for camName in camNames]
-        sizes = [self.deviceControllers[camName].device.roiShape.pixelSizes for camName in camNames]
         colorMaps = [self.deviceControllers[camName].device.colorType for camName in camNames]
         files = {}
         extension = ""
@@ -182,10 +181,10 @@ class MainController(QObject):
                             software="napari-live-recording",
                             contiguous=kwargs.get("imagej", False)
                         ) 
-                        for file, size, colorMap in zip(list(files.values()), sizes, colorMaps)]
+                        for file, colorMap in zip(list(files.values()), colorMaps)]
         else:
             # todo: implement HDF5 writing
-            raise ValueError("Unsupported file format selected for recording!")
+            raise ValueError("Unsupported file format selected for recording! HDF5 will be implemented in the future.")
 
         workers = []
         if writerInfo.recordType == RecordType["Number of frames"]:
