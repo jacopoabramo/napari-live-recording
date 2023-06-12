@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+- Added missing reference to `pymmcore-widgets` from `setup.cfg`
+- Added exception print when initializing list of available camera interfaces
+
 ## 0.3.0
 
 - Full rework of the plugin architecture ad user interface (hopefully for the last time)
