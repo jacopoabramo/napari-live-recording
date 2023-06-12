@@ -21,7 +21,7 @@ for (_, module_name, _) in iter_modules([str(package_dir)]):
                 # attr[1]: class object
                 if attr[1] != ICamera and issubclass(attr[1], ICamera):
                     devicesDict[attr[0]] = attr[1]
-    except ImportError:
+    except ImportError as e:
         # This check is added to make sure that modules from cameras
         # which must be added manually (i.e. Ximea's APIs) do not 
         # cause issues when loading the plugin.
@@ -30,4 +30,4 @@ for (_, module_name, _) in iter_modules([str(package_dir)]):
         # In case there are cameras which require external components,
         # remember to wrap them in a try-except snippet and raise an
         # ImportError exception if there is any missing package.
-        raise TypeError(f"Importing of {module_name} failed. Check napari's traceback for more informations.")
+        raise TypeError(f"Importing of {module_name} failed. Check napari's traceback for more informations. Exception: {e}")
