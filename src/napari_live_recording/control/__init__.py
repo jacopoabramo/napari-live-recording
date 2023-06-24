@@ -8,10 +8,11 @@ from napari_live_recording.common import (
     TIFF_PHOTOMETRIC_MAP,
     WriterInfo,
     FileFormat,
-    RecordType, 
-    ROI
+    RecordType,
+    ROI,
 )
 from napari_live_recording.control.devices.interface import ICamera
+from napari_live_recording.control.frame_buffer import Framebuffer
 from typing import Dict, NamedTuple
 from functools import partial
 from time import time
@@ -47,12 +48,16 @@ class MainController(QObject):
         super().__init__()
         self.deviceControllers: Dict[str, LocalController] = {}
         self.deviceLiveBuffer: Dict[str, np.ndarray] = {}
+        self.deviceRecordingBuffer: Dict[str, Framebuffer] = {}
+        self.stackSize = 100
         self.liveWorker = None
         self.__isLive = False
         self.recordLoopEnabled = False
         self.recordSignalCounter = SignalCounter()
-        self.recordSignalCounter.maxCountReached.connect(lambda: self.recordFinished.emit())
-    
+        self.recordSignalCounter.maxCountReached.connect(
+            lambda: self.recordFinished.emit()
+        )
+
     @property
     def isLive(self) -> bool:
         return self.__isLive
@@ -78,16 +83,19 @@ class MainController(QObject):
         self.deviceLiveBuffer[cameraKey] = np.zeros(
             shape=camera.roiShape.pixelSizes, dtype=np.uint16
         )
+        self.deviceRecordingBuffer[cameraKey] = Framebuffer(
+            self.stackSize, camera=camera
+        )
         self.recordSignalCounter.maxCount += 1
         return cameraKey
 
     def changeCameraROI(self, cameraKey: str, newROI: ROI) -> None:
         self.deviceControllers[cameraKey].device.changeROI(newROI)
         self.deviceLiveBuffer[cameraKey] = np.zeros(shape=newROI.pixelSizes)
+        self.deviceRecordingBuffer[cameraKey].changeROI(newROI)
 
     def deleteCamera(self, cameraKey: str) -> None:
-
-        """Deletes a camera device. """
+        """Deletes a camera device."""
         with self.livePaused():
             try:
                 self.deviceControllers[cameraKey].device.close()
@@ -98,6 +106,7 @@ class MainController(QObject):
             except RuntimeError:
                 # camera already deleted
                 pass
+
     def snap(self, cameraKey: str) -> np.ndarray:
         return self.deviceControllers[cameraKey].device.grabFrame()
 
@@ -122,7 +131,6 @@ class MainController(QObject):
             for key in self.deviceControllers.keys():
                 self.deviceControllers[key].device.setAcquisitionStatus(False)
 
-    
     def record(self, camNames: list, writerInfo: WriterInfo) -> None:
         def closeFile(filename) -> None:
             files[filename].close()
@@ -131,83 +139,153 @@ class MainController(QObject):
             self.recordSignalCounter.increaseCounter()
             worker.finished.disconnect()
 
-        @thread_worker(worker_class=FunctionWorker, connect={"returned": closeFile}, start_thread=False)
-        def recordFixedStack(filename: str, camName: str, stackSize: int, writeFunc) -> str:
+        def changeStackSize(newStackSize: int):
+            self.stackSize = newStackSize
+            for cam in camNames:
+                self.deviceRecordingBuffer[cam].changeStacksize(
+                    newStacksize=self.stackSize
+                )
+
+        # thread for writing frames to the buffer
+        @thread_worker(worker_class=FunctionWorker, start_thread=False)
+        def captureBuffer(camName: str):
             detector = self.deviceControllers[camName].device
+            with detector:
+                while True:
+                    self.deviceRecordingBuffer[camName].addFrame(detector.grabFrame())
+            # TODO start writing files only when buffer was filled once
+
+        @thread_worker(
+            worker_class=FunctionWorker,
+            connect={"returned": closeFile},
+            start_thread=False,
+        )
+        def fixedStackToFile(
+            filename: str, camName: str, stackSize: int, writeFunc
+        ) -> str:
             idx = 0
-            with detector:
+            try:
                 while (idx < stackSize) and self.recordLoopEnabled:
-                    writeFunc(detector.grabFrame())
+                    writeFunc(self.deviceRecordingBuffer[camName].returnOldestFrame())
                     idx += 1
-            return filename
-        
-        @thread_worker(worker_class=FunctionWorker, connect={"returned": closeFile}, start_thread=False)
-        def recordTimeStack(filename: str, camName: str, acquisitionTime: float, writeFunc) -> str:
-            detector = self.deviceControllers[camName].device
+
+                return filename
+            except:
+                pass
+
+        @thread_worker(
+            worker_class=FunctionWorker,
+            connect={"returned": closeFile},
+            start_thread=False,
+        )
+        def timeStackToFile(
+            filename: str, camName: str, acquisitionTime: float, writeFunc
+        ) -> str:
             startTime = time()
-            with detector:
-                while (time() - startTime <= acquisitionTime) and self.recordLoopEnabled:
-                    writeFunc(detector.grabFrame())
-            return filename
-        
-        @thread_worker(worker_class=FunctionWorker, connect={"returned": closeFile}, start_thread=False)
-        def recordToggledStack(filename: str, camName: str, writeFunc) -> str:
-            detector = self.deviceControllers[camName].device
-            with detector:
+            try:
+                while (
+                    time() - startTime <= acquisitionTime
+                ) and self.recordLoopEnabled:
+                    writeFunc(self.deviceRecordingBuffer[camName].returnOldestFrame())
+
+                return filename
+            except:
+                pass
+
+        @thread_worker(
+            worker_class=FunctionWorker,
+            connect={"returned": closeFile},
+            start_thread=False,
+        )
+        def toggledWriteToFile(filename: str, camName: str, writeFunc) -> str:
+            try:
                 while self.recordLoopEnabled:
-                    writeFunc(detector.grabFrame())
-            return filename
+                    writeFunc(self.deviceRecordingBuffer[camName].returnOldestFrame())
+
+                return filename
+            except:
+                pass
 
         # when building the writer function for a specific type of
         # file format, we expect the dictionary to have the appropriate arguments;
         # this job is handled by the user interface, so we do not need to add
         # any type of try-except clauses for the dictionary keys
-        filenames = [os.path.join(writerInfo.folder, camName.replace(":", "-") + "_" + writerInfo.filename) for camName in camNames]
-        sizes = [self.deviceControllers[camName].device.roiShape.pixelSizes for camName in camNames]
-        colorMaps = [self.deviceControllers[camName].device.colorType for camName in camNames]
+        filenames = [
+            os.path.join(
+                writerInfo.folder, camName.replace(":", "-") + "_" + writerInfo.filename
+            )
+            for camName in camNames
+        ]
+        sizes = [
+            self.deviceControllers[camName].device.roiShape.pixelSizes
+            for camName in camNames
+        ]
+        colorMaps = [
+            self.deviceControllers[camName].device.colorType for camName in camNames
+        ]
         files = {}
         extension = ""
         if writerInfo.fileFormat in [1, 2]:
             kwargs = dict()
-            if writerInfo.fileFormat == 1: # ImageJ TIFF
+            if writerInfo.fileFormat == 1:  # ImageJ TIFF
                 extension = ".tif"
                 kwargs.update(dict(imagej=True))
-            else: # OME-TIFF
+            else:  # OME-TIFF
                 extension = ".ome.tif"
                 kwargs.update(dict(ome=True))
-            files = {filename: tiff.TiffWriter(filename + extension, **kwargs) for filename in filenames}
-            writeFuncs = [partial(
-                            file.write, 
-                            photometric=TIFF_PHOTOMETRIC_MAP[colorMap][0],
-                            software="napari-live-recording",
-                            contiguous=kwargs.get("imagej", False)
-                        ) 
-                        for file, size, colorMap in zip(list(files.values()), sizes, colorMaps)]
+            files = {
+                filename: tiff.TiffWriter(filename + extension, **kwargs)
+                for filename in filenames
+            }
+            writeFuncs = [
+                partial(
+                    file.write,
+                    photometric=TIFF_PHOTOMETRIC_MAP[colorMap][0],
+                    software="napari-live-recording",
+                    contiguous=kwargs.get("imagej", False),
+                )
+                for file, size, colorMap in zip(list(files.values()), sizes, colorMaps)
+            ]
         else:
             # todo: implement HDF5 writing
             raise ValueError("Unsupported file format selected for recording!")
 
         workers = []
+        bufferWorkers = [captureBuffer(camName) for camName in camNames]
+
         if writerInfo.recordType == RecordType["Number of frames"]:
-            workers = [recordFixedStack(filename, camName, writerInfo.stackSize, writeFunc) 
-                    for filename, camName, writeFunc in zip(filenames, camNames, writeFuncs)]
+            workers = [
+                fixedStackToFile(filename, camName, writerInfo.stackSize, writeFunc)
+                for filename, camName, writeFunc in zip(filenames, camNames, writeFuncs)
+            ]
         elif writerInfo.recordType == RecordType["Time (seconds)"]:
-            workers = [recordTimeStack(filename, camName, writerInfo.acquisitionTime, writeFunc) 
-                    for filename, camName, writeFunc in zip(filenames, camNames, writeFuncs)]
+            workers = [
+                timeStackToFile(
+                    filename, camName, writerInfo.acquisitionTime, writeFunc
+                )
+                for filename, camName, writeFunc in zip(filenames, camNames, writeFuncs)
+            ]
         elif writerInfo.recordType == RecordType["Toggled"]:
             # here we have to do some extra work and set to True the record loop flag
-            workers = [recordToggledStack(filename, camName, writeFunc)
-                    for filename, camName, writeFunc in zip(filenames, camNames, writeFuncs)]
-        
+            workers = [
+                toggledWriteToFile(filename, camName, writeFunc)
+                for filename, camName, writeFunc in zip(filenames, camNames, writeFuncs)
+            ]
+
         self.recordLoopEnabled = True
-        for worker in workers:
+        for worker in bufferWorkers:
             worker.finished.connect(lambda: closeWorkerConnection(worker))
             worker.start()
-    
+
+        def startSaving(self):
+            for worker in workers:
+                worker.finished.connect(lambda: closeWorkerConnection(worker))
+                worker.start()
+
     def stopRecord(self):
         self.recordLoopEnabled = False
         self.recordSignalCounter.count = 0
-    
+
     def cleanup(self):
         if self.isLive:
             self.live(False)
