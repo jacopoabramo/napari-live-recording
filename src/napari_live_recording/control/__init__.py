@@ -7,7 +7,6 @@ from qtpy.QtCore import QThread, QObject, Signal
 from napari_live_recording.common import (
     TIFF_PHOTOMETRIC_MAP,
     WriterInfo,
-    FileFormat,
     RecordType, 
     ROI
 )
