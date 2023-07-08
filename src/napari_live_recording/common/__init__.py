@@ -2,7 +2,6 @@ from __future__ import annotations
 from enum import IntEnum
 from dataclasses import dataclass
 from functools import total_ordering
-from tifffile.tifffile import PHOTOMETRIC
 import pymmcore_plus as mmc
 
 # equivalent number of milliseconds
@@ -27,30 +26,8 @@ class ColorType(IntEnum):
 
 TIFF_PHOTOMETRIC_MAP = {
     # ColorType -> photometric, number of channels
-    ColorType.GRAYLEVEL: (PHOTOMETRIC.MINISBLACK, 1),
-    ColorType.RGB: (PHOTOMETRIC.RGB, 3),
-}
-
-
-@dataclass(frozen=True)
-class WriterInfo:
-    folder: str
-    filename: str
-    fileFormat: FileFormat
-    recordType: RecordType
-    stackSize: int = 0
-    acquisitionTime: float = 0
-
-
-class ColorType(IntEnum):
-    GRAYLEVEL = 0
-    RGB = 1
-
-
-TIFF_PHOTOMETRIC_MAP = {
-    # ColorType -> photometric, number of channels
-    ColorType.GRAYLEVEL: (PHOTOMETRIC.MINISBLACK, 1),
-    ColorType.RGB: (PHOTOMETRIC.RGB, 3),
+    ColorType.GRAYLEVEL: ("minisblack", 1),
+    ColorType.RGB: ("rgb", 3),
 }
 
 
