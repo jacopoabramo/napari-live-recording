@@ -59,12 +59,12 @@ class PythonMicroscope(ICamera):
         """
           # received ID will be the module of the camera and camera class name
           # in the format of "<module> <class_name>"
-        module, cls = tuple(deviceID.split())
+        self.module, cls = tuple(deviceID.split())
         
         import_str = "microscope."
-        if module != "simulators":
+        if self.module != "simulators":
              import_str += "cameras."
-        import_str += module
+        import_str += self.module
 
         package = importlib.import_module(import_str)
         driver = getattr(package, cls)
@@ -141,9 +141,8 @@ class PythonMicroscope(ICamera):
      return img  
 
   def changeParameter(self, name: str, value: Any) -> None:
-       #self.ModuleComboBox.value[0] == "Simulated Camera": #checkes which camera is choosen in the ui
+        if  self.module == "simulators": #checkes which camera is choosen in the ui
           if name == "Exposure time":
-               #value = (self.msExposure[value])
                self.__camera.set_exposure_time(float(value))
           
           elif name == "transform":        # parameter type = 'enum'
@@ -175,9 +174,18 @@ class PythonMicroscope(ICamera):
 
           elif name == "gain":
                self.__camera._set_gain(value)
+
           else:
                raise ValueError(f"Unrecognized value \"{value}\" for parameter \"{name}\"")
-      #else:  real camera parameter change
+          
+     elif self.module == "andorsdk3" or self.module == "atmcd" or self.module == "pvcam" :  
+          self.__camera.set_attribute_value(name, value)  
+
+     elif self.module == "ximea":
+          self.__camera.set_param(name, value)
+
+     else:
+          raise ValueError(f"Unrecognized Camera \"{self.module}\"")
       
   def changeROI(self, newROI: ROI):
         #newROI.height = newROI.height // self.__camera._binning.v
