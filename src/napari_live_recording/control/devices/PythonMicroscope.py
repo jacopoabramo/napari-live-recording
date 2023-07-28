@@ -43,13 +43,6 @@ class PythonMicroscope(ICamera):
   temp_dic={}
   dic = {}  
 
-  Cameras = [
-       'microscope.cameras.pvcam',
-       'microscope.cameras.andorsdk3',
-       'microscope.cameras.atmcd',
-       'microscope.cameras.ximea'
-          ]  
-  CamModul = []
  
   def __init__(self, name: str, deviceID: Union[str, int]) -> None:
         """ VideoCapture PYME.
@@ -108,12 +101,7 @@ class PythonMicroscope(ICamera):
                parameters[key] = ListParameter(value=self.__camera.describe_setting(key)['values'], 
                                                        options=list(('True', 'False')), 
                                                        editable= not(self.__camera.describe_setting(key)['readonly']))
-          '''
-          else:
-               parameters[key] = ListParameter(value= (self.__camera.describe_setting(key)['values']), 
-                                                       options=list(describe['values']), 
-                                                       editable= not(self.__camera.describe_setting(key)['readonly']))
-          '''
+          
         if 'Exposure' not in parameters:
              parameters['Exposure time'] = NumberParameter(value= self.__camera.get_exposure_time(), 
                                                             valueLimits=(2*10**(-3), 100*10**(-3)),  unit="s",     #min and max values were determined by try and error since they are not included in describe_settings()
@@ -141,8 +129,9 @@ class PythonMicroscope(ICamera):
      return img  
 
   def changeParameter(self, name: str, value: Any) -> None:
-        if  self.module == "simulators": #checkes which camera is choosen in the ui
+       if  self.module == "simulators": #checkes which camera is choosen in the ui
           if name == "Exposure time":
+               #value = (self.msExposure[value])
                self.__camera.set_exposure_time(float(value))
           
           elif name == "transform":        # parameter type = 'enum'
@@ -178,14 +167,24 @@ class PythonMicroscope(ICamera):
           else:
                raise ValueError(f"Unrecognized value \"{value}\" for parameter \"{name}\"")
           
-     elif self.module == "andorsdk3" or self.module == "atmcd" or self.module == "pvcam" :  
-          self.__camera.set_attribute_value(name, value)  
+       elif self.module == "andorsdk3" or self.module == "atmcd" or self.module == "pvcam" :  
+          # pvcam default exposure_time=0.001 seconds
+          if name == "Exposure time" or name == "exposure_time":
+               #value = (self.msExposure[value])
+               self.__camera.set_exposure_time(float(value))
+          else:
+               self.__camera.set_attribute_value(name, value)  
 
-     elif self.module == "ximea":
-          self.__camera.set_param(name, value)
+       elif self.module == "ximea":
+          if name == "Exposure time" or name == "exposure_time":
+               #value = (self.msExposure[value])
+               self.__camera.set_exposure_time(float(value))
+          else:
+               self.__camera.set_param(name, value)
 
-     else:
+       else:
           raise ValueError(f"Unrecognized Camera \"{self.module}\"")
+          
       
   def changeROI(self, newROI: ROI):
         #newROI.height = newROI.height // self.__camera._binning.v
