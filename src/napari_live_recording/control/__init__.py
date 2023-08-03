@@ -42,36 +42,31 @@ class LocalController(NamedTuple):
 
 class MainController(QObject):
     recordFinished = Signal()
+    cameraDeleted = Signal(bool)
+    frameCaptured = Signal()
 
     def __init__(self) -> None:
         """Main Controller class. Stores all camera objects to access live and stack recordings."""
         super().__init__()
         self.deviceControllers: Dict[str, LocalController] = {}
         self.deviceLiveBuffer: Dict[str, np.ndarray] = {}
-        self.deviceRecordingBuffer: Dict[str, Framebuffer] = {}
+        self.deviceBuffers: Dict[str, Framebuffer] = {}
+        self.recordingBuffers: Dict[str, Framebuffer] = {}
         self.stackSize = 100
+        self.idx = 0
         self.liveWorker = None
-        self.__isLive = False
+        self.__isAcquiring = {}
         self.recordLoopEnabled = False
         self.recordSignalCounter = SignalCounter()
         self.recordSignalCounter.maxCountReached.connect(
             lambda: self.recordFinished.emit()
         )
 
-    @property
-    def isLive(self) -> bool:
-        return self.__isLive
+        self.bufferWorkers: Dict[str, FunctionWorker] = {}
 
-    @contextmanager
-    def livePaused(self):
-        if self.isLive:
-            try:
-                self.live(False)
-                yield
-            finally:
-                self.live(True)
-        else:
-            yield
+    @property
+    def isLive(self) -> dict:
+        return self.__isAcquiring
 
     def addCamera(self, cameraKey: str, camera: ICamera) -> str:
         """Adds a new device in the controller, with a thread in which the device operates."""
@@ -80,56 +75,73 @@ class MainController(QObject):
         deviceController = LocalController(thread, camera)
         self.deviceControllers[cameraKey] = deviceController
         self.deviceControllers[cameraKey].thread.start()
-        self.deviceLiveBuffer[cameraKey] = np.zeros(
-            shape=camera.roiShape.pixelSizes, dtype=np.uint16
-        )
-        self.deviceRecordingBuffer[cameraKey] = Framebuffer(
-            self.stackSize, camera=camera
-        )
+        self.deviceBuffers[cameraKey] = Framebuffer(self.stackSize, camera=camera)
+        self.recordingBuffers[cameraKey] = Framebuffer(self.stackSize, camera=camera)
+        print("Buffers created")
         self.recordSignalCounter.maxCount += 1
+
+        self.deviceControllers[cameraKey].device.setAcquisitionStatus(True)
+        self.bufferWorkers[cameraKey] = self.recordToBuffer(cameraKey)
+        self.__isAcquiring[cameraKey] = True
+        self.bufferWorkers[cameraKey].start()
+
         return cameraKey
+
+    @thread_worker(worker_class=FunctionWorker, start_thread=False)
+    def recordToBuffer(self, cameraKey: str):
+        if self.__isAcquiring[cameraKey]:
+            while self.__isAcquiring[cameraKey]:
+                try:
+                    currentFrame = np.copy(
+                        self.deviceControllers[cameraKey].device.grabFrame()
+                    )
+                    self.deviceBuffers[cameraKey].addFrame(currentFrame)
+
+                    if self.recordLoopEnabled:
+                        self.recordingBuffers[cameraKey].addFrame(currentFrame)
+                except Exception as e:
+                    print(e)
 
     def changeCameraROI(self, cameraKey: str, newROI: ROI) -> None:
         self.deviceControllers[cameraKey].device.changeROI(newROI)
         self.deviceLiveBuffer[cameraKey] = np.zeros(shape=newROI.pixelSizes)
-        self.deviceRecordingBuffer[cameraKey].changeROI(newROI)
+        self.deviceBuffers[cameraKey].changeROI(newROI)
+        self.recordingBuffers[cameraKey].changeROI(newROI)
+
+    def changeStackSize(self, newStackSize: int):
+        self.stackSize = newStackSize
+        for cameraKey in self.deviceControllers.keys():
+            self.recordingBuffers[cameraKey].changeStacksize(
+                newStacksize=self.stackSize
+            )
 
     def deleteCamera(self, cameraKey: str) -> None:
         """Deletes a camera device."""
-        with self.livePaused():
-            try:
-                self.deviceControllers[cameraKey].device.close()
-                self.deviceControllers[cameraKey].thread.quit()
-                self.deviceControllers[cameraKey].device.deleteLater()
-                self.deviceControllers[cameraKey].thread.deleteLater()
-                self.recordSignalCounter.maxCount -= 1
-            except RuntimeError:
-                # camera already deleted
-                pass
+        try:
+            self.__isAcquiring[cameraKey] = False
+            self.cameraDeleted.emit(False)
 
-    def snap(self, cameraKey: str) -> np.ndarray:
-        return self.deviceControllers[cameraKey].device.grabFrame()
+            self.deviceControllers[cameraKey].device.close()
+            self.deviceControllers[cameraKey].thread.quit()
+            self.deviceControllers[cameraKey].device.deleteLater()
+            self.deviceControllers[cameraKey].thread.deleteLater()
+            self.bufferWorkers[cameraKey].quit()
+            self.deviceControllers[cameraKey].device.setAcquisitionStatus(False)
 
-    def live(self, toggle: bool) -> None:
-        self.__isLive = toggle
+            _ = self.deviceBuffers.pop(cameraKey)
+            _ = self.recordingBuffers.pop(cameraKey)
+            self.recordSignalCounter.maxCount -= 1
+            print("Camera Deleted Signal")
+        except RuntimeError:
+            # camera already deleted
+            pass
 
-        @thread_worker(worker_class=FunctionWorker, start_thread=False)
-        def liveLoop():
-            while True:
-                for key in self.deviceControllers.keys():
-                    self.deviceLiveBuffer[key] = np.copy(
-                        self.deviceControllers[key].device.grabFrame()
-                    )
-
-        if self.isLive:
-            for key in self.deviceControllers.keys():
-                self.deviceControllers[key].device.setAcquisitionStatus(True)
-            self.liveWorker = liveLoop()
-            self.liveWorker.start()
+    def returnNewestFrame(self, cameraKey: str) -> None:
+        if self.__isAcquiring[cameraKey]:
+            self.newestFrame = self.deviceBuffers[cameraKey].returnNewestFrame()
+            return self.newestFrame
         else:
-            self.liveWorker.quit()
-            for key in self.deviceControllers.keys():
-                self.deviceControllers[key].device.setAcquisitionStatus(False)
+            pass
 
     def record(self, camNames: list, writerInfo: WriterInfo) -> None:
         def closeFile(filename) -> None:
@@ -138,59 +150,50 @@ class MainController(QObject):
         def closeWorkerConnection(worker: FunctionWorker) -> None:
             self.recordSignalCounter.increaseCounter()
             worker.finished.disconnect()
+            print("worker disconnected")
 
-        def changeStackSize(newStackSize: int):
-            self.stackSize = newStackSize
-            for cam in camNames:
-                self.deviceRecordingBuffer[cam].changeStacksize(
-                    newStacksize=self.stackSize
-                )
-
-        # thread for writing frames to the buffer
         @thread_worker(worker_class=FunctionWorker, start_thread=False)
-        def captureBuffer(camName: str):
-            detector = self.deviceControllers[camName].device
-            with detector:
-                while True:
-                    self.deviceRecordingBuffer[camName].addFrame(detector.grabFrame())
-            # TODO start writing files only when buffer was filled once
-
-        @thread_worker(
-            worker_class=FunctionWorker,
-            connect={"returned": closeFile},
-            start_thread=False,
-        )
-        def fixedStackToFile(
-            filename: str, camName: str, stackSize: int, writeFunc
-        ) -> str:
-            idx = 0
-            try:
-                while (idx < stackSize) and self.recordLoopEnabled:
-                    writeFunc(self.deviceRecordingBuffer[camName].returnOldestFrame())
-                    idx += 1
-
-                return filename
-            except:
-                pass
-
-        @thread_worker(
-            worker_class=FunctionWorker,
-            connect={"returned": closeFile},
-            start_thread=False,
-        )
-        def timeStackToFile(
-            filename: str, camName: str, acquisitionTime: float, writeFunc
-        ) -> str:
+        def timeStackBuffer(camName: str, acquisitionTime: float):
+            self.recordingBuffers[camName].allowOverwrite = False
+            self.recordingBuffers[camName].renewBuffer(acquisitionTime * 30)
+            self.recordLoopEnabled = True
             startTime = time()
-            try:
-                while (
-                    time() - startTime <= acquisitionTime
-                ) and self.recordLoopEnabled:
-                    writeFunc(self.deviceRecordingBuffer[camName].returnOldestFrame())
-
-                return filename
-            except:
+            while time() - startTime <= acquisitionTime:
                 pass
+            self.recordLoopEnabled = False
+
+        @thread_worker(worker_class=FunctionWorker, start_thread=False)
+        def fixedStackBuffer(camName: str, stackSize: int):
+            self.recordingBuffers[camName].allowOverwrite = False
+            self.recordingBuffers[camName].renewBuffer(stackSize)
+            self.recordLoopEnabled = True
+            while self.recordingBuffers[camName]._appendedFrames <= stackSize - 1:
+                pass
+            self.recordLoopEnabled = False
+
+        @thread_worker(worker_class=FunctionWorker, start_thread=False)
+        def toggledBuffer(camName: str):
+            self.recordingBuffers[camName].allowOverwrite = True
+            self.recordLoopEnabled = True
+
+        @thread_worker(
+            worker_class=FunctionWorker,
+            connect={"returned": closeFile},
+            start_thread=False,
+        )
+        def stackWriteToFile(filename: str, camName: str, writeFunc) -> str:
+            try:
+                while self.recordingBuffers[camName].empty:
+                    pass
+                while not self.recordingBuffers[camName].empty:
+                    # print("before pop", self.recordingBuffers[camName].length)
+                    frame = self.recordingBuffers[camName].popOldestFrame()
+                    # print("after pop", self.recordingBuffers[camName].length)
+                    writeFunc(frame)
+                print("empty")
+                return filename
+            except Exception as e:
+                print(e)
 
         @thread_worker(
             worker_class=FunctionWorker,
@@ -200,8 +203,7 @@ class MainController(QObject):
         def toggledWriteToFile(filename: str, camName: str, writeFunc) -> str:
             try:
                 while self.recordLoopEnabled:
-                    writeFunc(self.deviceRecordingBuffer[camName].returnOldestFrame())
-
+                    writeFunc(self.deviceBuffers[camName].returnOldestFrame())
                 return filename
             except:
                 pass
@@ -212,7 +214,8 @@ class MainController(QObject):
         # any type of try-except clauses for the dictionary keys
         filenames = [
             os.path.join(
-                writerInfo.folder, camName.replace(":", "-") + "_" + writerInfo.filename
+                writerInfo.folder,
+                camName.replace(":", "-").replace(" ", "-") + "_" + writerInfo.filename,
             )
             for camName in camNames
         ]
@@ -251,43 +254,44 @@ class MainController(QObject):
             raise ValueError("Unsupported file format selected for recording!")
 
         workers = []
-        bufferWorkers = [captureBuffer(camName) for camName in camNames]
+        fileWorkers = []
 
         if writerInfo.recordType == RecordType["Number of frames"]:
             workers = [
-                fixedStackToFile(filename, camName, writerInfo.stackSize, writeFunc)
+                fixedStackBuffer(camName, writerInfo.stackSize) for camName in camNames
+            ]
+            fileWorkers = [
+                stackWriteToFile(filename, camName, writeFunc)
                 for filename, camName, writeFunc in zip(filenames, camNames, writeFuncs)
             ]
         elif writerInfo.recordType == RecordType["Time (seconds)"]:
             workers = [
-                timeStackToFile(
-                    filename, camName, writerInfo.acquisitionTime, writeFunc
-                )
+                timeStackBuffer(camName, writerInfo.acquisitionTime)
+                for camName in camNames
+            ]
+            fileWorkers = [
+                stackWriteToFile(filename, camName, writeFunc)
                 for filename, camName, writeFunc in zip(filenames, camNames, writeFuncs)
             ]
         elif writerInfo.recordType == RecordType["Toggled"]:
             # here we have to do some extra work and set to True the record loop flag
-            workers = [
+            workers = [toggledBuffer(camName) for camName in camNames]
+            fileWorkers = [
                 toggledWriteToFile(filename, camName, writeFunc)
                 for filename, camName, writeFunc in zip(filenames, camNames, writeFuncs)
             ]
 
-        self.recordLoopEnabled = True
-        for worker in bufferWorkers:
-            worker.finished.connect(lambda: closeWorkerConnection(worker))
+        for worker in workers:
             worker.start()
 
-        def startSaving(self):
-            for worker in workers:
-                worker.finished.connect(lambda: closeWorkerConnection(worker))
-                worker.start()
+        for fileworker in fileWorkers:
+            fileworker.finished.connect(lambda: closeWorkerConnection(fileworker))
+            fileworker.start()
 
     def stopRecord(self):
         self.recordLoopEnabled = False
         self.recordSignalCounter.count = 0
 
     def cleanup(self):
-        if self.isLive:
-            self.live(False)
         for key in self.deviceControllers.keys():
             self.deleteCamera(key)
