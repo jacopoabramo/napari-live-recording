@@ -1,4 +1,3 @@
-#%%
 import numpy as np
 from microscope.device_server import device
 from microscope.simulators import SimulatedCamera, _ImageGenerator
@@ -13,37 +12,16 @@ from napari_live_recording.control.devices.interface import (
     NumberParameter,
     ListParameter
 )
-
 import queue
 import importlib
-import ximea
 import logging
-#from microscope.cameras.pvcam import PVCamera
 
 
 class PythonMicroscope(ICamera):
-  #%%
-#uses time.sleep() therfore the exposure values have to be entered in sec
-  msExposure = {
-       "1 s":  1,
-        "500 ms": 5*10**(-3),
-        "250 ms": 250*10**(-3),
-        "125 ms": 125*10**(-3),
-        "62.5 ms": 62.5*10**(-3),
-        "31.3 ms": 31.3*10**(-3),
-        "15.6 ms": 15.6*10**(-3), # default
-        "7.8 ms": 7.8*10**(-3),
-        "3.9 ms": 3.9*10**(-3),
-        "2 ms": 2*10**(-3),
-        "976.6 us": 976.6*10**(-6),
-        "488.3 us": 488.3*10**(-6),
-        "244.1 us": 244.1*10**(-6),
-        "122.1 us":122.1*10**(-6)
-     }
+
   temp_dic={}
   dic = {}  
 
- 
   def __init__(self, name: str, deviceID: Union[str, int]) -> None:
         """ VideoCapture PYME.
         Args:
@@ -52,6 +30,7 @@ class PythonMicroscope(ICamera):
         """
           # received ID will be the module of the camera and camera class name
           # in the format of "<module> <class_name>"
+
         self.module, cls = tuple(deviceID.split())
         
         import_str = "microscope."
@@ -68,16 +47,9 @@ class PythonMicroscope(ICamera):
 
         parameters = {}
         
-
         for key, values in self.__camera.get_all_settings().items():
-          
-          describe = self.__camera.describe_setting(key)
-        
-          if key == 'roi':
-               roi = values  
-          
-                      
-          elif self.__camera.describe_setting(key)['type'] == 'enum' :
+                           
+          if self.__camera.describe_setting(key)['type'] == 'enum' :
               
               #create dictionary for combobox
               test_keys = ([item[1] for item in self.__camera.describe_setting(key)['values']])
@@ -102,11 +74,11 @@ class PythonMicroscope(ICamera):
                                                        options=list(('True', 'False')), 
                                                        editable= not(self.__camera.describe_setting(key)['readonly']))
           
-        if 'Exposure' not in parameters:
+        if 'Exposure' not in parameters:     
              parameters['Exposure time'] = NumberParameter(value= self.__camera.get_exposure_time(), 
-                                                            valueLimits=(2*10**(-3), 100*10**(-3)),  unit="s",     #min and max values were determined by try and error since they are not included in describe_settings()
+                                                            valueLimits=(2*10**(-3), 100*10**(-3)),  unit="s",   #min and max values were determined by try and error since they are not included in describe_settings() for simulated camera
                                                             editable=True)
-
+       
         super().__init__(name, deviceID, parameters, sensorShape)
 
  
@@ -118,20 +90,16 @@ class PythonMicroscope(ICamera):
      buffer = queue.Queue()
      self.__camera.set_client(buffer)
      self.__camera.enable()
-     #self.__camera.trigger()  # acquire image
-
      self.__camera._acquiring = True
      self.__camera._triggered = 1
-     self.__camera._fetch_data() # acquire image'''
-
-     img = buffer.get()  # retrieve image'''  
-
+     self.__camera._fetch_data()   # acquire image
+     img = buffer.get()            # retrieve image  
      return img  
+
 
   def changeParameter(self, name: str, value: Any) -> None:
        if  self.module == "simulators": #checkes which camera is choosen in the ui
           if name == "Exposure time":
-               #value = (self.msExposure[value])
                self.__camera.set_exposure_time(float(value))
           
           elif name == "transform":        # parameter type = 'enum'
@@ -166,31 +134,33 @@ class PythonMicroscope(ICamera):
 
           else:
                raise ValueError(f"Unrecognized value \"{value}\" for parameter \"{name}\"")
-          
+     
+       else:
+          if self.__camera == "Exposure time" or name == "exposure_time":
+               self.__camera.set_exposure_time(float(value))
+          else:
+               self.__camera.set_setting(name, value)
+  '''     
        elif self.module == "andorsdk3" or self.module == "atmcd" or self.module == "pvcam" :  
           # pvcam default exposure_time=0.001 seconds
           if name == "Exposure time" or name == "exposure_time":
-               #value = (self.msExposure[value])
                self.__camera.set_exposure_time(float(value))
           else:
                self.__camera.set_attribute_value(name, value)  
 
        elif self.module == "ximea":
           if name == "Exposure time" or name == "exposure_time":
-               #value = (self.msExposure[value])
                self.__camera.set_exposure_time(float(value))
           else:
                self.__camera.set_param(name, value)
 
        else:
           raise ValueError(f"Unrecognized Camera \"{self.module}\"")
-          
-      
+     '''
+       
   def changeROI(self, newROI: ROI):
-        #newROI.height = newROI.height // self.__camera._binning.v
-        #newROI.width= newROI.width // self.__camera._binning.h
         self.__camera._set_roi(newROI)
         
   
   def close(self) -> None:
-        self.__camera._do_shutdown()
+        self.__camera.shutdown() 
