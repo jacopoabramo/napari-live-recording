@@ -16,6 +16,7 @@ import queue
 import importlib
 import logging
 
+from microscope import ROI as microscopeROI
 
 class PythonMicroscope(ICamera):
 
@@ -42,9 +43,12 @@ class PythonMicroscope(ICamera):
         driver = getattr(package, cls)
         self.__camera: Camera = driver()
 
-        sensorShape = ROI(offset_x=0, offset_y=0, height=self.__camera._roi.height // self.__camera._binning.v, width=self.__camera._roi.width // self.__camera._binning.h)
-        '''_binning.h & _binning.v default value = 1'''
+        #microscope.ROI: self.__camera.get_roi()
+        #microscope.Binning: self.__camera.get_binning()
 
+
+        sensorShape = ROI(offset_x=0, offset_y=0, height=self.__camera.get_roi().height // self.__camera.get_binning().v, width=self.__camera.get_roi().width // self.__camera.get_binning().h)
+        
         parameters = {}
         
         for key, values in self.__camera.get_all_settings().items():
@@ -98,14 +102,14 @@ class PythonMicroscope(ICamera):
 
 
   def changeParameter(self, name: str, value: Any) -> None:
-       if  self.module == "simulators": #checkes which camera is choosen in the ui
+       if  self.module == "simulators":      #checkes which camera is choosen in the ui
           if name == "Exposure time":
                self.__camera.set_exposure_time(float(value))
           
-          elif name == "transform":        # parameter type = 'enum'
+          elif name == "transform":          # parameter type = 'enum'
                '''(False, False, False): 0, (False, False, True): 1, (False, True, False): 2, (False, True, True): 3,
                (True, False, False): 4,(True, False, True): 5, (True, True, False): 6, (True, True, True): 7'''
-               value = eval((value))       #converts the datatype of value from str to tuple
+               value = eval((value))         #converts the datatype of value from str to tuple
                self.__camera.set_transform(value)    #set_transform methode does not work with index like the other enum parameter
                
           elif name == "a_setting":
