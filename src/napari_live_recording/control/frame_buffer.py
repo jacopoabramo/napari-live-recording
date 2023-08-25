@@ -2,12 +2,17 @@ import numpy as np
 import threading
 from napari_live_recording.common import ROI
 from napari_live_recording.control.devices.interface import ICamera
+from qtpy.QtCore import QThread, QObject, Signal
 
 
-class Framebuffer:
+class Framebuffer(QObject):
+    appendingFinished = Signal()
+
     def __init__(
         self, stackSize: int, camera: ICamera, allowOverwrite: bool = True
     ) -> None:
+        super().__init__()
+
         self.stackSize = stackSize
         self._appendedFrames = 0
         self.allowOverwrite = allowOverwrite
@@ -47,10 +52,18 @@ class Framebuffer:
     def addFrame(self, newFrame: np.array):
         try:
             with self.lock:
+                if (
+                    self._appendedFrames == self.stackSize
+                    and self.allowOverwrite == False
+                ):
+                    self.appendingFinished.emit()
+                    print("record finished emitted")
+
                 if self.full and not self.allowOverwrite:
                     raise IndexError(
                         "ImageBuffer overflows, because overwrite is disabled."
                     )
+
                 else:
                     if newFrame.shape == self.shape:
                         self.new = (self.new + 1) % self.stackSize

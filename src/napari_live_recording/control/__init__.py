@@ -1,9 +1,10 @@
 import numpy as np
 import tifffile.tifffile as tiff
 import os
+from typing import Union
 from contextlib import contextmanager
 from napari.qt.threading import thread_worker, FunctionWorker
-from qtpy.QtCore import QThread, QObject, Signal
+from qtpy.QtCore import QThread, QObject, Signal, QTimer
 from napari_live_recording.common import (
     TIFF_PHOTOMETRIC_MAP,
     WriterInfo,
@@ -43,7 +44,6 @@ class LocalController(NamedTuple):
 class MainController(QObject):
     recordFinished = Signal()
     cameraDeleted = Signal(bool)
-    frameCaptured = Signal()
 
     def __init__(self) -> None:
         """Main Controller class. Stores all camera objects to access live and stack recordings."""
@@ -144,6 +144,8 @@ class MainController(QObject):
             pass
 
     def record(self, camNames: list, writerInfo: WriterInfo) -> None:
+        self.recordingTimer = QTimer(singleShot=True)
+
         def closeFile(filename) -> None:
             files[filename].close()
 
@@ -152,26 +154,25 @@ class MainController(QObject):
             worker.finished.disconnect()
             print("worker disconnected")
 
-        @thread_worker(worker_class=FunctionWorker, start_thread=False)
-        def timeStackBuffer(camName: str, acquisitionTime: float):
-            self.recordingBuffers[camName].allowOverwrite = False
-            self.recordingBuffers[camName].renewBuffer(acquisitionTime * 30)
-            self.recordLoopEnabled = True
-            startTime = time()
-            while time() - startTime <= acquisitionTime:
-                pass
-            self.recordLoopEnabled = False
+        # def prepareBuffer(camName: str, buffersize: Union[int, float]):
+        #     self.recordingBuffers[camName].allowOverwrite = False
+        #     self.recordingBuffers[camName].renewBuffer(buffersize)
 
-        @thread_worker(worker_class=FunctionWorker, start_thread=False)
+        def timeStackBuffer(camName: str, acquisitionTime: float):
+            self.recordingBuffers[camName].allowOverwrite = True
+            self.recordingBuffers[camName].renewBuffer(round(acquisitionTime * 30))
+            self.recordingTimer.setInterval(round(acquisitionTime * 1000))
+            self.recordingTimer.timeout.connect(self.stopRecord)
+            print("connected")
+            self.recordingTimer.start()
+            self.recordLoopEnabled = True
+
         def fixedStackBuffer(camName: str, stackSize: int):
             self.recordingBuffers[camName].allowOverwrite = False
             self.recordingBuffers[camName].renewBuffer(stackSize)
+            self.recordingBuffers[camName].appendingFinished.connect(self.stopRecord)
             self.recordLoopEnabled = True
-            while self.recordingBuffers[camName]._appendedFrames <= stackSize - 1:
-                pass
-            self.recordLoopEnabled = False
 
-        @thread_worker(worker_class=FunctionWorker, start_thread=False)
         def toggledBuffer(camName: str):
             self.recordingBuffers[camName].allowOverwrite = True
             self.recordLoopEnabled = True
@@ -257,32 +258,28 @@ class MainController(QObject):
         fileWorkers = []
 
         if writerInfo.recordType == RecordType["Number of frames"]:
-            workers = [
-                fixedStackBuffer(camName, writerInfo.stackSize) for camName in camNames
-            ]
+            for camName in camNames:
+                fixedStackBuffer(camName, writerInfo.stackSize)
+
             fileWorkers = [
                 stackWriteToFile(filename, camName, writeFunc)
                 for filename, camName, writeFunc in zip(filenames, camNames, writeFuncs)
             ]
         elif writerInfo.recordType == RecordType["Time (seconds)"]:
-            workers = [
+            for camName in camNames:
                 timeStackBuffer(camName, writerInfo.acquisitionTime)
-                for camName in camNames
-            ]
             fileWorkers = [
                 stackWriteToFile(filename, camName, writeFunc)
                 for filename, camName, writeFunc in zip(filenames, camNames, writeFuncs)
             ]
         elif writerInfo.recordType == RecordType["Toggled"]:
             # here we have to do some extra work and set to True the record loop flag
-            workers = [toggledBuffer(camName) for camName in camNames]
+            for camName in camNames:
+                toggledBuffer(camName)
             fileWorkers = [
                 toggledWriteToFile(filename, camName, writeFunc)
                 for filename, camName, writeFunc in zip(filenames, camNames, writeFuncs)
             ]
-
-        for worker in workers:
-            worker.start()
 
         for fileworker in fileWorkers:
             fileworker.finished.connect(lambda: closeWorkerConnection(fileworker))

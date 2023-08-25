@@ -53,7 +53,7 @@ class ViewerAnchor:
         self.mainController.recordFinished.connect(
             lambda: self.recordingWidget.record.setChecked(False)
         )
-
+        self.mainController.cameraDeleted.connect(self.recordingWidget.live.setChecked)
         self.liveTimer = QTimer()
         self.liveTimer.timeout.connect(self._updateLiveLayers)
         self.liveTimer.setInterval(THIRTY_FPS)
@@ -86,6 +86,8 @@ class ViewerAnchor:
             lambda roi: camera.changeROI(roi)
         )
         roiWidget.signals["fullROIRequested"].connect(lambda roi: camera.changeROI(roi))
+
+        # here also change buffer ROI
 
         if interface == "MicroManager":
             cameraTabLayout.addWidget(camera.settingsWidget)
@@ -155,21 +157,24 @@ class ViewerAnchor:
 
     def snap(self) -> None:
         for key in self.mainController.deviceControllers.keys():
-            self._updateLayer(f"Snap {key}", self.mainController.snap(key))
+            self._updateLayer(f"Snap {key}", self.mainController.returnNewestFrame(key))
 
     def live(self, status: bool) -> None:
-        self.mainController.live(status)
+        # self.mainController.live(status)
         if status:
             self.liveTimer.start()
         else:
             self.liveTimer.stop()
 
     def _updateLiveLayers(self):
-        for key, buffer in self.mainController.deviceLiveBuffer.items():
+        # for key, buffer in self.mainController.deviceLiveBuffer.items():
+        for key in self.mainController.deviceControllers.keys():
             # this copy may not be truly necessary
             # but it does not impact performance too much
             # so we keep it to avoid possible data corruption
-            self._updateLayer(f"Live {key}", np.copy(buffer))
+            self._updateLayer(
+                f"Live {key}", np.copy(self.mainController.returnNewestFrame(key))
+            )
 
     def _updateLayer(self, layerKey: str, data: np.ndarray) -> None:
         try:
