@@ -18,7 +18,7 @@ import logging
 
 from microscope import ROI as microscopeROI
 
-class microscope(ICamera):
+class Microscope(ICamera):
 
   temp_dic={}
   dic = {}  
