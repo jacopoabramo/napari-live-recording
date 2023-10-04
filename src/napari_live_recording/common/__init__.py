@@ -2,13 +2,13 @@ from __future__ import annotations
 from enum import IntEnum
 from dataclasses import dataclass
 from functools import total_ordering
+from tifffile.tifffile import PHOTOMETRIC
 import pymmcore_plus as mmc
 
 # equivalent number of milliseconds
 # for 30 Hz and 60 Hz refresh rates
 THIRTY_FPS = 33
 SIXTY_FPS = 16
-
 FileFormat = IntEnum(
     value="FileFormat", names=[("ImageJ TIFF", 1), ("OME-TIFF", 2), ("HDF5", 3)]
 )
@@ -39,7 +39,6 @@ class WriterInfo:
     recordType: RecordType
     stackSize: int = 0
     acquisitionTime: float = 0
-
 
 @total_ordering
 @dataclass
@@ -83,3 +82,13 @@ for adapter in adapters:
 
     except:
         pass
+
+microscopeDeviceDict = {
+    "andorsdk3": "AndorSDK3",  #microscope.cameras.andorsdk3.AndorSDK3
+    "atmcd": "AndorAtmcd", #microscope.cameras.atmcd.AndotAtmcd
+    "pvcam": "PVCamera", #microscope.cameras.pvcam.PVCamera
+    "ximea": "XimeaCamera", #microscope.cameras.ximea.XimeaCamera
+    "hamamatsu": "HamamtsuCamera",
+    "picamera": "PiCamera",
+    "simulators": "SimulatedCamera"
+}

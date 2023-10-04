@@ -1,5 +1,7 @@
 import os
 import numpy as np
+import microscope.cameras
+from pkgutil import iter_modules
 from typing import Union
 from qtpy.QtCore import Qt, QObject, Signal, QTimer
 from qtpy.QtWidgets import (
@@ -16,7 +18,7 @@ from superqt import QLabeledSlider, QLabeledDoubleSlider, QEnumComboBox
 from qtpy.QtWidgets import QFormLayout, QGridLayout, QGroupBox
 from abc import ABC, abstractmethod
 from dataclasses import replace
-from napari_live_recording.common import ROI, FileFormat, RecordType, MMC_DEVICE_MAP
+from napari_live_recording.common import ROI, FileFormat, RecordType, MMC_DEVICE_MAP, microscopeDeviceDict
 from enum import Enum
 from typing import Dict, List, Tuple
 
@@ -106,7 +108,7 @@ class ComboBox(LocalWidget):
             orientation (str, optional): label orientation on the layout. Defaults to "left".
         """
         self.combobox = QComboBox()
-        self.combobox.addItems(param)
+        self.combobox.addItems([str(item) for item in param])
         super().__init__(self.combobox, name, unit, orientation)
 
     def changeWidgetSettings(self, newParam: List[str]) -> None:
@@ -291,12 +293,57 @@ class CameraSelection(QObject):
             list(MMC_DEVICE_MAP.keys()), name="Adapter", orientation="right"
         )
         self.deviceComboBox = ComboBox([], name="Device", orientation="right")
+        
+        modules = [module for _, module, _ in iter_modules(microscope.cameras.__path__) if "_" not in module]
+        modules.append("simulators")
+
+        self.microscopeModuleComboBox = ComboBox(
+            modules, name="Module", orientation="right"
+        )
+        self.microscopeDeviceComboBox = ComboBox(
+            [], name="Device", orientation="right"
+        )
         self.addButton = QPushButton("Add camera")
 
         self.camerasComboBox.signals["currentIndexChanged"].connect(self.changeWidget)
         self.adapterComboBox.signals["currentIndexChanged"].connect(
             self.updateDeviceSelectionUI
         )
+
+        self.microscopeModuleComboBox.signals["currentTextChanged"].connect(
+            self.updateMicroscopeDeviceSelectionUI
+        )
+
+        self.camerasComboBox.signals["currentIndexChanged"].connect(self._setAddEnabled)
+        self.addButton.clicked.connect(
+            self.requestNewCamera
+        )
+    
+    def requestNewCamera(self):
+        interface = self.camerasComboBox.value[0]
+        label = self.nameLineEdit.value
+        module = ""
+        device = ""
+        if interface in ["MicroManager", "PythonMicroscope"]:
+            if interface == "MicroManager":
+                module = self.adapterComboBox.value[0]
+                device = self.deviceComboBox.value[0]
+            elif interface == "PythonMicroscope":
+                module = self.microscopeModuleComboBox.value[0]
+                device = self.microscopeDeviceComboBox.value[0]
+            else:
+                raise TypeError()
+            self.newCameraRequested.emit(
+                interface,
+                label,
+                module + " " + device
+            )
+        else:
+            self.newCameraRequested.emit(
+                interface,
+                label,
+                self.idLineEdit.value
+            )
         self.camerasComboBox.signals["currentIndexChanged"].connect(self._setAddEnabled)
         self.addButton.clicked.connect(
             lambda: self.newCameraRequested.emit(
@@ -333,6 +380,14 @@ class CameraSelection(QObject):
                 self.stackLayouts[camera].addRow(
                     self.deviceComboBox.label, self.deviceComboBox.widget
                 )
+
+            elif camera == "PythonMicroscope":
+                self.stackLayouts[camera].addRow(
+                    self.microscopeModuleComboBox.label, self.microscopeModuleComboBox.widget
+                )
+                self.stackLayouts[camera].addRow(
+                    self.microscopeDeviceComboBox.label, self.microscopeDeviceComboBox.widget
+                )
             else:
                 self.stackLayouts[camera].addRow(
                     self.idLineEdit.label, self.idLineEdit.widget
@@ -355,6 +410,11 @@ class CameraSelection(QObject):
     def updateDeviceSelectionUI(self, idx):
         self.deviceComboBox.changeWidgetSettings(
             MMC_DEVICE_MAP[list(MMC_DEVICE_MAP.keys())[idx]]
+        )
+    
+    def updateMicroscopeDeviceSelectionUI(self, key):
+        self.microscopeDeviceComboBox.changeWidgetSettings(
+            [microscopeDeviceDict[key]]
         )
 
     def _setAddEnabled(self, idx: int):
