@@ -1,10 +1,20 @@
 # Changelog
 
+## 0.3.2
+
+Removed reference of tifffile enumerator `PHOTOMETRIC` (see #22)
+
+## 0.3.1
+
+- Added missing reference to `pymmcore-widgets` from `setup.cfg`
+- Added exception print when initializing list of available camera interfaces
+
 ## 0.3.0
 
 - Full rework of the plugin architecture ad user interface (hopefully for the last time)
-  - Recording features currently not working as is still under development
 - Removed old device interface documentation
+- Fixed issues #16, #17
+- Added MicroManager interface (@felixwanitschke)
 
 ## 0.2.1
 

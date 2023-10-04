@@ -9,7 +9,6 @@ import pymmcore_plus as mmc
 # for 30 Hz and 60 Hz refresh rates
 THIRTY_FPS = 33
 SIXTY_FPS = 16
-
 FileFormat = IntEnum(
     value="FileFormat", names=[("ImageJ TIFF", 1), ("OME-TIFF", 2), ("HDF5", 3)]
 )
@@ -27,8 +26,8 @@ class ColorType(IntEnum):
 
 TIFF_PHOTOMETRIC_MAP = {
     # ColorType -> photometric, number of channels
-    ColorType.GRAYLEVEL: (PHOTOMETRIC.MINISBLACK, 1),
-    ColorType.RGB: (PHOTOMETRIC.RGB, 3),
+    ColorType.GRAYLEVEL: ("minisblack", 1),
+    ColorType.RGB: ("rgb", 3),
 }
 
 

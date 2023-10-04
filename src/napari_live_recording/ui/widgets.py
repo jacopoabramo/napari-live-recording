@@ -22,6 +22,7 @@ from napari_live_recording.common import ROI, FileFormat, RecordType, MMC_DEVICE
 from enum import Enum
 from typing import Dict, List, Tuple
 
+
 class Timer(QTimer):
     pass
 
@@ -302,7 +303,6 @@ class CameraSelection(QObject):
         self.microscopeDeviceComboBox = ComboBox(
             [], name="Device", orientation="right"
         )
-    
         self.addButton = QPushButton("Add camera")
 
         self.camerasComboBox.signals["currentIndexChanged"].connect(self.changeWidget)
@@ -344,6 +344,16 @@ class CameraSelection(QObject):
                 label,
                 self.idLineEdit.value
             )
+        self.camerasComboBox.signals["currentIndexChanged"].connect(self._setAddEnabled)
+        self.addButton.clicked.connect(
+            lambda: self.newCameraRequested.emit(
+                self.camerasComboBox.value[0],
+                self.nameLineEdit.value,
+                (self.adapterComboBox.value[0] + " " + self.deviceComboBox.value[0])
+                if self.camerasComboBox.value[0] == "MicroManager"
+                else self.idLineEdit.value,
+            )
+        )
 
     def setAvailableCameras(self, cameras: List[str]) -> None:
         """Sets the ComboBox with the List of available camera devices.
@@ -370,6 +380,7 @@ class CameraSelection(QObject):
                 self.stackLayouts[camera].addRow(
                     self.deviceComboBox.label, self.deviceComboBox.widget
                 )
+
             elif camera == "PythonMicroscope":
                 self.stackLayouts[camera].addRow(
                     self.microscopeModuleComboBox.label, self.microscopeModuleComboBox.widget
