@@ -2,7 +2,6 @@ from __future__ import annotations
 from enum import IntEnum
 from dataclasses import dataclass
 from functools import total_ordering
-from tifffile.tifffile import PHOTOMETRIC
 import pymmcore_plus as mmc
 
 # equivalent number of milliseconds
