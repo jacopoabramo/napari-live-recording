@@ -19,6 +19,9 @@ from dataclasses import replace
 from napari_live_recording.common import ROI, FileFormat, RecordType, MMC_DEVICE_MAP
 from enum import Enum
 from typing import Dict, List, Tuple
+from napari_live_recording.processing_engine_.processing_gui import (
+    FilterSelectionWidget,
+)
 
 
 class Timer(QTimer):
@@ -370,6 +373,7 @@ class CameraSelection(QObject):
 
 class RecordHandling(QObject):
     recordRequested = Signal(int)
+    filterCreated = Signal(dict)
 
     def __init__(self) -> None:
         """Recording Handling widget. Includes QPushButtons which allow to handle the following operations:
@@ -417,6 +421,7 @@ class RecordHandling(QObject):
         self.snap = QPushButton("Snap")
         self.live = QPushButton("Live")
         self.record = QPushButton("Record")
+        self.createFilter = QPushButton("Create Filter")
 
         self.live.setCheckable(True)
         self.record.setCheckable(True)
@@ -442,14 +447,29 @@ class RecordHandling(QObject):
         self.layout.addWidget(self.snap, 4, 0, 1, 3)
         self.layout.addWidget(self.live, 5, 0, 1, 3)
         self.layout.addWidget(self.record, 6, 0, 1, 3)
+        self.layout.addWidget(self.createFilter, 7, 0, 1, 3)
         self.group.setLayout(self.layout)
         self.group.setFlat(True)
 
         self.live.toggled.connect(self.handleLiveToggled)
         self.record.toggled.connect(self.handleRecordToggled)
+        self.createFilter.clicked.connect(self.openFilterCreationWindow)
 
         self.folderButton.clicked.connect(self.handleFolderSelection)
         self.recordComboBox.currentEnumChanged.connect(self.handleRecordTypeChanged)
+
+    def openFilterCreationWindow(self) -> None:
+        def getFilter():
+            (
+                composedFunction,
+                filters,
+                name,
+            ) = self.selectionWindow.createComposedFunction()
+            self.filterCreated.emit({"filters": filters, "filtername": name})
+
+        self.selectionWindow = FilterSelectionWidget()
+        self.selectionWindow.show()
+        self.selectionWindow.apply_btn.clicked.connect(getFilter)
 
     def handleFolderSelection(self) -> None:
         """Handles the selection of the output folder for the recording."""

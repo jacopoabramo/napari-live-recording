@@ -1,3 +1,4 @@
+from PyQt5 import QtGui
 from qtpy.QtWidgets import (
     QApplication,
     QGroupBox,
@@ -5,22 +6,25 @@ from qtpy.QtWidgets import (
     QWidget,
     QDialog,
     QLabel,
+    QMessageBox,
     QMainWindow,
     QVBoxLayout,
 )
+from pyqtgraph import ImageView
+import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 from ast import literal_eval
 import pims, math
-from pims_testing import image
-from image_filters import *
+from napari_live_recording.processing_engine_.image_filters import *
 import functools
-import image_filters
+from napari_live_recording.processing_engine_ import image_filters
 import importlib
 import pkgutil
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, Signal
 import shutil
 import sys, os, glob
+from qtpy.QtGui import QPixmap, QImage, QDropEvent
 from qtpy.QtWidgets import (
     QWidget,
     QComboBox,
@@ -41,12 +45,15 @@ from qtpy.QtWidgets import (
     QSizePolicy,
     QCompleter,
     QListWidget,
+    QTableWidget,
     QAbstractItemView,
 )
 
 
 class LeftList(QListWidget):
     """Left list widget with functions available for image processing."""
+
+    DragDropSignalLeft = Signal()
 
     def __init__(self, parent=None):
         super(LeftList, self).__init__(parent)
@@ -57,9 +64,15 @@ class LeftList(QListWidget):
         self.setSelectionRectVisible(True)
         self.setAcceptDrops(False)
 
+    # def dragEvent(self, event: QDropEvent) -> None:
+    #     self.DragDropSignalLeft.emit()
+    #     return super().dropEvent(event)
+
 
 class RightList(QListWidget):
     """Right list widget with functions to be used for image processing. Individual items are sortable, to delete individual items, the items can simply be dragged into the left list. It is possible to have the same function multiple times"""
+
+    DragDropSignalRight = Signal()
 
     def __init__(self, parent=None):
         super(RightList, self).__init__(parent)
@@ -67,6 +80,10 @@ class RightList(QListWidget):
         self.setDefaultDropAction(Qt.MoveAction)
         self.setSelectionRectVisible(True)
         self.setSortingEnabled(True)
+
+    # def dropEvent(self, event: QDropEvent) -> None:
+    #     self.DragDropSignalRight.emit()
+    #     return super().dropEvent(event)
 
 
 class ParameterDialog(QDialog):
@@ -104,14 +121,15 @@ class ParameterDialog(QDialog):
         return self.lineEdits
 
 
-class MainWindow(QMainWindow):
+class FilterSelectionWidget(QWidget):
     """Main Window containing two lists, one Right List and one Left List. Drag items from the left to the right list to add them to the processing pipeline. The left listed can be searched for items. New items can be loaded from files.The right list can be cleared. By applying the right list, the functions (associated eith the items in the right list) will be put in to a processing pipeline."""
 
     def __init__(self, parent=None):
-        super(MainWindow, self).__init__(parent)
+        super(QWidget, self).__init__(parent)
 
-        self.filters_folder = r"C:\Users\felix\PycharmProjects\Testing\image_filters"
-
+        self.filters_folder = (
+            r"src\napari_live_recording\processing_engine_\image_filters"
+        )
         self.initializeMainWindow()
 
         self.loadFiles()
@@ -151,7 +169,9 @@ class MainWindow(QMainWindow):
         moduleList = []
         for importer, modname, ispkg in pkgutil.iter_modules(image_filters.__path__):
             if not modname == "__init__":
-                moduleList.append("image_filters." + modname)
+                moduleList.append(
+                    "napari_live_recording.processing_engine_.image_filters." + modname
+                )
         for module in map(importlib.import_module, moduleList):
             for func in filter(callable, module.__dict__.values()):
                 tpl = [func, module.parametersDict, module.parametersHints]
@@ -164,8 +184,9 @@ class MainWindow(QMainWindow):
     def clearListWidget(self):
         """Clearing the right list."""
         self.rightList.clear()
+        self.filterNameLineEdit.clear()
 
-    def applyFilters(self):
+    def createComposedFunction(self, isPreview: bool = False):
         """Use the items in the right list in their current order and create a nested function from them. For creating the nested function 'pims' used to achieve lazy evaluation."""
 
         def composeFunctions(functionList):
@@ -178,37 +199,32 @@ class MainWindow(QMainWindow):
         for i in range(self.rightList.count()):
             item = self.rightList.item(i)
             filters[f"{i+1}." + item.text()] = item.data(Qt.UserRole)
-        image_now = image
 
         for filter in filters.values():
-            print(filter)
             functionList.append(
                 pims.pipeline(functools.partial(filter[0], **filter[1]))
             )
-            print(filter[0], filter[1])
-            print("CurrentFilter", filter[0])
-            image_now = filter[0](image_now, **filter[1])
-        self.showImage(image_now)
-        print("Final filters", filters)
-        print("FunctionList", functionList)
+
         composedFunction = composeFunctions(list(reversed(functionList)))
+        filterName = self.filterNameLineEdit.text()
+        if filterName == "" and not isPreview:
+            self.alertWindow("Please Name your filter.")
+        else:
+            return composedFunction, filters, filterName
 
-        image_composed = composedFunction(image)
-        self.showImage(image_composed)
+    def updatePreviewImage(self):
+        try:
+            currentFilters = self.createComposedFunction(True)[0]
+            newImage = currentFilters(self.image)
+            self.imageView.setImage(newImage)
+        except Exception as e:
+            self.alertWindow(str(e))
+            print("Error", e)
 
-        return composedFunction
-
-    def applyFunction(self, function, input):
-        return function(input)
-
-    def showImage(self, image2):
-        fig, axs = plt.subplots(1, 2)
-
-        axs[0].imshow(image, cmap="gray")
-
-        axs[1].imshow(image2, cmap="gray")
-
-        plt.show()
+    def alertWindow(self, text):
+        dialog = QMessageBox()
+        dialog.setText("Current Filters not applicable:  " + text)
+        dialog.exec()
 
     def update_display(self, text: str):
         """Update the left list, i.e. hide items in the left list. Is used when text in the searchbar is changed.
@@ -237,8 +253,8 @@ class MainWindow(QMainWindow):
 
     def initializeMainWindow(self):
         """Creates the widgets and the layouts of the MainWindow"""
-        self.centralWidget = QWidget()
-        self.setCentralWidget(self.centralWidget)
+        # self.centralWidget = QWidget()
+        # self.setCentralWidget(self.centralWidget)
         self.setAcceptDrops(True)
         self.leftContainer = QGroupBox()
         self.leftContainerLayout = QGridLayout()
@@ -250,7 +266,6 @@ class MainWindow(QMainWindow):
 
         self.load_btn = QPushButton("Add new Filter")
         self.load_btn.clicked.connect(self.addFiles)
-        self.le = QLabel("Hello")
         self.leftList = LeftList()
 
         self.leftContainerLayout.addWidget(self.searchbar, 0, 0, 1, 2)
@@ -262,19 +277,58 @@ class MainWindow(QMainWindow):
         self.rightContainer.setLayout(self.rightContainerLayout)
 
         self.rightList = RightList()
+        self.rightList.setMouseTracking(True)
+        # self.rightList.itemChanged.connect(self.updatePreviewImage)
+        # self.rightList.DragDropSignalRight.connect(self.updatePreviewImage)
+        # self.leftList.DragDropSignalLeft.connect(self.updatePreviewImage)
+        # self.rightList.model().rowsRemoved.connect(self.updatePreviewImage)
+        # self.rightList.model().rowsInserted.connect(self.updatePreviewImage)
+        # self.rightList.model().rowsMoved.connect(self.updatePreviewImage)
+        # self.rightList.itemEntered.connect(self.updatePreviewImage)
+        # self.rightList.itemSelectionChanged.connect(self.updatePreviewImage)
+        # self.rightList.currentItemChanged.connect(self.updatePreviewImage)
+        # # self.rightList.currentRowChanged.connect(self.updatePreviewImage)
+        # self.rightList.itemDoubleClicked.connect(self.updatePreviewImage)
         self.clear_btn = QPushButton("Clear")
         self.apply_btn = QPushButton("Apply")
+        self.filterNameLineEdit = QLineEdit()
         self.clear_btn.clicked.connect(self.clearListWidget)
-        self.apply_btn.clicked.connect(self.applyFilters)
+        # self.apply_btn.clicked.connect(self.createComposedFunction)
         self.rightList.itemDoubleClicked.connect(self.openParameterDialogWindow)
 
         self.rightContainerLayout.addWidget(self.rightList, 0, 0, 1, 2)
-        self.rightContainerLayout.addWidget(self.clear_btn, 1, 0)
-        self.rightContainerLayout.addWidget(self.apply_btn, 1, 1)
-        layout = QHBoxLayout(self.centralWidget)
+        self.rightContainerLayout.addWidget(self.clear_btn, 2, 0)
+        self.rightContainerLayout.addWidget(self.apply_btn, 2, 1)
+        self.rightContainerLayout.addWidget(self.filterNameLineEdit, 1, 0, 1, 2)
 
+        self.previewContainer = QGroupBox()
+        self.previewContainerLayout = QGridLayout()
+        self.previewContainer.setLayout(self.previewContainerLayout)
+        self.refresh_btn = QPushButton("Refresh")
+
+        self.refresh_btn.clicked.connect(self.updatePreviewImage)
+        self.image_ = cv.imread(
+            r"C:\git\napari-live-recording\src\napari_live_recording\processing_engine_\testImage.jpg"
+        )
+        aspectRatio = self.image_.shape[0] / self.image_.shape[1]
+        self.image = cv.resize(
+            self.image_,
+            dsize=(int(280 * aspectRatio), 400),
+            interpolation=cv.INTER_CUBIC,
+        )
+
+        self.imageView = ImageView()
+        self.imageView.ui.histogram.hide()
+        self.imageView.ui.roiBtn.hide()
+        self.imageView.ui.menuBtn.hide()
+        self.imageView.setImage(self.image)
+        self.previewContainerLayout.addWidget(self.imageView)
+        self.previewContainerLayout.addWidget(self.refresh_btn)
+
+        layout = QHBoxLayout(self)
         layout.addWidget(self.leftContainer)
         layout.addWidget(self.rightContainer)
+        layout.addWidget(self.previewContainer)
 
 
 if __name__ == "__main__":
@@ -290,7 +344,7 @@ if __name__ == "__main__":
     """
     )
 
-    myApp = MainWindow()
+    myApp = FilterSelectionWidget()
     myApp.show()
 
     try:

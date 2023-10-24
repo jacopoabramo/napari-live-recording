@@ -45,11 +45,14 @@ class ViewerAnchor:
             self.selectionWidget.group, Qt.AlignmentFlag.AlignTop
         )
 
-        self.cameraWidgetGroups = {}
+        self.filtersDict = {}
+        self.cameraTabsDict = {}
+        filterComboBoxes = {}
         self.selectionWidget.newCameraRequested.connect(self.addCameraUI)
         self.recordingWidget.signals["snapRequested"].connect(self.snap)
         self.recordingWidget.signals["liveRequested"].connect(self.live)
         self.recordingWidget.signals["recordRequested"].connect(self.record)
+        self.recordingWidget.filterCreated.connect(self.refreshAvailablFilters)
         self.mainController.recordFinished.connect(
             lambda: self.recordingWidget.record.setChecked(False)
         )
@@ -88,7 +91,10 @@ class ViewerAnchor:
         roiWidget.signals["fullROIRequested"].connect(lambda roi: camera.changeROI(roi))
 
         # here also change buffer ROI
+        print(self.filtersDict)
+        filtersCombo = ComboBox(["Create Filter"], "Filters")
 
+        cameraTabLayout.addWidget(filtersCombo.widget)
         if interface == "MicroManager":
             cameraTabLayout.addWidget(camera.settingsWidget)
 
@@ -128,7 +134,7 @@ class ViewerAnchor:
         cameraTabLayout.addWidget(settingsGroup)
         cameraTab.setLayout(cameraTabLayout)
 
-        self.cameraWidgetGroups[cameraKey] = cameraTab
+        self.cameraTabsDict[cameraKey] = cameraTabLayout
         self.tabs.addTab(cameraTab, cameraKey)
 
     def deleteCameraUI(self, cameraKey: str) -> None:
@@ -139,10 +145,17 @@ class ViewerAnchor:
             self.tabs.setParent(None)
             self.isFirstTab = True
 
+    def refreshAvailablFilters(self, newFilter):
+        self.filtersDict[newFilter["filtername"]] = newFilter["filters"]
+        for key in self.cameraTabsDict.keys():
+            widget = self.cameraTabsDict[key].itemAt(0).widget()
+            widget.clear()
+            widget.addItems(self.filtersDict.keys())
+
     def record(self, status: bool) -> None:
         if status:
             # todo: add dynamic control
-            cameraKeys = list(self.cameraWidgetGroups.keys())
+            cameraKeys = list(self.cameraTabsDict.keys())
             writerInfo = WriterInfo(
                 folder=self.recordingWidget.folderTextEdit.text(),
                 filename=self.recordingWidget.filenameTextEdit.text(),
