@@ -6,6 +6,7 @@ from qtpy.QtWidgets import (
     QScrollArea,
     QFrame,
     QVBoxLayout,
+    QGridLayout,
     QSpacerItem,
     QSizePolicy,
 )
@@ -45,14 +46,14 @@ class ViewerAnchor:
             self.selectionWidget.group, Qt.AlignmentFlag.AlignTop
         )
 
-        self.filtersDict = {}
+        self.filtersDict = {"No Filter": None}
         self.cameraTabsDict = {}
         filterComboBoxes = {}
         self.selectionWidget.newCameraRequested.connect(self.addCameraUI)
         self.recordingWidget.signals["snapRequested"].connect(self.snap)
         self.recordingWidget.signals["liveRequested"].connect(self.live)
         self.recordingWidget.signals["recordRequested"].connect(self.record)
-        self.recordingWidget.filterCreated.connect(self.refreshAvailablFilters)
+        self.recordingWidget.filterCreated.connect(self.refreshAvailableFilters)
         self.mainController.recordFinished.connect(
             lambda: self.recordingWidget.record.setChecked(False)
         )
@@ -77,7 +78,7 @@ class ViewerAnchor:
         cameraKey = f"{camera.name}:{camera.__class__.__name__}:{str(idx)}"
 
         cameraTab = QWidget()
-        cameraTabLayout = QVBoxLayout()
+        cameraTabLayout = QGridLayout()
 
         settingsLayout = QFormLayout()
         settingsGroup = QGroupBox()
@@ -91,12 +92,14 @@ class ViewerAnchor:
         roiWidget.signals["fullROIRequested"].connect(lambda roi: camera.changeROI(roi))
 
         # here also change buffer ROI
-        print(self.filtersDict)
-        filtersCombo = ComboBox(["Create Filter"], "Filters")
+        filtersCombo = ComboBox(self.filtersDict.keys(), "Filters")
+        selectFilter_btn = QPushButton("Select Filter")
 
-        cameraTabLayout.addWidget(filtersCombo.widget)
+        cameraTabLayout.addWidget(filtersCombo.widget, 0, 0)
+        cameraTabLayout.addWidget(selectFilter_btn, 0, 1)
+
         if interface == "MicroManager":
-            cameraTabLayout.addWidget(camera.settingsWidget)
+            cameraTabLayout.addWidget(camera.settingsWidget, 1, 0, 1, 2)
 
         else:
             scrollArea = QScrollArea()
@@ -124,7 +127,7 @@ class ViewerAnchor:
             scrollArea.setWidgetResizable(True)
             scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
             scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-            cameraTabLayout.addWidget(scrollArea)
+            cameraTabLayout.addWidget(scrollArea, 1, 0, 1, 2)
 
         deleteButton = QPushButton("Delete camera")
         deleteButton.clicked.connect(lambda: self.deleteCameraUI(cameraKey))
@@ -145,12 +148,14 @@ class ViewerAnchor:
             self.tabs.setParent(None)
             self.isFirstTab = True
 
-    def refreshAvailablFilters(self, newFilter):
+    def refreshAvailableFilters(self, newFilter):
         self.filtersDict[newFilter["filtername"]] = newFilter["filters"]
         for key in self.cameraTabsDict.keys():
             widget = self.cameraTabsDict[key].itemAt(0).widget()
+            previousIndex = widget.currentIndex()
             widget.clear()
             widget.addItems(self.filtersDict.keys())
+            widget.setCurrentIndex(previousIndex)
 
     def record(self, status: bool) -> None:
         if status:

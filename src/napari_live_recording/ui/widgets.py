@@ -459,17 +459,14 @@ class RecordHandling(QObject):
         self.recordComboBox.currentEnumChanged.connect(self.handleRecordTypeChanged)
 
     def openFilterCreationWindow(self) -> None:
-        def getFilter():
-            (
-                composedFunction,
-                filters,
-                name,
-            ) = self.selectionWindow.createComposedFunction()
-            self.filterCreated.emit({"filters": filters, "filtername": name})
+        def getFilter(filters):
+            filtersList = filters[1]
+            filterName = filters[2]
+            self.filterCreated.emit({"filters": filtersList, "filtername": filterName})
 
         self.selectionWindow = FilterSelectionWidget()
         self.selectionWindow.show()
-        self.selectionWindow.apply_btn.clicked.connect(getFilter)
+        self.selectionWindow.filtersReturned.connect(getFilter)
 
     def handleFolderSelection(self) -> None:
         """Handles the selection of the output folder for the recording."""

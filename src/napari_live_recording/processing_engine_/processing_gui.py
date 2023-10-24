@@ -124,6 +124,8 @@ class ParameterDialog(QDialog):
 class FilterSelectionWidget(QWidget):
     """Main Window containing two lists, one Right List and one Left List. Drag items from the left to the right list to add them to the processing pipeline. The left listed can be searched for items. New items can be loaded from files.The right list can be cleared. By applying the right list, the functions (associated eith the items in the right list) will be put in to a processing pipeline."""
 
+    filtersReturned = Signal(tuple)
+
     def __init__(self, parent=None):
         super(QWidget, self).__init__(parent)
 
@@ -210,6 +212,7 @@ class FilterSelectionWidget(QWidget):
         if filterName == "" and not isPreview:
             self.alertWindow("Please Name your filter.")
         else:
+            self.filtersReturned.emit((composedFunction, filters, filterName))
             return composedFunction, filters, filterName
 
     def updatePreviewImage(self):
@@ -277,6 +280,7 @@ class FilterSelectionWidget(QWidget):
         self.rightContainer.setLayout(self.rightContainerLayout)
 
         self.rightList = RightList()
+        self.rightList.count
         self.rightList.setMouseTracking(True)
         # self.rightList.itemChanged.connect(self.updatePreviewImage)
         # self.rightList.DragDropSignalRight.connect(self.updatePreviewImage)
@@ -290,15 +294,18 @@ class FilterSelectionWidget(QWidget):
         # # self.rightList.currentRowChanged.connect(self.updatePreviewImage)
         # self.rightList.itemDoubleClicked.connect(self.updatePreviewImage)
         self.clear_btn = QPushButton("Clear")
-        self.apply_btn = QPushButton("Apply")
+        self.createFilter_btn = QPushButton("Create Filter")
         self.filterNameLineEdit = QLineEdit()
+        # self.filterNameLineEdit.textChanged.connect(self.handleApply_btn)
+
         self.clear_btn.clicked.connect(self.clearListWidget)
-        # self.apply_btn.clicked.connect(self.createComposedFunction)
+        self.createFilter_btn.clicked.connect(self.createComposedFunction)
         self.rightList.itemDoubleClicked.connect(self.openParameterDialogWindow)
+        # self.apply_btn.setDisabled(True)
 
         self.rightContainerLayout.addWidget(self.rightList, 0, 0, 1, 2)
         self.rightContainerLayout.addWidget(self.clear_btn, 2, 0)
-        self.rightContainerLayout.addWidget(self.apply_btn, 2, 1)
+        self.rightContainerLayout.addWidget(self.createFilter_btn, 2, 1)
         self.rightContainerLayout.addWidget(self.filterNameLineEdit, 1, 0, 1, 2)
 
         self.previewContainer = QGroupBox()

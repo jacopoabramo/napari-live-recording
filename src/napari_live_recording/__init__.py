@@ -2,6 +2,8 @@ from qtpy.QtWidgets import QWidget, QApplication
 from napari.viewer import Viewer
 from napari_live_recording.ui import ViewerAnchor
 from napari_live_recording.control import MainController
+import sys
+
 
 class NapariLiveRecording(QWidget):
     def __init__(self, napari_viewer: Viewer) -> None:
@@ -14,3 +16,7 @@ class NapariLiveRecording(QWidget):
 
     def on_close_callback(self) -> None:
         self.mainController.cleanup()
+        try:
+            sys.exit(self.app.exec())
+        except SystemExit:
+            pass
