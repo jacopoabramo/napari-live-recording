@@ -26,6 +26,8 @@ from napari_live_recording.ui.widgets import (
     ROIHandling,
 )
 import numpy as np
+import functools
+import pims
 
 
 class ViewerAnchor:
@@ -45,15 +47,17 @@ class ViewerAnchor:
         self.mainLayout.setAlignment(
             self.selectionWidget.group, Qt.AlignmentFlag.AlignTop
         )
-
+        # if self.mainController.settings.value("availableFilters") is not None:
+        #     self.filtersDict = self.mainController.settings.value("availableFilters")
+        # else:
         self.filtersDict = {"No Filter": None}
         self.cameraTabsDict = {}
-        filterComboBoxes = {}
         self.selectionWidget.newCameraRequested.connect(self.addCameraUI)
         self.recordingWidget.signals["snapRequested"].connect(self.snap)
         self.recordingWidget.signals["liveRequested"].connect(self.live)
         self.recordingWidget.signals["recordRequested"].connect(self.record)
         self.recordingWidget.filterCreated.connect(self.refreshAvailableFilters)
+        self.recordingWidget.resetFilters.clicked.connect(self.resetFilters)
         self.mainController.recordFinished.connect(
             lambda: self.recordingWidget.record.setChecked(False)
         )
@@ -149,18 +153,35 @@ class ViewerAnchor:
             self.isFirstTab = True
 
     def refreshAvailableFilters(self, newFilter):
-        self.filtersDict[newFilter["filtername"]] = newFilter["filters"]
+        print(newFilter)
+        self.filtersDict[newFilter[0]] = newFilter[1]
+        print(self.filtersDict)
         for key in self.cameraTabsDict.keys():
             widget = self.cameraTabsDict[key].itemAt(0).widget()
             previousIndex = widget.currentIndex()
             widget.clear()
             widget.addItems(self.filtersDict.keys())
             widget.setCurrentIndex(previousIndex)
+            self.mainController.settings.setValue("availableFilters", self.filtersDict)
+
+    def resetFilters(self):
+        for key in self.cameraTabsDict.keys():
+            widget = self.cameraTabsDict[key].itemAt(0).widget()
+            self.filtersDict = {"No Filter": None}
+            self.mainController.settings.setValue("availableFilters", self.filtersDict)
+            widget.clear()
+            widget.addItems(self.filtersDict.keys())
 
     def record(self, status: bool) -> None:
         if status:
             # todo: add dynamic control
+            filtersList = {}
             cameraKeys = list(self.cameraTabsDict.keys())
+            for key in cameraKeys:
+                widget = self.cameraTabsDict[key].itemAt(0).widget()
+                selectedFilter = widget.currentText()
+                filtersList[key] = self.filtersDict[selectedFilter]
+            print(filtersList, "FiltersList Created before calling process")
             writerInfo = WriterInfo(
                 folder=self.recordingWidget.folderTextEdit.text(),
                 filename=self.recordingWidget.filenameTextEdit.text(),
@@ -169,6 +190,15 @@ class ViewerAnchor:
                 stackSize=self.recordingWidget.recordSize,
                 acquisitionTime=self.recordingWidget.recordSize,
             )
+            writerInfoProcessed = WriterInfo(
+                folder=self.recordingWidget.folderTextEdit.text(),
+                filename=self.recordingWidget.filenameTextEdit.text() + "processed",
+                fileFormat=self.recordingWidget.formatComboBox.currentEnum(),
+                recordType=self.recordingWidget.recordComboBox.currentEnum(),
+                stackSize=self.recordingWidget.recordSize,
+                acquisitionTime=self.recordingWidget.recordSize,
+            )
+            self.mainController.process(filtersList, writerInfoProcessed)
             self.mainController.record(cameraKeys, writerInfo)
         else:
             self.mainController.stopRecord()

@@ -198,21 +198,29 @@ class FilterSelectionWidget(QWidget):
 
         filters = {}
         functionList = []
-        for i in range(self.rightList.count()):
-            item = self.rightList.item(i)
-            filters[f"{i+1}." + item.text()] = item.data(Qt.UserRole)
+        if self.rightList.count() == 0:
+            filters["1.No Filter"] = None
+        else:
+            for i in range(self.rightList.count()):
+                item = self.rightList.item(i)
+                filters[f"{i+1}." + item.text()] = functools.partial(
+                    item.data(Qt.UserRole)[0], **item.data(Qt.UserRole)[1]
+                )
 
         for filter in filters.values():
-            functionList.append(
-                pims.pipeline(functools.partial(filter[0], **filter[1]))
-            )
+            functionList.append(pims.pipeline(filter))
 
         composedFunction = composeFunctions(list(reversed(functionList)))
+        functionList = list(reversed(functionList))
         filterName = self.filterNameLineEdit.text()
-        if filterName == "" and not isPreview:
-            self.alertWindow("Please Name your filter.")
+        if filterName == "":
+            if isPreview:
+                pass
+            else:
+                self.alertWindow("Please Name your filter.")
         else:
-            self.filtersReturned.emit((composedFunction, filters, filterName))
+            print("GUI", filters)
+            self.filtersReturned.emit((filterName, filters))
             return composedFunction, filters, filterName
 
     def updatePreviewImage(self):

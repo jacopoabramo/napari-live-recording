@@ -373,7 +373,7 @@ class CameraSelection(QObject):
 
 class RecordHandling(QObject):
     recordRequested = Signal(int)
-    filterCreated = Signal(dict)
+    filterCreated = Signal(tuple)
 
     def __init__(self) -> None:
         """Recording Handling widget. Includes QPushButtons which allow to handle the following operations:
@@ -422,6 +422,7 @@ class RecordHandling(QObject):
         self.live = QPushButton("Live")
         self.record = QPushButton("Record")
         self.createFilter = QPushButton("Create Filter")
+        self.resetFilters = QPushButton("Reset all Filters")
 
         self.live.setCheckable(True)
         self.record.setCheckable(True)
@@ -447,7 +448,8 @@ class RecordHandling(QObject):
         self.layout.addWidget(self.snap, 4, 0, 1, 3)
         self.layout.addWidget(self.live, 5, 0, 1, 3)
         self.layout.addWidget(self.record, 6, 0, 1, 3)
-        self.layout.addWidget(self.createFilter, 7, 0, 1, 3)
+        self.layout.addWidget(self.createFilter, 7, 0, 1, 2)
+        self.layout.addWidget(self.resetFilters, 7, 2)
         self.group.setLayout(self.layout)
         self.group.setFlat(True)
 
@@ -459,10 +461,11 @@ class RecordHandling(QObject):
         self.recordComboBox.currentEnumChanged.connect(self.handleRecordTypeChanged)
 
     def openFilterCreationWindow(self) -> None:
+        global getFilter
+
         def getFilter(filters):
-            filtersList = filters[1]
-            filterName = filters[2]
-            self.filterCreated.emit({"filters": filtersList, "filtername": filterName})
+            print("getFilter", filters)
+            self.filterCreated.emit(filters)
 
         self.selectionWindow = FilterSelectionWidget()
         self.selectionWindow.show()
