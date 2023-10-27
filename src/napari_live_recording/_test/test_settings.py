@@ -1,12 +1,7 @@
-import pytest
 import logging
 from napari_live_recording import NapariLiveRecording
 
 logger = logging.getLogger(__name__)
-
-@pytest.fixture
-def recording_widget(make_napari_viewer):
-    return NapariLiveRecording(make_napari_viewer())
 
 def test_mmcore_settings_change(recording_widget):
     widget : NapariLiveRecording = recording_widget
@@ -22,3 +17,6 @@ def test_mmcore_settings_change(recording_widget):
     widget.anchor.selectionWidget.addButton.click()
 
     assert "MyCamera:MicroManager:DemoCamera DCam" in list(widget.anchor.cameraWidgetGroups.keys())
+
+    # always close for each test
+    widget.on_close_callback()

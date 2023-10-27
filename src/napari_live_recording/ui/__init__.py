@@ -136,6 +136,7 @@ class ViewerAnchor:
             self.mainLayout.removeWidget(self.tabs)
             self.tabs.setParent(None)
             self.isFirstTab = True
+        del self.cameraWidgetGroups[cameraKey]
 
     def record(self, status: bool) -> None:
         if status:

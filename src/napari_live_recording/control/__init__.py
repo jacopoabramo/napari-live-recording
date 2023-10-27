@@ -90,14 +90,15 @@ class MainController(QObject):
         """Deletes a camera device. """
         if self.isLive:
             self.live(False)
-        with self.livePaused():
-            try:
-                self.deviceControllers[cameraKey].device.close()
-                self.deviceControllers[cameraKey].thread.quit()
-                self.recordSignalCounter.maxCount -= 1
-            except RuntimeError:
-                # camera already deleted
-                pass
+        try:
+            self.deviceControllers[cameraKey].device.close()
+            self.deviceControllers[cameraKey].thread.quit()
+            self.recordSignalCounter.maxCount -= 1
+        except RuntimeError:
+            # camera already deleted
+            pass
+        del self.deviceControllers[cameraKey]
+        
     def snap(self, cameraKey: str) -> np.ndarray:
         return self.deviceControllers[cameraKey].device.grabFrame()
 
