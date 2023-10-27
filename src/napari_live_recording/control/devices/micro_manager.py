@@ -1,6 +1,7 @@
+import numpy as np
+from contextlib import contextmanager
 from pymmcore_plus import CMMCorePlus
 from pymmcore_widgets._device_property_table import DevicePropertyTable
-import numpy as np
 from napari_live_recording.common import ROI
 from napari_live_recording.control.devices.interface import ICamera
 from typing import Union, Any
@@ -23,6 +24,7 @@ class MicroManager(ICamera):
         self.__capture.loadDevice(name, moduleName, deviceName)
         self.__capture.initializeDevice(name)
         self.__capture.setCameraDevice(name)
+        self.__capture.initializeCircularBuffer()
         self.name = name
         self.settingsWidget = DevicePropertyTable()
         self.settingsWidget.filterDevices("camera", include_read_only=False)
@@ -57,17 +59,29 @@ class MicroManager(ICamera):
             pass
 
     def changeParameter(self, name: str, value: Any) -> None:
+        # parameters handled via a different widget
         pass
 
     def changeROI(self, newROI: ROI):
-        self.setAcquisitionStatus(False)
-        self.__capture.setROI(
-            self.name, newROI.offset_x, newROI.offset_y, newROI.width, newROI.height
-        )
-        self.setAcquisitionStatus(True)
+        with self.acquisitionSuspended():
+            self.__capture.setROI(
+                self.name, newROI.offset_x, newROI.offset_y, newROI.width, newROI.height
+            )
         if newROI <= self.fullShape:
             self.roiShape = newROI
 
     def close(self) -> None:
-        self.setAcquisitionStatus(False)
+        if self.__capture.isSequenceRunning():
+            self.setAcquisitionStatus(False)
         self.__capture.unloadDevice(self.name)
+    
+    @contextmanager
+    def acquisitionSuspended(self):
+        if self.__capture.isSequenceRunning():
+            try:
+                self.setAcquisitionStatus(False)
+                yield
+            finally:
+                self.setAcquisitionStatus(True)
+        else:
+            yield

@@ -88,12 +88,12 @@ class MainController(QObject):
     def deleteCamera(self, cameraKey: str) -> None:
 
         """Deletes a camera device. """
+        if self.isLive:
+            self.live(False)
         with self.livePaused():
             try:
                 self.deviceControllers[cameraKey].device.close()
                 self.deviceControllers[cameraKey].thread.quit()
-                self.deviceControllers[cameraKey].device.deleteLater()
-                self.deviceControllers[cameraKey].thread.deleteLater()
                 self.recordSignalCounter.maxCount -= 1
             except RuntimeError:
                 # camera already deleted

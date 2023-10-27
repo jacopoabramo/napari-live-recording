@@ -324,11 +324,11 @@ class CameraSelection(QObject):
         label = self.nameLineEdit.value
         module = ""
         device = ""
-        if interface in ["MicroManager", "PythonMicroscope"]:
+        if interface in ["MicroManager", "Microscope"]:
             if interface == "MicroManager":
                 module = self.adapterComboBox.value[0]
                 device = self.deviceComboBox.value[0]
-            elif interface == "PythonMicroscope":
+            elif interface == "Microscope":
                 module = self.microscopeModuleComboBox.value[0]
                 device = self.microscopeDeviceComboBox.value[0]
             else:
@@ -345,15 +345,6 @@ class CameraSelection(QObject):
                 self.idLineEdit.value
             )
         self.camerasComboBox.signals["currentIndexChanged"].connect(self._setAddEnabled)
-        self.addButton.clicked.connect(
-            lambda: self.newCameraRequested.emit(
-                self.camerasComboBox.value[0],
-                self.nameLineEdit.value,
-                (self.adapterComboBox.value[0] + " " + self.deviceComboBox.value[0])
-                if self.camerasComboBox.value[0] == "MicroManager"
-                else self.idLineEdit.value,
-            )
-        )
 
     def setAvailableCameras(self, cameras: List[str]) -> None:
         """Sets the ComboBox with the List of available camera devices.
@@ -381,7 +372,7 @@ class CameraSelection(QObject):
                     self.deviceComboBox.label, self.deviceComboBox.widget
                 )
 
-            elif camera == "PythonMicroscope":
+            elif camera == "Microscope":
                 self.stackLayouts[camera].addRow(
                     self.microscopeModuleComboBox.label, self.microscopeModuleComboBox.widget
                 )
@@ -422,10 +413,7 @@ class CameraSelection(QObject):
         This is done to avoid the first index, the "Select device" string, to be considered
         as a valid camera device (which is not).
         """
-        if idx > 0:
-            self.addButton.setEnabled(True)
-        else:
-            self.addButton.setEnabled(False)
+        self.addButton.setEnabled(idx > 0)
 
 
 class RecordHandling(QObject):
