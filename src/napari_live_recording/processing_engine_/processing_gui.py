@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from ast import literal_eval
 import pims, math
 from napari_live_recording.processing_engine_.image_filters import *
+from napari_live_recording.common import filtersDict
 import functools
 from napari_live_recording.processing_engine_ import image_filters
 import importlib
@@ -176,11 +177,15 @@ class FilterSelectionWidget(QWidget):
                 )
         for module in map(importlib.import_module, moduleList):
             for func in filter(callable, module.__dict__.values()):
-                tpl = [func, module.parametersDict, module.parametersHints]
+                loadedInformation = [
+                    func,
+                    module.parametersDict,
+                    module.parametersHints,
+                ]
                 item = QListWidgetItem()
                 item.setText(func.__name__)
-                item.setToolTip(module.__file__)
-                item.setData(Qt.UserRole, tpl)
+                item.setToolTip(module.functionDescription)
+                item.setData(Qt.UserRole, loadedInformation)
                 self.leftList.addItem(item)
 
     def clearListWidget(self):

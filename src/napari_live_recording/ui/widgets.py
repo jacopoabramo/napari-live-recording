@@ -16,7 +16,13 @@ from superqt import QLabeledSlider, QLabeledDoubleSlider, QEnumComboBox
 from qtpy.QtWidgets import QFormLayout, QGridLayout, QGroupBox, QStackedLayout
 from abc import ABC, abstractmethod
 from dataclasses import replace
-from napari_live_recording.common import ROI, FileFormat, RecordType, MMC_DEVICE_MAP
+from napari_live_recording.common import (
+    ROI,
+    FileFormat,
+    RecordType,
+    MMC_DEVICE_MAP,
+    settings,
+)
 from enum import Enum
 from typing import Dict, List, Tuple
 from napari_live_recording.processing_engine_.processing_gui import (
@@ -393,7 +399,7 @@ class RecordHandling(QObject):
 
         """
         QObject.__init__(self)
-
+        self.settings = settings
         self.group = QGroupBox()
         self.layout = QGridLayout()
 
@@ -402,7 +408,9 @@ class RecordHandling(QObject):
         self.formatLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.folderTextEdit = QLineEdit(
-            os.path.join(os.path.expanduser("~"), "Documents")
+            os.path.join(os.path.expanduser("~"), "Downloads")
+            if self.settings.value("recordFolder") == None
+            else self.settings.value("recordFolder")
         )
         self.folderTextEdit.setReadOnly(True)
         self.folderButton = QPushButton("Select record folder")
@@ -478,6 +486,7 @@ class RecordHandling(QObject):
         )
         if folder:
             self.folderTextEdit.setText(folder)
+            self.settings.setValue("recordFolder", folder)
 
     def handleRecordTypeChanged(self, recordType: RecordType) -> None:
         """Handles the change of the record type.

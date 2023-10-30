@@ -6,6 +6,8 @@ parametersDict = {"shape": (3, 3), "sigma": 0.5}
 
 parametersHints = {"shape": "tuple,uneven numbers", "sigma": "float"}
 
+functionDescription = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin at molestie tortor, tempus suscipit felis. Maecenas imperdiet ultricies urna, aliquet mollis lorem varius vitae. Nulla a nisi neque. Ut at turpis feugiat, tincidunt est sit amet, imperdiet magna. Pellentesque et viverra eros. Phasellus tempor turpis vulputate lacus lobortis mattis. Donec."
+
 
 def matlab_style_gauss2D(image, shape, sigma):
     """

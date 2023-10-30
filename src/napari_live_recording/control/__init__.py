@@ -12,6 +12,7 @@ from napari_live_recording.common import (
     FileFormat,
     RecordType,
     ROI,
+    settings,
 )
 from napari_live_recording.control.devices.interface import ICamera
 from napari_live_recording.control.frame_buffer import Framebuffer
@@ -55,6 +56,7 @@ class MainController(QObject):
         self.deviceBuffers: Dict[str, Framebuffer] = {}
         self.recordingBuffers: Dict[str, Framebuffer] = {}
         self.processingBuffers: Dict[str, Framebuffer] = {}
+        self.settings = settings
         self.stackSize = 100
         self.idx = 0
         self.liveWorker = None
@@ -160,7 +162,7 @@ class MainController(QObject):
         def closeFile(filename) -> None:
             files[filename].close()
 
-        def createPipelineFilter(self, filters):
+        def createPipelineFilter(filters):
             def composeFunctions(functionList):
                 return functools.reduce(
                     lambda f, g: lambda x: f(g(x)), functionList, lambda x: x
@@ -184,7 +186,7 @@ class MainController(QObject):
 
         def fixedStackBuffer(camName: str, stackSize: int):
             self.processingBuffers[camName].allowOverwrite = False
-            self.processingBuffers[camName].renewBuffer(stackSize)
+            self.processingBuffers[camName].renewBuffer(stackSize - 1)
 
         def toggledBuffer(camName: str):
             self.processingBuffers[camName].allowOverwrite = True
@@ -204,9 +206,11 @@ class MainController(QObject):
                         self.recordLoopEnabled
                         or not self.recordingBuffers[camName].empty
                     ):
-                        frame = self.processingBuffers[camName].popOldestFrame()
-                        writeFunc(frame)
-
+                        try:
+                            frame = self.processingBuffers[camName].popOldestFrame()
+                            writeFunc(frame)
+                        except:
+                            pass
                 else:
                     print("StackWrite", filtersList[camName])
                     filterFunction = createPipelineFilter(filtersList[camName])
@@ -215,12 +219,14 @@ class MainController(QObject):
                         self.recordLoopEnabled
                         or not self.recordingBuffers[camName].empty
                     ):
-                        print("Still writing", self.recordLoopEnabled)
-                        frame = filterFunction(
-                            self.processingBuffers[camName].popOldestFrame()
-                        )
-                        writeFunc(frame)
-
+                        try:
+                            print("Still writing", self.recordLoopEnabled)
+                            frame = filterFunction(
+                                self.processingBuffers[camName].popOldestFrame()
+                            )
+                            writeFunc(frame)
+                        except Exception as e:
+                            print("Inner while process ", e)
                 print("empty")
                 return filename
             except Exception as e:
@@ -355,7 +361,7 @@ class MainController(QObject):
 
         def fixedStackBuffer(camName: str, stackSize: int):
             self.recordingBuffers[camName].allowOverwrite = False
-            self.recordingBuffers[camName].renewBuffer(stackSize)
+            self.recordingBuffers[camName].renewBuffer(stackSize - 1)
             self.recordingBuffers[camName].appendingFinished.connect(self.stopRecord)
             self.recordLoopEnabled = True
 
@@ -375,10 +381,13 @@ class MainController(QObject):
                 while (
                     self.recordLoopEnabled or not self.recordingBuffers[camName].empty
                 ):
-                    # print("before pop", self.recordingBuffers[camName].length)
-                    frame = self.recordingBuffers[camName].popOldestFrame()
-                    # print("after pop", self.recordingBuffers[camName].length)
-                    writeFunc(frame)
+                    try:
+                        # print("before pop", self.recordingBuffers[camName].length)
+                        frame = self.recordingBuffers[camName].popOldestFrame()
+                        # print("after pop", self.recordingBuffers[camName].length)
+                        writeFunc(frame)
+                    except Exception as e:
+                        print("Inner while record ", e)
                 print("empty")
                 return filename
             except Exception as e:

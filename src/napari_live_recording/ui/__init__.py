@@ -11,7 +11,14 @@ from qtpy.QtWidgets import (
     QSizePolicy,
 )
 from superqt import QCollapsible
-from napari_live_recording.common import THIRTY_FPS, WriterInfo, RecordType, FileFormat
+from napari_live_recording.common import (
+    THIRTY_FPS,
+    WriterInfo,
+    RecordType,
+    FileFormat,
+    settings,
+    filtersDict,
+)
 from napari_live_recording.control.devices import devicesDict, ICamera
 from napari_live_recording.control.devices.interface import NumberParameter
 from napari_live_recording.control import MainController
@@ -36,6 +43,7 @@ class ViewerAnchor:
     def __init__(self, napari_viewer: Viewer, mainController: MainController) -> None:
         self.viewer = napari_viewer
         self.mainController = mainController
+        self.settings = settings
         self.mainLayout = QVBoxLayout()
         self.selectionWidget = CameraSelection()
         self.selectionWidget.setDeviceSelectionWidget(list(devicesDict.keys()))
@@ -47,10 +55,10 @@ class ViewerAnchor:
         self.mainLayout.setAlignment(
             self.selectionWidget.group, Qt.AlignmentFlag.AlignTop
         )
-        # if self.mainController.settings.value("availableFilters") is not None:
-        #     self.filtersDict = self.mainController.settings.value("availableFilters")
-        # else:
-        self.filtersDict = {"No Filter": None}
+        if self.settings.value("availableFilters") is not None:
+            self.filtersDict = self.settings.value("availableFilters")
+        else:
+            self.filtersDict = {"No Filter": None}
         self.cameraTabsDict = {}
         self.selectionWidget.newCameraRequested.connect(self.addCameraUI)
         self.recordingWidget.signals["snapRequested"].connect(self.snap)
@@ -161,14 +169,20 @@ class ViewerAnchor:
             previousIndex = widget.currentIndex()
             widget.clear()
             widget.addItems(self.filtersDict.keys())
+            filterDescription = ""
+            for key in newFilter[1].keys():
+                filterDescription += str(key)
+                filterDescription += " "
+            indexOfLast = widget.count() - 1
+            widget.setItemData(indexOfLast, filterDescription, Qt.ToolTipRole)
             widget.setCurrentIndex(previousIndex)
-            self.mainController.settings.setValue("availableFilters", self.filtersDict)
+            self.settings.setValue("availableFilters", self.filtersDict)
 
     def resetFilters(self):
         for key in self.cameraTabsDict.keys():
             widget = self.cameraTabsDict[key].itemAt(0).widget()
             self.filtersDict = {"No Filter": None}
-            self.mainController.settings.setValue("availableFilters", self.filtersDict)
+            self.settings.setValue("availableFilters", self.filtersDict)
             widget.clear()
             widget.addItems(self.filtersDict.keys())
 

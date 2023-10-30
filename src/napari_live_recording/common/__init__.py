@@ -4,6 +4,11 @@ from dataclasses import dataclass
 from functools import total_ordering
 from tifffile.tifffile import PHOTOMETRIC
 import pymmcore_plus as mmc
+from qtpy.QtCore import QSettings
+
+
+settings = QSettings("IPHT", "Napari-Live-Recording")
+filtersDict = {}
 
 # equivalent number of milliseconds
 # for 30 Hz and 60 Hz refresh rates

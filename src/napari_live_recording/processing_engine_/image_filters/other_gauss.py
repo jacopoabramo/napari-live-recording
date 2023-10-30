@@ -5,6 +5,8 @@ parametersDict = {}
 
 parametersHints = {}
 
+functionDescription = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin at molestie tortor, tempus suscipit felis. Maecenas imperdiet ultricies urna, aliquet mollis lorem varius vitae. Nulla a nisi neque. Ut at turpis feugiat, tincidunt est sit amet, imperdiet magna. Pellentesque et viverra eros. Phasellus tempor turpis vulputate lacus lobortis mattis. Donec."
+
 
 def blur(a):
     kernel = np.array([[1.0, 2.0, 1.0], [2.0, 4.0, 2.0], [1.0, 2.0, 1.0]])
