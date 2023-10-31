@@ -13,6 +13,8 @@ from napari_live_recording.common import (
     RecordType,
     ROI,
     settings,
+    createPipelineFilter,
+    filtersDict,
 )
 from napari_live_recording.control.devices.interface import ICamera
 from napari_live_recording.control.frame_buffer import Framebuffer
@@ -57,6 +59,7 @@ class MainController(QObject):
         self.recordingBuffers: Dict[str, Framebuffer] = {}
         self.processingBuffers: Dict[str, Framebuffer] = {}
         self.settings = settings
+        self.filtersDict = filtersDict
         self.stackSize = 100
         self.idx = 0
         self.liveWorker = None
@@ -162,18 +165,18 @@ class MainController(QObject):
         def closeFile(filename) -> None:
             files[filename].close()
 
-        def createPipelineFilter(filters):
-            def composeFunctions(functionList):
-                return functools.reduce(
-                    lambda f, g: lambda x: f(g(x)), functionList, lambda x: x
-                )
+        # def createPipelineFilter(filters):
+        #     def composeFunctions(functionList):
+        #         return functools.reduce(
+        #             lambda f, g: lambda x: f(g(x)), functionList, lambda x: x
+        #         )
 
-            functionList = []
-            for filter in filters.values():
-                functionList.append(pims.pipeline(filter))
+        #     functionList = []
+        #     for filter in filters.values():
+        #         functionList.append(pims.pipeline(filter))
 
-            composedFunction = composeFunctions(list(reversed(functionList)))
-            return composedFunction
+        #     composedFunction = composeFunctions(list(reversed(functionList)))
+        #     return composedFunction
 
         def closeWorkerConnection(worker: FunctionWorker) -> None:
             self.recordSignalCounter.increaseCounter()

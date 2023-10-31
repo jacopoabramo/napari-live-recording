@@ -379,7 +379,7 @@ class CameraSelection(QObject):
 
 class RecordHandling(QObject):
     recordRequested = Signal(int)
-    filterCreated = Signal(tuple)
+    filterCreated = Signal()
 
     def __init__(self) -> None:
         """Recording Handling widget. Includes QPushButtons which allow to handle the following operations:
@@ -471,13 +471,12 @@ class RecordHandling(QObject):
     def openFilterCreationWindow(self) -> None:
         global getFilter
 
-        def getFilter(filters):
-            print("getFilter", filters)
-            self.filterCreated.emit(filters)
+        def getFilter():
+            self.filterCreated.emit()
 
         self.selectionWindow = FilterSelectionWidget()
         self.selectionWindow.show()
-        self.selectionWindow.filtersReturned.connect(getFilter)
+        self.selectionWindow.filterAdded.connect(getFilter)
 
     def handleFolderSelection(self) -> None:
         """Handles the selection of the output folder for the recording."""

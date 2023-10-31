@@ -18,6 +18,7 @@ from napari_live_recording.common import (
     FileFormat,
     settings,
     filtersDict,
+    createPipelineFilter,
 )
 from napari_live_recording.control.devices import devicesDict, ICamera
 from napari_live_recording.control.devices.interface import NumberParameter
@@ -44,6 +45,7 @@ class ViewerAnchor:
         self.viewer = napari_viewer
         self.mainController = mainController
         self.settings = settings
+        self.filtersDict = filtersDict
         self.mainLayout = QVBoxLayout()
         self.selectionWidget = CameraSelection()
         self.selectionWidget.setDeviceSelectionWidget(list(devicesDict.keys()))
@@ -55,10 +57,10 @@ class ViewerAnchor:
         self.mainLayout.setAlignment(
             self.selectionWidget.group, Qt.AlignmentFlag.AlignTop
         )
-        if self.settings.value("availableFilters") is not None:
-            self.filtersDict = self.settings.value("availableFilters")
-        else:
-            self.filtersDict = {"No Filter": None}
+        # if self.settings.value("availableFilters") is not None:
+        #     self.filtersDict = self.settings.value("availableFilters")
+        # else:
+        #     self.filtersDict = {"No Filter": None}
         self.cameraTabsDict = {}
         self.selectionWidget.newCameraRequested.connect(self.addCameraUI)
         self.recordingWidget.signals["snapRequested"].connect(self.snap)
@@ -160,9 +162,9 @@ class ViewerAnchor:
             self.tabs.setParent(None)
             self.isFirstTab = True
 
-    def refreshAvailableFilters(self, newFilter):
-        print(newFilter)
-        self.filtersDict[newFilter[0]] = newFilter[1]
+    def refreshAvailableFilters(self):
+        # print(newFilter)
+        # self.filtersDict[newFilter[0]] = newFilter[1]
         print(self.filtersDict)
         for key in self.cameraTabsDict.keys():
             widget = self.cameraTabsDict[key].itemAt(0).widget()
@@ -170,7 +172,7 @@ class ViewerAnchor:
             widget.clear()
             widget.addItems(self.filtersDict.keys())
             filterDescription = ""
-            for key in newFilter[1].keys():
+            for key in list(self.filtersDict.values())[-1].keys():
                 filterDescription += str(key)
                 filterDescription += " "
             indexOfLast = widget.count() - 1

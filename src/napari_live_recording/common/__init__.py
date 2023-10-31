@@ -5,10 +5,26 @@ from functools import total_ordering
 from tifffile.tifffile import PHOTOMETRIC
 import pymmcore_plus as mmc
 from qtpy.QtCore import QSettings
+import functools, pims
 
 
 settings = QSettings("IPHT", "Napari-Live-Recording")
 filtersDict = {}
+
+
+def createPipelineFilter(filters):
+    def composeFunctions(functionList):
+        return functools.reduce(
+            lambda f, g: lambda x: f(g(x)), functionList, lambda x: x
+        )
+
+    functionList = []
+    for filter in filters.values():
+        filterPartial = functools.partial(filter[0], **filter[1])
+        functionList.append(pims.pipeline(filterPartial))
+    composedFunction = composeFunctions(list(reversed(functionList)))
+    return composedFunction
+
 
 # equivalent number of milliseconds
 # for 30 Hz and 60 Hz refresh rates
