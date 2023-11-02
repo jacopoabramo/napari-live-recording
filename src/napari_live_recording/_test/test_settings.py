@@ -17,6 +17,3 @@ def test_mmcore_settings_change(recording_widget):
     widget.anchor.selectionWidget.addButton.click()
 
     assert "MyCamera:MicroManager:DemoCamera DCam" in list(widget.anchor.cameraWidgetGroups.keys())
-
-    # always close for each test
-    widget.on_close_callback()

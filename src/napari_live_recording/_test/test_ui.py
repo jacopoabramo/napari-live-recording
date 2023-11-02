@@ -47,9 +47,6 @@ def test_widget_add_microscope_test_device(recording_widget):
 
     assert "MyCamera:Microscope:simulators SimulatedCamera" in list(widget.anchor.cameraWidgetGroups.keys())
 
-    # always close for each test
-    widget.on_close_callback()
-
 def test_widget_add_mmcore_microscope_devices(recording_widget):
     widget : NapariLiveRecording = recording_widget
 
@@ -68,6 +65,7 @@ def test_widget_add_mmcore_microscope_devices(recording_widget):
     widget.anchor.selectionWidget.addButton.click()
 
     assert len(list(widget.anchor.cameraWidgetGroups.keys())) == 2
+    assert len(list(widget.mainController.deviceControllers.keys())) == 2
     assert "MyCamera:Microscope:simulators SimulatedCamera" in list(widget.anchor.cameraWidgetGroups.keys())
     assert "MyCamera:MicroManager:DemoCamera DCam" in list(widget.anchor.cameraWidgetGroups.keys())
 
@@ -80,10 +78,12 @@ def test_widget_add_mmcore_microscope_devices(recording_widget):
     # .widget() -> returns the QPushButton;
     # .click() -> clicks the button
     widget.anchor.cameraWidgetGroups["MyCamera:Microscope:simulators SimulatedCamera"].layout().itemAt(1).widget().layout().itemAt(0).widget().click()
-    # widget.anchor.cameraWidgetGroups["MyCamera:MicroManager:DemoCamera DCam"].deleteButton.click()
 
     assert len(list(widget.anchor.cameraWidgetGroups.keys())) == 1
+    assert len(list(widget.mainController.deviceControllers.keys())) == 1
 
-    # always close for each test
-    widget.on_close_callback()
+    widget.anchor.cameraWidgetGroups["MyCamera:MicroManager:DemoCamera DCam"].layout().itemAt(1).widget().layout().itemAt(0).widget().click()
+
+    assert len(list(widget.anchor.cameraWidgetGroups.keys())) == 0
+    assert len(list(widget.mainController.deviceControllers.keys())) == 0
     
