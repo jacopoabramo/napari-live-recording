@@ -1,16 +1,14 @@
 from napari.viewer import Viewer
-from qtpy.QtCore import QTimer, Qt, QSize
+from qtpy.QtCore import QTimer, Qt
 from qtpy.QtWidgets import (
     QTabWidget,
     QWidget,
     QScrollArea,
-    QFrame,
     QVBoxLayout,
     QSpacerItem,
     QSizePolicy,
 )
-from superqt import QCollapsible
-from napari_live_recording.common import THIRTY_FPS, WriterInfo, RecordType, FileFormat
+from napari_live_recording.common import THIRTY_FPS, WriterInfo
 from napari_live_recording.control.devices import devicesDict, ICamera
 from napari_live_recording.control.devices.interface import NumberParameter
 from napari_live_recording.control import MainController
