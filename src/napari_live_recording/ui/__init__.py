@@ -131,6 +131,7 @@ class ViewerAnchor:
 
     def deleteCameraUI(self, cameraKey: str) -> None:
         self.mainController.deleteCamera(cameraKey)
+        self.mainController.deviceControllers.pop(cameraKey)
         self.tabs.removeTab(self.tabs.currentIndex())
         if self.tabs.count() == 0:
             self.mainLayout.removeWidget(self.tabs)
@@ -164,6 +165,28 @@ class ViewerAnchor:
             self.liveTimer.start()
         else:
             self.liveTimer.stop()
+    
+    def cleanup(self) -> None:
+
+        if len(self.mainController.deviceControllers.keys()) == 0 and len(self.cameraWidgetGroups.keys()) == 0:
+            # no cleanup required
+            return
+
+        # first delete the controllers...
+        if self.mainController.isLive:
+            self.mainController.live(False)
+        for key in self.mainController.deviceControllers.keys():
+            self.mainController.deleteCamera(key)
+        self.mainController.deviceControllers.clear()
+
+        # ... then delete the UI tabs
+        self.tabs.clear()
+        self.mainLayout.removeWidget(self.tabs)
+        self.tabs.setParent(None)
+        self.isFirstTab = True
+
+        self.cameraWidgetGroups.clear()
+
 
     def _updateLiveLayers(self):
         for key, buffer in self.mainController.deviceLiveBuffer.items():

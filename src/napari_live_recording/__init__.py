@@ -13,4 +13,4 @@ class NapariLiveRecording(QWidget):
         self.app.lastWindowClosed.connect(self.on_close_callback)
 
     def on_close_callback(self) -> None:
-        self.mainController.cleanup()
+        self.anchor.cleanup()

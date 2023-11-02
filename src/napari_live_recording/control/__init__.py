@@ -93,11 +93,12 @@ class MainController(QObject):
         try:
             self.deviceControllers[cameraKey].device.close()
             self.deviceControllers[cameraKey].thread.quit()
+            self.deviceControllers[cameraKey].thread.deleteLater()
+            self.deviceControllers[cameraKey].device.deleteLater()
             self.recordSignalCounter.maxCount -= 1
         except RuntimeError:
             # camera already deleted
             pass
-        del self.deviceControllers[cameraKey]
         
     def snap(self, cameraKey: str) -> np.ndarray:
         return self.deviceControllers[cameraKey].device.grabFrame()
@@ -207,9 +208,3 @@ class MainController(QObject):
     def stopRecord(self):
         self.recordLoopEnabled = False
         self.recordSignalCounter.count = 0
-    
-    def cleanup(self):
-        if self.isLive:
-            self.live(False)
-        for key in self.deviceControllers.keys():
-            self.deleteCamera(key)
