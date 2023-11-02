@@ -3,6 +3,7 @@
 ## 0.3.3
 
 - Added python-microscope interface (@PiaPritzke)
+- Added unit tests
 
 ## 0.3.2
 
