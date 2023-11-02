@@ -1,6 +1,6 @@
 import numpy as np
-from microscope.abc import Camera
 import microscope
+from microscope.abc import Camera
 from typing import Union, Any
 from napari_live_recording.common import ROI
 from napari_live_recording.control.devices.interface import (
@@ -14,7 +14,7 @@ import importlib
 
 class Microscope(ICamera):
 
-     dic = {}
+     index_dict = {}
 
      def __init__(self, name: str, deviceID: Union[str, int]) -> None:
           """ VideoCapture from Python Microscope.
@@ -43,14 +43,21 @@ class Microscope(ICamera):
 
           parameters = {}
 
-          for key, values in self.__camera.get_all_settings().items():
+          for key, _ in self.__camera.get_all_settings().items():
+               if key == "display image number":
+                    # TODO: skipping;
+                    # this causes errors
+                    # on microscope side
+                    self.__camera.set_setting("display image number", False)
+                    continue
                if self.__camera.describe_setting(key)['type'] == 'enum':
                     # create dictionary for combobox
                     test_keys = ([item[1] for item in self.__camera.describe_setting(key)['values']])
                     test_value = ([item[0] for item in self.__camera.describe_setting(key)['values']])
-                    self.dic[key] = dict(zip(test_keys, test_value))
-                    parameters[key] = ListParameter(value=list(self.dic[key].keys())[0],
-                                                  options=list(self.dic[key].keys()),
+                    temp_dic = dict(zip(test_keys, test_value))
+                    self.index_dict[key] = temp_dic
+                    parameters[key] = ListParameter(value=list(self.index_dict[key].keys())[0],
+                                                  options=list(self.index_dict[key].keys()),
                                                   editable=not (self.__camera.describe_setting(key)['readonly']))
 
                elif self.__camera.describe_setting(key)['type'] == 'int':
@@ -85,9 +92,13 @@ class Microscope(ICamera):
                self.__camera.disable()
 
      def grabFrame(self) -> np.ndarray:
-          if self.__module == "simulators":
-               self.__camera.trigger()
-          return self.__buffer.get()
+          # TODO: microscope works
+          # by calling the trigger() method
+          # for each frame to be acquired;
+          # can this be done in a more efficient way?
+          self.__camera.trigger()
+          img = self.__buffer.get()
+          return img
 
 
      def changeParameter(self, name: str, value: Any) -> None:
@@ -97,9 +108,16 @@ class Microscope(ICamera):
                '''(False, False, False): 0, (False, False, True): 1, (False, True, False): 2, (False, True, True): 3,
                (True, False, False): 4,(True, False, True): 5, (True, True, False): 6, (True, True, True): 7'''
                value_tuple = eval((value))         # converts the datatype of value from str to tuple
-               self.__camera.set_transform(value_tuple)    # set_transform methode does not work with index like the other enum parameter
+               self.__camera.set_transform(value_tuple)    # set_transform method does not work with index like the other enum parameter
           else:
-               self.__camera.set_setting(name, value)
+               # the enum microscope settings behave using index instead of the actual value;
+               # we perform a preventive checks on the parameter type to avoid errors
+               paramType = type(self.parameters[name])
+               if paramType == ListParameter:
+                    if self.__camera.describe_setting(name)['type'] == 'enum':
+                         self.__camera.set_setting(name, self.index_dict[name][value])
+                    else:
+                         self.__camera.set_setting(name, value)
           self.parameters[name].value = value
           
      def changeROI(self, newROI: ROI):
@@ -107,4 +125,5 @@ class Microscope(ICamera):
           self._roiShape = newROI
      
      def close(self) -> None:
+          self.__camera.set_client(None)
           self.__camera.shutdown() 
