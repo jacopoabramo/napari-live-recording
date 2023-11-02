@@ -1,5 +1,4 @@
 import logging
-import pytest
 from napari_live_recording import NapariLiveRecording
 from napari_live_recording.common import ROI
 
@@ -11,7 +10,6 @@ def test_mmcore_settings_change(recording_widget):
     widget.anchor.selectionWidget.camerasComboBox.combobox.setCurrentIndex(1) # MicroManager
     widget.anchor.selectionWidget.adapterComboBox.combobox.setCurrentIndex(8) # DemoCamera
     widget.anchor.selectionWidget.deviceComboBox.combobox.setCurrentIndex(0) # DCam
-
 
     assert widget.anchor.selectionWidget.adapterComboBox.value == ("DemoCamera", 8)
     assert widget.anchor.selectionWidget.deviceComboBox.value == ("DCam", 0)
