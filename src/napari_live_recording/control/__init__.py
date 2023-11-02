@@ -101,7 +101,10 @@ class MainController(QObject):
             pass
         
     def snap(self, cameraKey: str) -> np.ndarray:
-        return self.deviceControllers[cameraKey].device.grabFrame()
+        self.deviceControllers[cameraKey].device.setAcquisitionStatus(True)
+        image = self.deviceControllers[cameraKey].device.grabFrame()
+        self.deviceControllers[cameraKey].device.setAcquisitionStatus(False)
+        return image
 
     def live(self, toggle: bool) -> None:
         self.__isLive = toggle
