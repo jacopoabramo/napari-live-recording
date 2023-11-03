@@ -26,20 +26,10 @@ from napari_live_recording.common import (
     microscopeDeviceDict, 
     baseRecordingFolder
 )
-from enum import Enum
 from typing import Dict, List, Tuple
-
 
 class Timer(QTimer):
     pass
-
-
-class WidgetEnum(Enum):
-    ComboBox = (0,)
-    SpinBox = (1,)
-    DoubleSpinBox = (2,)
-    LabeledSlider = (3,)
-    LineEdit = 4
 
 
 class LocalWidget(ABC):
