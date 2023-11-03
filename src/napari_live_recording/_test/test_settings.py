@@ -94,12 +94,12 @@ def test_microscope_settings_change(recording_widget):
 
     assert widget.mainController.deviceControllers["MyCamera:Microscope:simulators SimulatedCamera"].device.parameters["transform"].value == "(False, False, True)"
 
-    # exposure time parameter (index: 8)
+    # exposure time parameter (index: 7)
     widget.anchor.cameraWidgetGroups["MyCamera:Microscope:simulators SimulatedCamera"].layout() \
                                                                                     .itemAt(0) \
                                                                                     .widget().widget() \
                                                                                     .layout() \
-                                                                                    .itemAt(8, 1) \
+                                                                                    .itemAt(7, 1) \
                                                                                     .widget() \
                                                                                     .setValue(0.03)
 
