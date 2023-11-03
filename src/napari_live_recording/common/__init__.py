@@ -3,6 +3,7 @@ from enum import IntEnum
 from dataclasses import dataclass
 from functools import total_ordering
 import pymmcore_plus as mmc
+import os
 
 # equivalent number of milliseconds
 # for 30 Hz and 60 Hz refresh rates
@@ -63,6 +64,30 @@ class ROI:
         """Returns the number of pixels along width and height of the current ROI."""
         return (self.height - self.offset_y, self.width - self.offset_x)
 
+def getDocumentsFolder():
+    """ Returns the user's documents folder if they are using a Windows system,
+    or their home folder if they are using another operating system. """
+
+    if os.name == 'nt':  # Windows system, try to return documents directory
+        try:
+            import ctypes.wintypes
+            CSIDL_PERSONAL = 5  # Documents
+            SHGFP_TYPE_CURRENT = 0  # Current value
+
+            buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
+            ctypes.windll.shell32.SHGetFolderPathW(0, CSIDL_PERSONAL, 0, SHGFP_TYPE_CURRENT, buf)
+
+            return buf.value
+        except ImportError:
+            pass
+    return os.path.expanduser('~')  # Non-Windows system, return home directory
+
+baseRecordingFolder = os.path.join(getDocumentsFolder(), "napari-live-recording")
+
+
+# at startup initialize the base recording folder
+if not os.path.exists(baseRecordingFolder):
+    os.mkdir(baseRecordingFolder)
 
 MMC_DEVICE_MAP = {}
 core = mmc.CMMCorePlus.instance()

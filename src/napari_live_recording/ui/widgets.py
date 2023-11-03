@@ -18,7 +18,14 @@ from superqt import QLabeledSlider, QLabeledDoubleSlider, QEnumComboBox
 from qtpy.QtWidgets import QFormLayout, QGridLayout, QGroupBox
 from abc import ABC, abstractmethod
 from dataclasses import replace
-from napari_live_recording.common import ROI, FileFormat, RecordType, MMC_DEVICE_MAP, microscopeDeviceDict
+from napari_live_recording.common import ( 
+    ROI, 
+    FileFormat, 
+    RecordType, 
+    MMC_DEVICE_MAP, 
+    microscopeDeviceDict, 
+    baseRecordingFolder
+)
 from enum import Enum
 from typing import Dict, List, Tuple
 
@@ -446,7 +453,7 @@ class RecordHandling(QObject):
         self.formatLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.folderTextEdit = QLineEdit(
-            os.path.join(os.path.expanduser("~"), "Documents")
+            baseRecordingFolder
         )
         self.folderTextEdit.setReadOnly(True)
         self.folderButton = QPushButton("Select record folder")
