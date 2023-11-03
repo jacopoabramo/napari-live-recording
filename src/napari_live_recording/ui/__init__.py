@@ -48,6 +48,13 @@ class ViewerAnchor:
         self.recordingWidget.signals["snapRequested"].connect(self.snap)
         self.recordingWidget.signals["liveRequested"].connect(self.live)
         self.recordingWidget.signals["recordRequested"].connect(self.record)
+
+        self.mainController.newMaxTimePoint.connect(
+            self.recordingWidget.recordProgress.setMaximum
+        )
+        self.mainController.newTimePoint.connect(
+            self.recordingWidget.recordProgress.setValue
+        )
         self.mainController.recordFinished.connect(
             lambda: self.recordingWidget.record.setChecked(False)
         )

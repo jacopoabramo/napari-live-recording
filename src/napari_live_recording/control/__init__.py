@@ -41,6 +41,8 @@ class LocalController(NamedTuple):
 
 class MainController(QObject):
     recordFinished = Signal()
+    newTimePoint = Signal(int)
+    newMaxTimePoint = Signal(int)
 
     def __init__(self) -> None:
         """Main Controller class. Stores all camera objects to access live and stack recordings."""
@@ -111,7 +113,7 @@ class MainController(QObject):
 
         @thread_worker(worker_class=FunctionWorker, start_thread=False)
         def liveLoop():
-            while True:
+            while self.isLive:
                 for key in self.deviceControllers.keys():
                     self.deviceLiveBuffer[key] = np.copy(
                         self.deviceControllers[key].device.grabFrame()

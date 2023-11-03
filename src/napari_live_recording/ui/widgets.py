@@ -13,6 +13,7 @@ from qtpy.QtWidgets import (
     QPushButton,
     QFileDialog,
     QStackedWidget,
+    QProgressBar
 )
 from superqt import QLabeledSlider, QLabeledDoubleSlider, QEnumComboBox
 from qtpy.QtWidgets import QFormLayout, QGridLayout, QGroupBox
@@ -414,7 +415,6 @@ class CameraSelection(QObject):
 
 
 class RecordHandling(QObject):
-    recordRequested = Signal(int)
 
     def __init__(self) -> None:
         """Recording Handling widget. Includes QPushButtons which allow to handle the following operations:
@@ -469,7 +469,9 @@ class RecordHandling(QObject):
         self.recordSpinBox = QSpinBox()
         self.recordSpinBox.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # todo: this is currently hardcoded
+        self.recordProgress = QProgressBar()
+
+        # TODO: this is currently hardcoded
         # maybe should find a way to initialize
         # from outside the instance?
         self.recordSpinBox.setRange(1, 5000)
@@ -487,8 +489,12 @@ class RecordHandling(QObject):
         self.layout.addWidget(self.snap, 4, 0, 1, 3)
         self.layout.addWidget(self.live, 5, 0, 1, 3)
         self.layout.addWidget(self.record, 6, 0, 1, 3)
+        self.layout.addWidget(self.recordProgress, 7, 0, 1, 3)
         self.group.setLayout(self.layout)
         self.group.setFlat(True)
+
+        # progress bar is hidden until recording is started
+        self.recordProgress.hide()
 
         self.live.toggled.connect(self.handleLiveToggled)
         self.record.toggled.connect(self.handleRecordToggled)
@@ -547,6 +553,10 @@ class RecordHandling(QObject):
         self.snap.setEnabled(not status)
         self.live.setEnabled(not status)
         self.recordSpinBox.setEnabled(not status)
+        if status:
+            self.recordProgress.show()
+        else:
+            self.recordProgress.hide()
 
     @property
     def recordSize(self) -> int:
