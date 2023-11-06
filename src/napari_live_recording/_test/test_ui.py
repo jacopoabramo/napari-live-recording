@@ -10,9 +10,6 @@ def test_widget_startup_and_cleanup(recording_widget):
     assert widget.anchor.selectionWidget.camerasComboBox.value == ("Select device", 0)
     assert widget.anchor.selectionWidget.nameLineEdit.value == "MyCamera"
 
-    # always close for each test
-    widget.on_close_callback()
-
 
 def test_widget_add_mmcore_test_device(recording_widget):
     widget : NapariLiveRecording = recording_widget
@@ -28,9 +25,6 @@ def test_widget_add_mmcore_test_device(recording_widget):
     widget.anchor.selectionWidget.addButton.click()
 
     assert "MyCamera:MicroManager:DemoCamera DCam" in list(widget.anchor.cameraWidgetGroups.keys())
-
-    # always close for each test
-    widget.on_close_callback()
 
 def test_widget_add_microscope_test_device(recording_widget):
     widget : NapariLiveRecording = recording_widget

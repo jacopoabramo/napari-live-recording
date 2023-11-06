@@ -14,6 +14,9 @@ def test_mmcore_live_recording(recording_widget, qtbot):
 
     widget.anchor.selectionWidget.addButton.click()
     
+    # live acquisition is timed via a local timer;
+    # we monitor a single timeout event to ensure that
+    # we have a new layer added
     events = [widget.anchor.recordingWidget.live.toggled, widget.anchor.liveTimer.timeout]
 
     with qtbot.waitSignals(events, timeout=3000):
