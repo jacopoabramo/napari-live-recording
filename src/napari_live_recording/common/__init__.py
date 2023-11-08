@@ -4,12 +4,37 @@ from dataclasses import dataclass
 from functools import total_ordering
 from tifffile.tifffile import PHOTOMETRIC
 import pymmcore_plus as mmc
-from qtpy.QtCore import QSettings
+from qtpy.QtCore import QSettings, Qt
 import functools, pims
-
 
 settings = QSettings("IPHT", "Napari-Live-Recording")
 filtersDict = {}
+
+
+class Settings:
+    def __init__(self) -> None:
+        self.settings = settings
+
+    def setSetting(self, key, newValue):
+        self.settings.setValue(key, newValue)
+
+    def getSetting(self, key):
+        return self.settings.value(key)
+
+    def getFiltersDict(self):
+        if self.settings.contains("availableFilters"):
+            print("contained")
+            return self.settings.value("availableFilters")
+        else:
+            print("Not Contained")
+            self.settings.setValue(
+                "availableFilters", {"No Filter": {"1.No Filter": None}}
+            )
+            return self.settings.value("availableFilters")
+
+    def setFiltersDict(self, newDict):
+        newDict["No Filter"] = {"1.No Filter": None}
+        self.settings.setValue("availableFilters", newDict)
 
 
 def createPipelineFilter(filters):
@@ -19,6 +44,7 @@ def createPipelineFilter(filters):
         )
 
     functionList = []
+
     for filter in filters.values():
         filterPartial = functools.partial(filter[0], **filter[1])
         functionList.append(pims.pipeline(filterPartial))

@@ -22,6 +22,7 @@ from napari_live_recording.common import (
     RecordType,
     MMC_DEVICE_MAP,
     settings,
+    Settings,
 )
 from enum import Enum
 from typing import Dict, List, Tuple
@@ -399,7 +400,7 @@ class RecordHandling(QObject):
 
         """
         QObject.__init__(self)
-        self.settings = settings
+        self.settings = Settings()
         self.group = QGroupBox()
         self.layout = QGridLayout()
 
@@ -409,8 +410,8 @@ class RecordHandling(QObject):
 
         self.folderTextEdit = QLineEdit(
             os.path.join(os.path.expanduser("~"), "Downloads")
-            if self.settings.value("recordFolder") == None
-            else self.settings.value("recordFolder")
+            if self.settings.getSetting("recordFolder") == None
+            else self.settings.getSetting("recordFolder")
         )
         self.folderTextEdit.setReadOnly(True)
         self.folderButton = QPushButton("Select record folder")
@@ -430,7 +431,6 @@ class RecordHandling(QObject):
         self.live = QPushButton("Live")
         self.record = QPushButton("Record")
         self.createFilter = QPushButton("Create Filter")
-        self.resetFilters = QPushButton("Reset all Filters")
 
         self.live.setCheckable(True)
         self.record.setCheckable(True)
@@ -456,8 +456,7 @@ class RecordHandling(QObject):
         self.layout.addWidget(self.snap, 4, 0, 1, 3)
         self.layout.addWidget(self.live, 5, 0, 1, 3)
         self.layout.addWidget(self.record, 6, 0, 1, 3)
-        self.layout.addWidget(self.createFilter, 7, 0, 1, 2)
-        self.layout.addWidget(self.resetFilters, 7, 2)
+        self.layout.addWidget(self.createFilter, 7, 0, 1, 3)
         self.group.setLayout(self.layout)
         self.group.setFlat(True)
 
@@ -485,7 +484,7 @@ class RecordHandling(QObject):
         )
         if folder:
             self.folderTextEdit.setText(folder)
-            self.settings.setValue("recordFolder", folder)
+            self.settings.setSetting("recordFolder", folder)
 
     def handleRecordTypeChanged(self, recordType: RecordType) -> None:
         """Handles the change of the record type.

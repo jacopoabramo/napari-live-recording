@@ -13,6 +13,7 @@ from napari_live_recording.common import (
     RecordType,
     ROI,
     settings,
+    Settings,
     createPipelineFilter,
     filtersDict,
 )
@@ -58,12 +59,11 @@ class MainController(QObject):
         self.deviceBuffers: Dict[str, Framebuffer] = {}
         self.recordingBuffers: Dict[str, Framebuffer] = {}
         self.processingBuffers: Dict[str, Framebuffer] = {}
-        self.settings = settings
+        self.settings = Settings()
         self.filtersDict = filtersDict
         self.stackSize = 100
         self.idx = 0
         self.liveWorker = None
-        self.settings = QSettings("IPHT", "Napari-Live-Recording")
         self.__isAcquiring = {}
         self.recordLoopEnabled = False
         self.recordSignalCounter = SignalCounter()

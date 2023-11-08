@@ -17,6 +17,7 @@ from napari_live_recording.common import (
     RecordType,
     FileFormat,
     settings,
+    Settings,
     filtersDict,
     createPipelineFilter,
 )
@@ -41,11 +42,15 @@ import pims
 class ViewerAnchor:
     """Class which handles the UI elements of the plugin."""
 
-    def __init__(self, napari_viewer: Viewer, mainController: MainController) -> None:
+    def __init__(
+        self,
+        napari_viewer: Viewer,
+        mainController: MainController,
+    ) -> None:
         self.viewer = napari_viewer
         self.mainController = mainController
-        self.settings = settings
-        self.filtersDict = filtersDict
+        self.settings = Settings()
+        self.filtersDict = self.settings.getFiltersDict()
         self.mainLayout = QVBoxLayout()
         self.selectionWidget = CameraSelection()
         self.selectionWidget.setDeviceSelectionWidget(list(devicesDict.keys()))
@@ -57,17 +62,12 @@ class ViewerAnchor:
         self.mainLayout.setAlignment(
             self.selectionWidget.group, Qt.AlignmentFlag.AlignTop
         )
-        # if self.settings.value("availableFilters") is not None:
-        #     self.filtersDict = self.settings.value("availableFilters")
-        # else:
-        #     self.filtersDict = {"No Filter": None}
         self.cameraTabsDict = {}
         self.selectionWidget.newCameraRequested.connect(self.addCameraUI)
         self.recordingWidget.signals["snapRequested"].connect(self.snap)
         self.recordingWidget.signals["liveRequested"].connect(self.live)
         self.recordingWidget.signals["recordRequested"].connect(self.record)
         self.recordingWidget.filterCreated.connect(self.refreshAvailableFilters)
-        self.recordingWidget.resetFilters.clicked.connect(self.resetFilters)
         self.mainController.recordFinished.connect(
             lambda: self.recordingWidget.record.setChecked(False)
         )
@@ -106,11 +106,10 @@ class ViewerAnchor:
         roiWidget.signals["fullROIRequested"].connect(lambda roi: camera.changeROI(roi))
 
         # here also change buffer ROI
+        self.refreshAvailableFilters()
         filtersCombo = ComboBox(self.filtersDict.keys(), "Filters")
-        selectFilter_btn = QPushButton("Select Filter")
 
-        cameraTabLayout.addWidget(filtersCombo.widget, 0, 0)
-        cameraTabLayout.addWidget(selectFilter_btn, 0, 1)
+        cameraTabLayout.addWidget(filtersCombo.widget, 0, 0, 1, 2)
 
         if interface == "MicroManager":
             cameraTabLayout.addWidget(camera.settingsWidget, 1, 0, 1, 2)
@@ -163,30 +162,26 @@ class ViewerAnchor:
             self.isFirstTab = True
 
     def refreshAvailableFilters(self):
+        print("Refresh")
         # print(newFilter)
         # self.filtersDict[newFilter[0]] = newFilter[1]
-        print(self.filtersDict)
         for key in self.cameraTabsDict.keys():
             widget = self.cameraTabsDict[key].itemAt(0).widget()
             previousIndex = widget.currentIndex()
             widget.clear()
+            print(self.filtersDict)
+            self.filtersDict = self.settings.getFiltersDict()
+            print(self.filtersDict)
             widget.addItems(self.filtersDict.keys())
             filterDescription = ""
             for key in list(self.filtersDict.values())[-1].keys():
                 filterDescription += str(key)
                 filterDescription += " "
+            print(filterDescription)
             indexOfLast = widget.count() - 1
             widget.setItemData(indexOfLast, filterDescription, Qt.ToolTipRole)
             widget.setCurrentIndex(previousIndex)
-            self.settings.setValue("availableFilters", self.filtersDict)
-
-    def resetFilters(self):
-        for key in self.cameraTabsDict.keys():
-            widget = self.cameraTabsDict[key].itemAt(0).widget()
-            self.filtersDict = {"No Filter": None}
-            self.settings.setValue("availableFilters", self.filtersDict)
-            widget.clear()
-            widget.addItems(self.filtersDict.keys())
+            # self.settings.setFiltersDict("availableFilters", self.filtersDict)
 
     def record(self, status: bool) -> None:
         if status:
