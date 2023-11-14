@@ -2,8 +2,8 @@ from __future__ import annotations
 from enum import IntEnum
 from dataclasses import dataclass
 from functools import total_ordering
-from tifffile.tifffile import PHOTOMETRIC
 import pymmcore_plus as mmc
+import os
 from qtpy.QtCore import QSettings, Qt
 import functools, pims
 
@@ -56,7 +56,6 @@ def createPipelineFilter(filters):
 # for 30 Hz and 60 Hz refresh rates
 THIRTY_FPS = 33
 SIXTY_FPS = 16
-
 FileFormat = IntEnum(
     value="FileFormat", names=[("ImageJ TIFF", 1), ("OME-TIFF", 2), ("HDF5", 3)]
 )
@@ -74,30 +73,8 @@ class ColorType(IntEnum):
 
 TIFF_PHOTOMETRIC_MAP = {
     # ColorType -> photometric, number of channels
-    ColorType.GRAYLEVEL: (PHOTOMETRIC.MINISBLACK, 1),
-    ColorType.RGB: (PHOTOMETRIC.RGB, 3),
-}
-
-
-@dataclass(frozen=True)
-class WriterInfo:
-    folder: str
-    filename: str
-    fileFormat: FileFormat
-    recordType: RecordType
-    stackSize: int = 0
-    acquisitionTime: float = 0
-
-
-class ColorType(IntEnum):
-    GRAYLEVEL = 0
-    RGB = 1
-
-
-TIFF_PHOTOMETRIC_MAP = {
-    # ColorType -> photometric, number of channels
-    ColorType.GRAYLEVEL: (PHOTOMETRIC.MINISBLACK, 1),
-    ColorType.RGB: (PHOTOMETRIC.RGB, 3),
+    ColorType.GRAYLEVEL: ("minisblack", 1),
+    ColorType.RGB: ("rgb", 3),
 }
 
 
@@ -136,6 +113,35 @@ class ROI:
         return (self.height - self.offset_y, self.width - self.offset_x)
 
 
+def getDocumentsFolder():
+    """Returns the user's documents folder if they are using a Windows system,
+    or their home folder if they are using another operating system."""
+
+    if os.name == "nt":  # Windows system, try to return documents directory
+        try:
+            import ctypes.wintypes
+
+            CSIDL_PERSONAL = 5  # Documents
+            SHGFP_TYPE_CURRENT = 0  # Current value
+
+            buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
+            ctypes.windll.shell32.SHGetFolderPathW(
+                0, CSIDL_PERSONAL, 0, SHGFP_TYPE_CURRENT, buf
+            )
+
+            return buf.value
+        except ImportError:
+            pass
+    return os.path.expanduser("~")  # Non-Windows system, return home directory
+
+
+baseRecordingFolder = os.path.join(getDocumentsFolder(), "napari-live-recording")
+
+
+# at startup initialize the base recording folder
+if not os.path.exists(baseRecordingFolder):
+    os.mkdir(baseRecordingFolder)
+
 MMC_DEVICE_MAP = {}
 core = mmc.CMMCorePlus.instance()
 adapters = core.getDeviceAdapterNames()
@@ -153,3 +159,13 @@ for adapter in adapters:
 
     except:
         pass
+
+microscopeDeviceDict = {
+    "andorsdk3": "AndorSDK3",  # microscope.cameras.andorsdk3.AndorSDK3
+    "atmcd": "AndorAtmcd",  # microscope.cameras.atmcd.AndotAtmcd
+    "pvcam": "PVCamera",  # microscope.cameras.pvcam.PVCamera
+    "ximea": "XimeaCamera",  # microscope.cameras.ximea.XimeaCamera
+    "hamamatsu": "HamamtsuCamera",
+    "picamera": "PiCamera",
+    "simulators": "SimulatedCamera",
+}

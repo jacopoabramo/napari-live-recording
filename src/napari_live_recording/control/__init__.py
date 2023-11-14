@@ -49,6 +49,8 @@ class LocalController(NamedTuple):
 
 class MainController(QObject):
     recordFinished = Signal()
+    newTimePoint = Signal(int)
+    newMaxTimePoint = Signal(int)
     cameraDeleted = Signal(bool)
 
     def __init__(self) -> None:
@@ -415,13 +417,8 @@ class MainController(QObject):
         # any type of try-except clauses for the dictionary keys
         filenames = [
             os.path.join(
-                writerInfo.folder,
-                camName.replace(":", "-").replace(" ", "-") + "_" + writerInfo.filename,
+                writerInfo.folder, camName.replace(":", "-") + "_" + writerInfo.filename
             )
-            for camName in camNames
-        ]
-        sizes = [
-            self.deviceControllers[camName].device.roiShape.pixelSizes
             for camName in camNames
         ]
         colorMaps = [
@@ -448,11 +445,13 @@ class MainController(QObject):
                     software="napari-live-recording",
                     contiguous=kwargs.get("imagej", False),
                 )
-                for file, size, colorMap in zip(list(files.values()), sizes, colorMaps)
+                for file, colorMap in zip(list(files.values()), colorMaps)
             ]
         else:
             # todo: implement HDF5 writing
-            raise ValueError("Unsupported file format selected for recording!")
+            raise ValueError(
+                "Unsupported file format selected for recording! HDF5 will be implemented in the future."
+            )
 
         workers = []
         fileWorkers = []

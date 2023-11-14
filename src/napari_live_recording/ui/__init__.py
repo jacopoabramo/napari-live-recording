@@ -1,10 +1,9 @@
 from napari.viewer import Viewer
-from qtpy.QtCore import QTimer, Qt, QSize
+from qtpy.QtCore import QTimer, Qt
 from qtpy.QtWidgets import (
     QTabWidget,
     QWidget,
     QScrollArea,
-    QFrame,
     QVBoxLayout,
     QGridLayout,
     QSpacerItem,
@@ -14,11 +13,7 @@ from superqt import QCollapsible
 from napari_live_recording.common import (
     THIRTY_FPS,
     WriterInfo,
-    RecordType,
-    FileFormat,
-    settings,
     Settings,
-    filtersDict,
     createPipelineFilter,
 )
 from napari_live_recording.control.devices import devicesDict, ICamera
@@ -62,11 +57,18 @@ class ViewerAnchor:
         self.mainLayout.setAlignment(
             self.selectionWidget.group, Qt.AlignmentFlag.AlignTop
         )
-        self.cameraTabsDict = {}
+        self.cameraWidgetGroups = {}
         self.selectionWidget.newCameraRequested.connect(self.addCameraUI)
         self.recordingWidget.signals["snapRequested"].connect(self.snap)
         self.recordingWidget.signals["liveRequested"].connect(self.live)
         self.recordingWidget.signals["recordRequested"].connect(self.record)
+
+        self.mainController.newMaxTimePoint.connect(
+            self.recordingWidget.recordProgress.setMaximum
+        )
+        self.mainController.newTimePoint.connect(
+            self.recordingWidget.recordProgress.setValue
+        )
         self.recordingWidget.filterCreated.connect(self.refreshAvailableFilters)
         self.mainController.recordFinished.connect(
             lambda: self.recordingWidget.record.setChecked(False)
@@ -150,16 +152,40 @@ class ViewerAnchor:
         cameraTabLayout.addWidget(settingsGroup)
         cameraTab.setLayout(cameraTabLayout)
 
-        self.cameraTabsDict[cameraKey] = cameraTabLayout
+        self.cameraWidgetGroups[cameraKey] = cameraTabLayout
         self.tabs.addTab(cameraTab, cameraKey)
 
     def deleteCameraUI(self, cameraKey: str) -> None:
         self.mainController.deleteCamera(cameraKey)
+        self.mainController.deviceControllers.pop(cameraKey)
         self.tabs.removeTab(self.tabs.currentIndex())
         if self.tabs.count() == 0:
             self.mainLayout.removeWidget(self.tabs)
             self.tabs.setParent(None)
             self.isFirstTab = True
+        del self.cameraWidgetGroups[cameraKey]
+
+    def refreshAvailableFilters(self):
+        print("Refresh")
+        # print(newFilter)
+        # self.filtersDict[newFilter[0]] = newFilter[1]
+        for key in self.cameraTabsDict.keys():
+            widget = self.cameraTabsDict[key].itemAt(0).widget()
+            previousIndex = widget.currentIndex()
+            widget.clear()
+            print(self.filtersDict)
+            self.filtersDict = self.settings.getFiltersDict()
+            print(self.filtersDict)
+            widget.addItems(self.filtersDict.keys())
+            filterDescription = ""
+            for key in list(self.filtersDict.values())[-1].keys():
+                filterDescription += str(key)
+                filterDescription += " "
+            print(filterDescription)
+            indexOfLast = widget.count() - 1
+            widget.setItemData(indexOfLast, filterDescription, Qt.ToolTipRole)
+            widget.setCurrentIndex(previousIndex)
+            # self.settings.setFiltersDict("availableFilters", self.filtersDict)
 
     def refreshAvailableFilters(self):
         print("Refresh")
@@ -187,7 +213,7 @@ class ViewerAnchor:
         if status:
             # todo: add dynamic control
             filtersList = {}
-            cameraKeys = list(self.cameraTabsDict.keys())
+            cameraKeys = list(self.cameraWidgetGroups.keys())
             for key in cameraKeys:
                 widget = self.cameraTabsDict[key].itemAt(0).widget()
                 selectedFilter = widget.currentText()
@@ -224,6 +250,29 @@ class ViewerAnchor:
             self.liveTimer.start()
         else:
             self.liveTimer.stop()
+
+    def cleanup(self) -> None:
+        if (
+            len(self.mainController.deviceControllers.keys()) == 0
+            and len(self.cameraWidgetGroups.keys()) == 0
+        ):
+            # no cleanup required
+            return
+
+        # first delete the controllers...
+        if self.mainController.isLive:
+            self.mainController.live(False)
+        for key in self.mainController.deviceControllers.keys():
+            self.mainController.deleteCamera(key)
+        self.mainController.deviceControllers.clear()
+
+        # ... then delete the UI tabs
+        self.tabs.clear()
+        self.mainLayout.removeWidget(self.tabs)
+        self.tabs.setParent(None)
+        self.isFirstTab = True
+
+        self.cameraWidgetGroups.clear()
 
     def _updateLiveLayers(self):
         # for key, buffer in self.mainController.deviceLiveBuffer.items():
