@@ -1,18 +1,15 @@
 import numpy as np
 import tifffile.tifffile as tiff
 import os
-import functools
 from typing import Union
 from contextlib import contextmanager
 from napari.qt.threading import thread_worker, FunctionWorker
-from qtpy.QtCore import QThread, QObject, Signal, QTimer, QSettings
+from qtpy.QtCore import QThread, QObject, Signal, QTimer
 from napari_live_recording.common import (
     TIFF_PHOTOMETRIC_MAP,
     WriterInfo,
-    FileFormat,
     RecordType,
     ROI,
-    settings,
     Settings,
     createPipelineFilter,
     filtersDict,
@@ -22,7 +19,7 @@ from napari_live_recording.control.frame_buffer import Framebuffer
 from typing import Dict, NamedTuple
 from functools import partial
 from time import time
-import pims
+
 
 
 class SignalCounter(QObject):
@@ -63,7 +60,7 @@ class MainController(QObject):
         self.processingBuffers: Dict[str, Framebuffer] = {}
         self.settings = Settings()
         self.filtersDict = filtersDict
-        self.stackSize = 100
+        self.stackSize = 1000
         self.idx = 0
         self.liveWorker = None
         self.__isAcquiring = {}
@@ -89,7 +86,7 @@ class MainController(QObject):
         self.deviceBuffers[cameraKey] = Framebuffer(self.stackSize, camera=camera)
         self.recordingBuffers[cameraKey] = Framebuffer(self.stackSize, camera=camera)
         self.processingBuffers[cameraKey] = Framebuffer(self.stackSize, camera=camera)
-        print("Buffers created")
+
 
         self.recordSignalCounter.maxCount += 1
 
@@ -109,12 +106,13 @@ class MainController(QObject):
                         self.deviceControllers[cameraKey].device.grabFrame()
                     )
                     self.deviceBuffers[cameraKey].addFrame(currentFrame)
+                    self.deviceBuffers
 
                     if self.recordLoopEnabled:
                         self.recordingBuffers[cameraKey].addFrame(currentFrame)
                         self.processingBuffers[cameraKey].addFrame(currentFrame)
                 except Exception as e:
-                    print("Record to buffer", e)
+                    pass
 
     def changeCameraROI(self, cameraKey: str, newROI: ROI) -> None:
         self.deviceControllers[cameraKey].device.changeROI(newROI)
@@ -151,15 +149,14 @@ class MainController(QObject):
             _ = self.processingBuffers.pop(cameraKey)
 
             self.recordSignalCounter.maxCount -= 1
-            print("Camera Deleted Signal")
         except RuntimeError:
             # camera already deleted
             pass
 
     def returnNewestFrame(self, cameraKey: str) -> None:
         if self.__isAcquiring[cameraKey]:
-            self.newestFrame = self.deviceBuffers[cameraKey].returnNewestFrame()
-            return self.newestFrame
+            newestFrame = self.deviceBuffers[cameraKey].popNewestFrame()
+            return newestFrame
         else:
             pass
 
@@ -183,15 +180,16 @@ class MainController(QObject):
         def closeWorkerConnection(worker: FunctionWorker) -> None:
             self.recordSignalCounter.increaseCounter()
             worker.finished.disconnect()
-            print("worker disconnected")
 
         def timeStackBuffer(camName: str, acquisitionTime: float):
-            self.processingBuffers[camName].allowOverwrite = True
-            self.processingBuffers[camName].renewBuffer(round(acquisitionTime * 30))
+            self.processingBuffers[camName].allowOverwrite = False
+            self.processingBuffers[camName].clearBuffer()
+            self.processingBuffers[camName].stackSize = round(acquisitionTime * 30)
 
         def fixedStackBuffer(camName: str, stackSize: int):
             self.processingBuffers[camName].allowOverwrite = False
-            self.processingBuffers[camName].renewBuffer(stackSize - 1)
+            self.processingBuffers[camName].clearBuffer()
+            self.processingBuffers[camName].stackSize = stackSize
 
         def toggledBuffer(camName: str):
             self.processingBuffers[camName].allowOverwrite = True
@@ -206,10 +204,10 @@ class MainController(QObject):
                 while self.processingBuffers[camName].empty:
                     pass
 
-                if filtersList[camName] == None:
+                if list(filtersList[camName].values())[0] == None:
                     while (
                         self.recordLoopEnabled
-                        or not self.recordingBuffers[camName].empty
+                        or not self.processingBuffers[camName].empty
                     ):
                         try:
                             frame = self.processingBuffers[camName].popOldestFrame()
@@ -217,25 +215,23 @@ class MainController(QObject):
                         except:
                             pass
                 else:
-                    print("StackWrite", filtersList[camName])
                     filterFunction = createPipelineFilter(filtersList[camName])
-                    print("StackWrite, fct", filterFunction)
                     while (
                         self.recordLoopEnabled
-                        or not self.recordingBuffers[camName].empty
+                        or not self.processingBuffers[camName].empty
                     ):
                         try:
-                            print("Still writing", self.recordLoopEnabled)
                             frame = filterFunction(
                                 self.processingBuffers[camName].popOldestFrame()
                             )
                             writeFunc(frame)
                         except Exception as e:
-                            print("Inner while process ", e)
-                print("empty")
-                return filename
+                            pass
+
             except Exception as e:
-                print("Process stack write to file", e)
+                pass
+
+            return filename
 
         @thread_worker(
             worker_class=FunctionWorker,
@@ -245,17 +241,18 @@ class MainController(QObject):
         def toggledWriteToFile(filename: str, camName: str, writeFunc) -> str:
             try:
                 while self.recordLoopEnabled:
-                    if filtersList[camName] is None:
-                        writeFunc(self.deviceBuffers[camName].returnOldestFrame())
+                    if list(filtersList[camName].values())[0] == None:
+                        writeFunc(self.processingBuffers[camName].popOldestFrame())
                     else:
                         writeFunc(
                             filtersList[camName](
-                                self.deviceBuffers[camName].returnOldestFrame()
+                                self.processingBuffers[camName].popOldestFrame()
                             )
                         )
-                return filename
+
             except:
                 pass
+            return filename
 
         # when building the writer function for a specific type of
         # file format, we expect the dictionary to have the appropriate arguments;
@@ -349,24 +346,18 @@ class MainController(QObject):
         def closeWorkerConnection(worker: FunctionWorker) -> None:
             self.recordSignalCounter.increaseCounter()
             worker.finished.disconnect()
-            print("worker disconnected")
-
-        # def prepareBuffer(camName: str, buffersize: Union[int, float]):
-        #     self.recordingBuffers[camName].allowOverwrite = False
-        #     self.recordingBuffers[camName].renewBuffer(buffersize)
 
         def timeStackBuffer(camName: str, acquisitionTime: float):
-            self.recordingBuffers[camName].allowOverwrite = True
-            self.recordingBuffers[camName].renewBuffer(round(acquisitionTime * 30))
-            self.recordingTimer.setInterval(round(acquisitionTime * 1000))
-            self.recordingTimer.timeout.connect(self.stopRecord)
-            print("connected")
-            self.recordingTimer.start()
+            self.recordingBuffers[camName].allowOverwrite = False
+            self.recordingBuffers[camName].clearBuffer()
+            self.recordingBuffers[camName].stackSize = round(acquisitionTime * 30)
+            self.recordingBuffers[camName].appendingFinished.connect(self.stopRecord)
             self.recordLoopEnabled = True
 
         def fixedStackBuffer(camName: str, stackSize: int):
             self.recordingBuffers[camName].allowOverwrite = False
-            self.recordingBuffers[camName].renewBuffer(stackSize - 1)
+            self.recordingBuffers[camName].clearBuffer()
+            self.recordingBuffers[camName].stackSize = stackSize
             self.recordingBuffers[camName].appendingFinished.connect(self.stopRecord)
             self.recordLoopEnabled = True
 
@@ -387,16 +378,13 @@ class MainController(QObject):
                     self.recordLoopEnabled or not self.recordingBuffers[camName].empty
                 ):
                     try:
-                        # print("before pop", self.recordingBuffers[camName].length)
                         frame = self.recordingBuffers[camName].popOldestFrame()
-                        # print("after pop", self.recordingBuffers[camName].length)
                         writeFunc(frame)
                     except Exception as e:
-                        print("Inner while record ", e)
-                print("empty")
-                return filename
+                        pass
             except Exception as e:
-                print("Record stack write to file", e)
+                pass
+            return filename
 
         @thread_worker(
             worker_class=FunctionWorker,
@@ -407,9 +395,10 @@ class MainController(QObject):
             try:
                 while self.recordLoopEnabled:
                     writeFunc(self.deviceBuffers[camName].returnOldestFrame())
-                return filename
+
             except:
                 pass
+            return filename
 
         # when building the writer function for a specific type of
         # file format, we expect the dictionary to have the appropriate arguments;

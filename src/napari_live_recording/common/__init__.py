@@ -23,10 +23,8 @@ class Settings:
 
     def getFiltersDict(self):
         if self.settings.contains("availableFilters"):
-            print("contained")
             return self.settings.value("availableFilters")
         else:
-            print("Not Contained")
             self.settings.setValue(
                 "availableFilters", {"No Filter": {"1.No Filter": None}}
             )
@@ -142,6 +140,7 @@ baseRecordingFolder = os.path.join(getDocumentsFolder(), "napari-live-recording"
 if not os.path.exists(baseRecordingFolder):
     os.mkdir(baseRecordingFolder)
 
+
 MMC_DEVICE_MAP = {}
 core = mmc.CMMCorePlus.instance()
 adapters = core.getDeviceAdapterNames()
@@ -149,6 +148,7 @@ adapters = core.getDeviceAdapterNames()
 for adapter in adapters:
     try:
         devices = []
+
         types = [mmc.DeviceType(type) for type in core.getAvailableDeviceTypes(adapter)]
         names = core.getAvailableDevices(adapter)
         for t in types:

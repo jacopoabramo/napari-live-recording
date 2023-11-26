@@ -448,9 +448,13 @@ class RecordHandling(QObject):
         self.formatLabel = QLabel("File format")
         self.formatComboBox = QEnumComboBox(enum_class=FileFormat)
         self.formatLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.folderTextEdit = QLineEdit(baseRecordingFolder)
+        if self.settings.settings.contains("recordFolder"):
+            folder = self.settings.getSetting("recordFolder")
+        else:
+            folder = baseRecordingFolder
+        self.folderTextEdit = QLineEdit(folder)
         self.folderTextEdit.setReadOnly(True)
+
         self.folderButton = QPushButton("Select record folder")
 
         self.filenameTextEdit = QLineEdit("Filename")

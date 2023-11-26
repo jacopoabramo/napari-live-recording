@@ -30,8 +30,7 @@ from napari_live_recording.ui.widgets import (
     ROIHandling,
 )
 import numpy as np
-import functools
-import pims
+
 
 
 class ViewerAnchor:
@@ -166,44 +165,16 @@ class ViewerAnchor:
         del self.cameraWidgetGroups[cameraKey]
 
     def refreshAvailableFilters(self):
-        print("Refresh")
-        # print(newFilter)
-        # self.filtersDict[newFilter[0]] = newFilter[1]
-        for key in self.cameraTabsDict.keys():
-            widget = self.cameraTabsDict[key].itemAt(0).widget()
+        for key in self.cameraWidgetGroups.keys():
+            widget = self.cameraWidgetGroups[key].itemAt(0).widget()
             previousIndex = widget.currentIndex()
             widget.clear()
-            print(self.filtersDict)
             self.filtersDict = self.settings.getFiltersDict()
-            print(self.filtersDict)
             widget.addItems(self.filtersDict.keys())
             filterDescription = ""
             for key in list(self.filtersDict.values())[-1].keys():
                 filterDescription += str(key)
                 filterDescription += " "
-            print(filterDescription)
-            indexOfLast = widget.count() - 1
-            widget.setItemData(indexOfLast, filterDescription, Qt.ToolTipRole)
-            widget.setCurrentIndex(previousIndex)
-            # self.settings.setFiltersDict("availableFilters", self.filtersDict)
-
-    def refreshAvailableFilters(self):
-        print("Refresh")
-        # print(newFilter)
-        # self.filtersDict[newFilter[0]] = newFilter[1]
-        for key in self.cameraTabsDict.keys():
-            widget = self.cameraTabsDict[key].itemAt(0).widget()
-            previousIndex = widget.currentIndex()
-            widget.clear()
-            print(self.filtersDict)
-            self.filtersDict = self.settings.getFiltersDict()
-            print(self.filtersDict)
-            widget.addItems(self.filtersDict.keys())
-            filterDescription = ""
-            for key in list(self.filtersDict.values())[-1].keys():
-                filterDescription += str(key)
-                filterDescription += " "
-            print(filterDescription)
             indexOfLast = widget.count() - 1
             widget.setItemData(indexOfLast, filterDescription, Qt.ToolTipRole)
             widget.setCurrentIndex(previousIndex)
@@ -214,11 +185,7 @@ class ViewerAnchor:
             # todo: add dynamic control
             filtersList = {}
             cameraKeys = list(self.cameraWidgetGroups.keys())
-            for key in cameraKeys:
-                widget = self.cameraTabsDict[key].itemAt(0).widget()
-                selectedFilter = widget.currentText()
-                filtersList[key] = self.filtersDict[selectedFilter]
-            print(filtersList, "FiltersList Created before calling process")
+
             writerInfo = WriterInfo(
                 folder=self.recordingWidget.folderTextEdit.text(),
                 filename=self.recordingWidget.filenameTextEdit.text(),
@@ -235,6 +202,11 @@ class ViewerAnchor:
                 stackSize=self.recordingWidget.recordSize,
                 acquisitionTime=self.recordingWidget.recordSize,
             )
+
+            for key in cameraKeys:
+                widget = self.cameraWidgetGroups[key].itemAt(0).widget()
+                selectedFilter = widget.currentText()
+                filtersList[key] = self.filtersDict[selectedFilter]
             self.mainController.process(filtersList, writerInfoProcessed)
             self.mainController.record(cameraKeys, writerInfo)
         else:
@@ -260,8 +232,8 @@ class ViewerAnchor:
             return
 
         # first delete the controllers...
-        if self.mainController.isLive:
-            self.mainController.live(False)
+        # if self.mainController.isLive:
+        #     self.mainController.live(False)
         for key in self.mainController.deviceControllers.keys():
             self.mainController.deleteCamera(key)
         self.mainController.deviceControllers.clear()
@@ -275,14 +247,17 @@ class ViewerAnchor:
         self.cameraWidgetGroups.clear()
 
     def _updateLiveLayers(self):
-        # for key, buffer in self.mainController.deviceLiveBuffer.items():
-        for key in self.mainController.deviceControllers.keys():
-            # this copy may not be truly necessary
-            # but it does not impact performance too much
-            # so we keep it to avoid possible data corruption
-            self._updateLayer(
-                f"Live {key}", np.copy(self.mainController.returnNewestFrame(key))
-            )
+        try:
+            # for key, buffer in self.mainController.deviceLiveBuffer.items():
+            for key in self.mainController.deviceControllers.keys():
+                # this copy may not be truly necessary
+                # but it does not impact performance too much
+                # so we keep it to avoid possible data corruption
+                self._updateLayer(
+                    f"Live {key}", np.copy(self.mainController.returnNewestFrame(key))
+                )
+        except Exception as e:
+            pass
 
     def _updateLayer(self, layerKey: str, data: np.ndarray) -> None:
         try:
