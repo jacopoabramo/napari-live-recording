@@ -217,10 +217,8 @@ class ShowFiltersDialog(QDialog):
         for item in selectedItems:
             self.listWidget.takeItem(self.listWidget.row(item))
             text = item.text()
-            print(text)
             _ = self.filtersDict.pop(text)
             self.settings.setFiltersDict(self.filtersDict)
-            print("filterDeleted")
         self.filterDeleted.emit()
 
 
@@ -311,7 +309,6 @@ class FilterSelectionWidget(QWidget):
                 self.filtersDict = self.settings.getFiltersDict()
                 self.filtersDict[filterName] = functionsDict
                 self.settings.setFiltersDict(self.filtersDict)
-                print("Filter Added")
                 self.filterAdded.emit()
 
     def updatePreviewImage(self):
@@ -354,11 +351,6 @@ class FilterSelectionWidget(QWidget):
         self.loadFiles()
 
     def showExistingFilters(self):
-        global emitFilterAdded
-
-        def emitFilterAdded():
-            print("filter added emit")
-
         existingFiltersDialog = ShowFiltersDialog()
         accept = existingFiltersDialog.exec()
         # existingFiltersDialog.filterDeleted.connect(emitFilterAdded)
@@ -367,7 +359,7 @@ class FilterSelectionWidget(QWidget):
             self.clearListWidget()
             item = existingFiltersDialog.listWidget.currentItem()
             text = item.text()
-            functionsDict = self.filterDict[text]
+            functionsDict = self.filtersDict[text]
             self.rightList.convertFunctionsDictToItemList(functionsDict)
         else:
             self.filterAdded.emit()

@@ -19,7 +19,10 @@ class Settings:
         self.settings.setValue(key, newValue)
 
     def getSetting(self, key):
-        return self.settings.value(key)
+        if self.settings.contains(key):
+            return self.settings.value(key)
+        else:
+            return None
 
     def getFiltersDict(self):
         if self.settings.contains("availableFilters"):

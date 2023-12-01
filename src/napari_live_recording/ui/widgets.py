@@ -486,7 +486,6 @@ class RecordHandling(QObject):
         # from outside the instance?
         self.recordSpinBox.setRange(1, 5000)
         self.recordSpinBox.setValue(100)
-        self.record.setCheckable(True)
 
         self.layout.addWidget(self.formatComboBox, 0, 0, 1, 2)
         self.layout.addWidget(self.formatLabel, 0, 2)
@@ -576,10 +575,10 @@ class RecordHandling(QObject):
         self.snap.setEnabled(not status)
         self.live.setEnabled(not status)
         self.recordSpinBox.setEnabled(not status)
-        if status:
-            self.recordProgress.show()
-        else:
-            self.recordProgress.hide()
+        # if status:
+        #     self.recordProgress.show()
+        # else:
+        #     self.recordProgress.hide()
 
     @property
     def recordSize(self) -> int:

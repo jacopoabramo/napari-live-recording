@@ -7,14 +7,19 @@ from qtpy.QtCore import QObject, Signal
 
 
 class Framebuffer(QObject):
-    appendingFinished = Signal()
+    appendingFinished = Signal(str)
 
     def __init__(
-        self, stackSize: int, camera: ICamera, allowOverwrite: bool = True
+        self,
+        stackSize: int,
+        camera: ICamera,
+        cameraKey: str,
+        allowOverwrite: bool = True,
     ) -> None:
         super().__init__()
 
         self.stackSize = stackSize
+        self.cameraKey = cameraKey
         self._appendedFrames = 0
         self.allowOverwrite = allowOverwrite
         self.shape = camera.roiShape.pixelSizes
@@ -39,7 +44,7 @@ class Framebuffer(QObject):
         try:
             with self.lock:
                 if self._appendedFrames == self.stackSize and not self.allowOverwrite:
-                    self.appendingFinished.emit()
+                    self.appendingFinished.emit(self.cameraKey)
                 elif newFrame.shape == self.shape:
                     self.buffer.appendleft(newFrame)
                     self._appendedFrames += 1
@@ -47,6 +52,7 @@ class Framebuffer(QObject):
                     self.shape = newFrame.shape
                     self.clearBuffer()
         except Exception as e:
+            print("Adding Error", e)
             pass
 
     def popOldestFrame(self):

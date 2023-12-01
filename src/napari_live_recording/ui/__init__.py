@@ -14,7 +14,6 @@ from napari_live_recording.common import (
     THIRTY_FPS,
     WriterInfo,
     Settings,
-    createPipelineFilter,
 )
 from napari_live_recording.control.devices import devicesDict, ICamera
 from napari_live_recording.control.devices.interface import NumberParameter
@@ -30,7 +29,6 @@ from napari_live_recording.ui.widgets import (
     ROIHandling,
 )
 import numpy as np
-
 
 
 class ViewerAnchor:
