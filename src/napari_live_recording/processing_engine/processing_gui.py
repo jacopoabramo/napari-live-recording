@@ -17,10 +17,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from ast import literal_eval
 import pims, math
-from napari_live_recording.processing_engine_.image_filters import *
-from napari_live_recording.common import filtersDict, createPipelineFilter, Settings
+from napari_live_recording.processing_engine.image_filters import *
+from napari_live_recording.common import createPipelineFilter, Settings
 import functools
-from napari_live_recording.processing_engine_ import image_filters
+from napari_live_recording.processing_engine import image_filters, filtersDict
 import importlib
 import pkgutil
 from qtpy.QtCore import Qt, Signal

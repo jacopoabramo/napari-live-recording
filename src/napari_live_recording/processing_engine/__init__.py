@@ -1,5 +1,5 @@
-from napari_live_recording.processing_engine_.image_filters import *
-from napari_live_recording.processing_engine_ import image_filters
+from napari_live_recording.processing_engine.image_filters import *
+from napari_live_recording.processing_engine import image_filters
 import functools
 import importlib
 import pkgutil
@@ -10,7 +10,7 @@ import pkgutil
 moduleList = []
 for importer, modname, ispkg in pkgutil.iter_modules(image_filters.__path__):
     moduleList.append(
-        "napari_live_recording.processing_engine_.image_filters." + modname
+        "napari_live_recording.processing_engine.image_filters." + modname
     )
 
 #
@@ -20,4 +20,4 @@ i = 0
 for module in map(importlib.import_module, moduleList):
     i += 1
     for func in filter(callable, module.__dict__.values()):
-        filtersDict[func.__name__] = Filter(func)
+        filtersDict[func.__name__] = func

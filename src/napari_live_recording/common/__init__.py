@@ -8,8 +8,6 @@ from qtpy.QtCore import QSettings, Qt
 import functools, pims
 
 settings = QSettings("IPHT", "Napari-Live-Recording")
-filtersDict = {}
-
 
 class Settings:
     def __init__(self) -> None:
