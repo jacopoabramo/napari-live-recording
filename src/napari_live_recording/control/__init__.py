@@ -62,7 +62,7 @@ class MainController(QObject):
         self.processedBuffers: Dict[str, Framebuffer] = {}
         self.settings = Settings()
         self.filtersDict = filtersDict
-        self.stackSize = 1000
+        self.stackSize = 5000
         self.idx = 0
         self.liveWorker = None
         self.__isAcquiring = {}
