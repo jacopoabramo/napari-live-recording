@@ -9,6 +9,7 @@ from qtpy.QtWidgets import (
     QSpacerItem,
     QSizePolicy,
 )
+from typing import Dict
 from superqt import QCollapsible
 from napari_live_recording.common import (
     THIRTY_FPS,
@@ -21,9 +22,11 @@ from napari_live_recording.control import MainController
 from napari_live_recording.ui.widgets import (
     QFormLayout,
     QGroupBox,
+    QComboBox,
     QPushButton,
     LabeledSlider,
     ComboBox,
+    CameraTab,
     RecordHandling,
     CameraSelection,
     ROIHandling,
@@ -42,7 +45,7 @@ class ViewerAnchor:
         self.viewer = napari_viewer
         self.mainController = mainController
         self.settings = Settings()
-        self.filtersDict = self.settings.getFiltersDict()
+        self.filterGroupsDict = self.settings.getFilterGroupsDict()
         self.mainLayout = QVBoxLayout()
         self.selectionWidget = CameraSelection()
         self.selectionWidget.setDeviceSelectionWidget(list(devicesDict.keys()))
@@ -54,7 +57,7 @@ class ViewerAnchor:
         self.mainLayout.setAlignment(
             self.selectionWidget.group, Qt.AlignmentFlag.AlignTop
         )
-        self.cameraWidgetGroups = {}
+        self.cameraWidgetGroups: Dict[str, CameraTab] = {}
         self.selectionWidget.newCameraRequested.connect(self.addCameraUI)
         self.recordingWidget.signals["snapRequested"].connect(self.snap)
         self.recordingWidget.signals["liveRequested"].connect(self.live)
@@ -89,68 +92,13 @@ class ViewerAnchor:
         self.addTabWidget(self.isFirstTab)
         camera: ICamera = devicesDict[interface](name, idx)
         cameraKey = f"{camera.name}:{camera.__class__.__name__}:{str(idx)}"
-
-        cameraTab = QWidget()
-        cameraTabLayout = QGridLayout()
-
-        settingsLayout = QFormLayout()
-        settingsGroup = QGroupBox()
+        self.filterGroupsDict = self.settings.getFilterGroupsDict()
+        tab = CameraTab(camera, self.filterGroupsDict, interface)
 
         self.mainController.addCamera(cameraKey, camera)
-
-        roiWidget = ROIHandling(camera.fullShape)
-        roiWidget.signals["changeROIRequested"].connect(
-            lambda roi: camera.changeROI(roi)
-        )
-        roiWidget.signals["fullROIRequested"].connect(lambda roi: camera.changeROI(roi))
-
-        # here also change buffer ROI
-        self.refreshAvailableFilters()
-        filtersCombo = ComboBox(self.filtersDict.keys(), "Filters")
-
-        cameraTabLayout.addWidget(filtersCombo.widget, 0, 0, 1, 2)
-
-        if interface == "MicroManager":
-            cameraTabLayout.addWidget(camera.settingsWidget, 1, 0, 1, 2)
-
-        else:
-            scrollArea = QScrollArea()
-            specificSettingsGroup = QWidget()
-            specificSettingsLayout = QFormLayout()
-            for name, parameter in camera.parameters.items():
-                if len(name) > 15:
-                    name = name[:15]
-                if type(parameter) == NumberParameter:
-                    widget = LabeledSlider(
-                        (*parameter.valueLimits, parameter.value), name, parameter.unit
-                    )
-                    widget.signals["valueChanged"].connect(
-                        lambda value, name=name: camera.changeParameter(name, value)
-                    )
-                else:  # ListParameter
-                    widget = ComboBox(parameter.options, name)
-                    widget.signals["currentTextChanged"].connect(
-                        lambda text, name=name: camera.changeParameter(name, text)
-                    )
-                specificSettingsLayout.addRow(widget.label, widget.widget)
-
-            specificSettingsGroup.setLayout(specificSettingsLayout)
-            scrollArea.setWidget(specificSettingsGroup)
-            scrollArea.setWidgetResizable(True)
-            scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-            scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-            cameraTabLayout.addWidget(scrollArea, 1, 0, 1, 2)
-
-        deleteButton = QPushButton("Delete camera")
-        deleteButton.clicked.connect(lambda: self.deleteCameraUI(cameraKey))
-        settingsLayout.addRow(deleteButton)
-        settingsLayout.addRow(roiWidget)
-        settingsGroup.setLayout(settingsLayout)
-        cameraTabLayout.addWidget(settingsGroup)
-        cameraTab.setLayout(cameraTabLayout)
-
-        self.cameraWidgetGroups[cameraKey] = cameraTabLayout
-        self.tabs.addTab(cameraTab, cameraKey)
+        tab.deleteButton.clicked.connect(lambda: self.deleteCameraUI(cameraKey))
+        self.cameraWidgetGroups[cameraKey] = tab
+        self.tabs.addTab(tab.widget, cameraKey)
 
     def deleteCameraUI(self, cameraKey: str) -> None:
         self.mainController.deleteCamera(cameraKey)
@@ -164,21 +112,21 @@ class ViewerAnchor:
 
     def refreshAvailableFilters(self):
         for key in self.cameraWidgetGroups.keys():
-            widget = self.cameraWidgetGroups[key].itemAt(0).widget()
-            previousIndex = widget.currentIndex()
-            widget.clear()
-            self.filtersDict = self.settings.getFiltersDict()
-            widget.addItems(self.filtersDict.keys())
-            filterDescription = ""
-            for key in list(self.filtersDict.values())[-1].keys():
-                filterDescription += str(key)
-                filterDescription += " "
-            indexOfLast = widget.count() - 1
-            widget.setItemData(indexOfLast, filterDescription, Qt.ToolTipRole)
-            widget.setCurrentIndex(previousIndex)
-            # self.settings.setFiltersDict("availableFilters", self.filtersDict)
+            tab = self.cameraWidgetGroups[key]
+            previousIndex = tab.getFiltersComboCurrentIndex()
+            self.filterGroupsDict = self.settings.getFilterGroupsDict()
+            tab.setFiltersCombo(self.filterGroupsDict)
+            # filterDescription = ""
+            # for key in list(self.filterGroupsDict.values())[-1].keys():
+            #     filterDescription += str(key)
+            #     filterDescription += " "
+            # indexOfLast = widget.count() - 1
+            # widget.setItemData(indexOfLast, filterDescription, Qt.ToolTipRole)
+            tab.setFiltersComboCurrentIndex(previousIndex)
+
 
     def record(self, status: bool) -> None:
+        self.mainController.recordToBuffer(status)
         if status:
             # todo: add dynamic control
             filtersList = {}
@@ -202,20 +150,31 @@ class ViewerAnchor:
             )
 
             for key in cameraKeys:
-                widget = self.cameraWidgetGroups[key].itemAt(0).widget()
-                selectedFilter = widget.currentText()
-                filtersList[key] = self.filtersDict[selectedFilter]
+                cameraTab = self.cameraWidgetGroups[key]
+                selectedFilter = cameraTab.getFiltersComboCurrentText()
+                filtersList[key] = self.filterGroupsDict[selectedFilter]
             self.mainController.process(filtersList, writerInfoProcessed)
             self.mainController.record(cameraKeys, writerInfo)
+            self.liveTimer.start()
         else:
             self.mainController.stopRecord()
+            self.liveTimer.stop()
 
     def snap(self) -> None:
         for key in self.mainController.deviceControllers.keys():
-            self._updateLayer(f"Snap {key}", self.mainController.returnNewestFrame(key))
+            cameraTab = self.cameraWidgetGroups[key]
+            selectedFilter = cameraTab.getFiltersComboCurrentText()
+            functionsDict = self.filterGroupsDict[selectedFilter]
+            self._updateLayer(f"Snap {key}", self.mainController.snap(key, functionsDict))
 
     def live(self, status: bool) -> None:
-        # self.mainController.live(status)
+        cameraKeys = list(self.cameraWidgetGroups.keys())
+        self.mainController.recordToBuffer(status)
+        for key in cameraKeys:
+            cameraTab = self.cameraWidgetGroups[key]
+            selectedFilter = cameraTab.getFiltersComboCurrentText()
+            selectedFilterGroup = self.filterGroupsDict[selectedFilter]
+            self.mainController.processFrames(status,key, selectedFilterGroup)
         if status:
             self.liveTimer.start()
         else:

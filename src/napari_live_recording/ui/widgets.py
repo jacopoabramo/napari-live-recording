@@ -1,4 +1,4 @@
-import os
+from PyQt5.QtCore import QObject
 import numpy as np
 import microscope.cameras
 from pkgutil import iter_modules
@@ -10,23 +10,20 @@ from qtpy.QtWidgets import (
     QComboBox,
     QSpinBox,
     QLineEdit,
+    QScrollArea,
     QPushButton,
     QFileDialog,
     QStackedWidget,
     QProgressBar,
+    QFormLayout,
+    QGridLayout,
+    QGroupBox,
 )
+from napari_live_recording.control.devices.interface import NumberParameter
+from napari_live_recording.control.devices import ICamera
 from superqt import QLabeledSlider, QLabeledDoubleSlider, QEnumComboBox
-from qtpy.QtWidgets import QFormLayout, QGridLayout, QGroupBox
 from abc import ABC, abstractmethod
 from dataclasses import replace
-from napari_live_recording.common import (
-    ROI,
-    FileFormat,
-    RecordType,
-    MMC_DEVICE_MAP,
-    settings,
-    Settings,
-)
 from enum import Enum
 from napari_live_recording.common import (
     ROI,
@@ -35,10 +32,11 @@ from napari_live_recording.common import (
     MMC_DEVICE_MAP,
     microscopeDeviceDict,
     baseRecordingFolder,
+    Settings,
 )
 from typing import Dict, List, Tuple
-from napari_live_recording.processing_engine_.processing_gui import (
-    FilterSelectionWidget,
+from napari_live_recording.processing_engine.processing_gui import (
+    FilterGroupCreationWidget,
 )
 
 
@@ -514,14 +512,9 @@ class RecordHandling(QObject):
         self.recordComboBox.currentEnumChanged.connect(self.handleRecordTypeChanged)
 
     def openFilterCreationWindow(self) -> None:
-        global getFilter
-
-        def getFilter():
-            self.filterCreated.emit()
-
-        self.selectionWindow = FilterSelectionWidget()
+        self.selectionWindow = FilterGroupCreationWidget()
+        self.selectionWindow.filterAdded.connect(lambda: self.filterCreated.emit())
         self.selectionWindow.show()
-        self.selectionWindow.filterAdded.connect(getFilter)
 
     def handleFolderSelection(self) -> None:
         """Handles the selection of the output folder for the recording."""
@@ -736,3 +729,82 @@ class ROIHandling(QWidget):
             "changeROIRequested": self.changeROIRequested,
             "fullROIRequested": self.fullROIRequested,
         }
+
+
+class CameraTab(QObject):
+    """Camera tab widget. Used to create a new tab for an added camera."""
+
+    def __init__(
+        self, camera: ICamera, filterGroupsDict: dict, interface: str
+    ) -> None:
+        QObject.__init__(self)
+
+        self.widget = QWidget()
+        self.layout = QGridLayout()
+
+        settingsLayout = QFormLayout()
+        settingsGroup = QGroupBox()
+        self.filterGroupsDict = filterGroupsDict
+
+        self.roiWidget = ROIHandling(camera.fullShape)
+        self.roiWidget.signals["changeROIRequested"].connect(
+            lambda roi: camera.changeROI(roi)
+        )
+        self.roiWidget.signals["fullROIRequested"].connect(
+            lambda roi: camera.changeROI(roi)
+        )
+
+        self.filtersCombo = ComboBox(self.filterGroupsDict.keys(), "Filters")
+        self.filtersCombo.combobox.setCurrentText("No Filter")
+        self.layout.addWidget(self.filtersCombo.widget, 0, 0, 1, 2)
+
+        if interface == "MicroManager":
+            self.layout.addWidget(camera.settingsWidget, 1, 0, 1, 2)
+
+        else:
+            scrollArea = QScrollArea()
+            specificSettingsGroup = QWidget()
+            specificSettingsLayout = QFormLayout()
+            for name, parameter in camera.parameters.items():
+                if len(name) > 15:
+                    name = name[:15]
+                if type(parameter) == NumberParameter:
+                    widget = LabeledSlider(
+                        (*parameter.valueLimits, parameter.value), name, parameter.unit
+                    )
+                    widget.signals["valueChanged"].connect(
+                        lambda value, name=name: camera.changeParameter(name, value)
+                    )
+                else:  # ListParameter
+                    widget = ComboBox(parameter.options, name)
+                    widget.signals["currentTextChanged"].connect(
+                        lambda text, name=name: camera.changeParameter(name, text)
+                    )
+                specificSettingsLayout.addRow(widget.label, widget.widget)
+
+            specificSettingsGroup.setLayout(specificSettingsLayout)
+            scrollArea.setWidget(specificSettingsGroup)
+            scrollArea.setWidgetResizable(True)
+            scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+            scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            self.layout.addWidget(scrollArea, 1, 0, 1, 2)
+
+        self.deleteButton = QPushButton("Delete camera")
+
+        settingsLayout.addRow(self.deleteButton)
+        settingsLayout.addRow(self.roiWidget)
+        settingsGroup.setLayout(settingsLayout)
+        self.layout.addWidget(settingsGroup)
+        self.widget.setLayout(self.layout)
+
+    def getFiltersComboCurrentText(self):
+        return self.filtersCombo.combobox.currentText()
+
+    def setFiltersCombo(self, newValues: List[str]):
+        self.filtersCombo.changeWidgetSettings(newValues)
+
+    def getFiltersComboCurrentIndex(self):
+        return self.filtersCombo.combobox.currentIndex()
+
+    def setFiltersComboCurrentIndex(self, index: int):
+        self.filtersCombo.combobox.setCurrentIndex(index)

@@ -7,7 +7,13 @@ import os
 from qtpy.QtCore import QSettings, Qt
 import functools, pims
 
-settings = QSettings("IPHT", "Napari-Live-Recording")
+
+settingsFilePath = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), "./settings.ini"
+)
+settings = QSettings(settingsFilePath, QSettings.IniFormat)
+print("Filename", settings.fileName())
+
 
 class Settings:
     def __init__(self) -> None:
@@ -22,18 +28,18 @@ class Settings:
         else:
             return None
 
-    def getFiltersDict(self):
-        if self.settings.contains("availableFilters"):
-            return self.settings.value("availableFilters")
+    def getFilterGroupsDict(self):
+        if self.settings.contains("availableFilterGroups"):
+            return self.settings.value("availableFilterGroups")
         else:
             self.settings.setValue(
-                "availableFilters", {"No Filter": {"1.No Filter": None}}
+                "availableFilterGroups", {"No Filter": {"1.No Filter": None}}
             )
-            return self.settings.value("availableFilters")
+            return self.settings.value("availableFilterGroups")
 
-    def setFiltersDict(self, newDict):
+    def setFilterGroupsDict(self, newDict):
         newDict["No Filter"] = {"1.No Filter": None}
-        self.settings.setValue("availableFilters", newDict)
+        self.settings.setValue("availableFilterGroups", newDict)
 
 
 def createPipelineFilter(filters):

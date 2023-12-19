@@ -20,7 +20,7 @@ import pims, math
 from napari_live_recording.processing_engine.image_filters import *
 from napari_live_recording.common import createPipelineFilter, Settings
 import functools
-from napari_live_recording.processing_engine import image_filters, filtersDict
+from napari_live_recording.processing_engine import image_filters, defaultImagePath
 import importlib
 import pkgutil
 from qtpy.QtCore import Qt, Signal
@@ -53,7 +53,7 @@ from qtpy.QtWidgets import (
 
 
 class LeftList(QListWidget):
-    """Left list widget with functions available for image processing."""
+    """Left list widget containing functions available for image processing."""
 
     DragDropSignalLeft = Signal()
 
@@ -67,11 +67,12 @@ class LeftList(QListWidget):
         self.setAcceptDrops(False)
 
     def convertFunctionsDictToItemList(self, functionsDict: dict):
-        # itemList = []
+        """Convenience method to convert the dictionary of functions with their parameters to QListWidgetItems"""
         if functionsDict == None:
             pass
         else:
             for key in functionsDict.keys():
+                # read the content of the dict and then store it as data connected to a QListWidgetItem
                 function = functionsDict[key][0]
                 parametersDict = functionsDict[key][1]
                 parametersHints = functionsDict[key][2]
@@ -83,6 +84,7 @@ class LeftList(QListWidget):
                 self.addItem(item)
 
     def convertItemListToDict(self):
+        """Convenience method to convert the QListWidgetItems in the list to a dictionary of functions with their parameters"""
         functionsDict = {}
         for i in range(self.count()):
             item = self.item(i)
@@ -93,10 +95,6 @@ class LeftList(QListWidget):
                 item.toolTip(),
             ]
         return functionsDict
-
-    # def dragEvent(self, event: QDropEvent) -> None:
-    #     self.DragDropSignalLeft.emit()
-    #     return super().dropEvent(event)
 
 
 class RightList(QListWidget):
@@ -112,7 +110,7 @@ class RightList(QListWidget):
         self.setSortingEnabled(True)
 
     def convertFunctionsDictToItemList(self, functionsDict: dict):
-        # itemList = []
+        """Convenience method to convert the dictionary of functions with their parameters to QListWidgetItems"""
         if functionsDict == None:
             pass
         else:
@@ -128,6 +126,7 @@ class RightList(QListWidget):
                 self.addItem(item)
 
     def convertItemListToDict(self):
+        """Convenience method to convert the QListWidgetItems in the list to a dictionary of functions with their parameters"""
         functionsDict = {}
         for i in range(self.count()):
             item = self.item(i)
@@ -139,13 +138,9 @@ class RightList(QListWidget):
             ]
         return functionsDict
 
-    # def dropEvent(self, event: QDropEvent) -> None:
-    #     self.DragDropSignalRight.emit()
-    #     return super().dropEvent(event)
-
 
 class ParameterDialog(QDialog):
-    """Dialog Window to change parameters of function that are inside the right list."""
+    """Dialog Window to change parameters of a function that is inside the right list. The dialog appears when an item is double clicked."""
 
     def __init__(self, parameters, parameterHints, parent=None):
         super(ParameterDialog, self).__init__(parent)
@@ -167,40 +162,33 @@ class ParameterDialog(QDialog):
         self.parameterDialogLayout.addWidget(self.buttonBox)
 
     def getValues(self):
-        """Get the values from the linedits and interpret the strings as values for the parameters. '(1,2)' will be interpreted as tuple(1,2)
-
-        Returns
-        -------
-        dict
-            dictionary containing the entered values
-        """
+        """Get the values from the linedits and interpret the strings as values for the parameters. '(1,2)' will be interpreted as tuple(1,2)"""
         for linedit in self.lineEdits.keys():
             self.lineEdits[linedit] = literal_eval(self.lineEdits[linedit].text())
         return self.lineEdits
 
 
-class ShowFiltersDialog(QDialog):
-    """Dialog Window to change parameters of function that are inside the right list."""
+class ExistingFilterGroupsDialog(QDialog):
+    """Dialog Window to show existing filter groups. Possibility to delete or load existing filters"""
 
     filterDeleted = Signal()
 
     def __init__(self, parent=None):
-        super(ShowFiltersDialog, self).__init__(parent)
+        super(ExistingFilterGroupsDialog, self).__init__(parent)
 
-        self.setWindowTitle("Exisiting Filters")
+        self.setWindowTitle("Exisiting Filter-Groups")
         self.buttonBox = QDialogButtonBox()
         self.settings = Settings()
-        self.filtersDict = self.settings.getFiltersDict()
+        self.filterGroupsDict = self.settings.getFilterGroupsDict()
         self.buttonBox.addButton(QDialogButtonBox.Ok)
         self.buttonBox.addButton(QDialogButtonBox.Cancel)
         self.buttonBox.button(QDialogButtonBox.Ok).setText("Load Filter")
         self.buttonBox.button(QDialogButtonBox.Cancel).setText("Delete Filter")
         self.buttonBox.accepted.connect(self.accept)
-        self.buttonBox.rejected.connect(self.deleteFilter)
-        # self.buttonBox.addButton("Delete Filter", QDialogButtonBox.ActionRole)
+        self.buttonBox.rejected.connect(self.deleteFilterGroup)
         self.parameterDialogLayout = QVBoxLayout()
         self.listWidget = QListWidget()
-        for filter in self.filtersDict.keys():
+        for filter in self.filterGroupsDict.keys():
             item = QListWidgetItem()
             item.setText(filter)
             self.listWidget.addItem(item)
@@ -208,21 +196,19 @@ class ShowFiltersDialog(QDialog):
         self.parameterDialogLayout.addWidget(self.listWidget)
         self.parameterDialogLayout.addWidget(self.buttonBox)
 
-        # self.buttonBox.button(QDialogButtonBox.Apply).clicked.connect(self.deleteFilter)
-
-    def deleteFilter(self):
+    def deleteFilterGroup(self):
         selectedItems = self.listWidget.selectedItems()
         if not selectedItems:
             return
         for item in selectedItems:
             self.listWidget.takeItem(self.listWidget.row(item))
             text = item.text()
-            _ = self.filtersDict.pop(text)
-            self.settings.setFiltersDict(self.filtersDict)
+            self.filterGroupsDict.pop(text)
+            self.settings.setFilterGroupsDict(self.filterGroupsDict)
         self.filterDeleted.emit()
 
 
-class FilterSelectionWidget(QWidget):
+class FilterGroupCreationWidget(QWidget):
     """Main Window containing two lists, one Right List and one Left List. Drag items from the left to the right list to add them to the processing pipeline. The left listed can be searched for items. New items can be loaded from files.The right list can be cleared. By applying the right list, the functions (associated eith the items in the right list) will be put in to a processing pipeline."""
 
     filterAdded = Signal()
@@ -230,10 +216,8 @@ class FilterSelectionWidget(QWidget):
     def __init__(self, parent=None):
         super(QWidget, self).__init__(parent)
         self.settings = Settings()
-        self.filtersDict = self.settings.getFiltersDict()
-        self.filters_folder = (
-            r"src\napari_live_recording\processing_engine_\image_filters"
-        )
+        self.filterGroupsDict = self.settings.getFilterGroupsDict()
+        self.filters_folder = image_filtersPath
         self.initializeMainWindow()
 
         self.loadFiles()
@@ -242,13 +226,7 @@ class FilterSelectionWidget(QWidget):
         e.accept()
 
     def openParameterDialogWindow(self, item: QListWidgetItem):
-        """Dialog Window that gets opened when a item in the right list is double clicked.
-
-        Parameters
-        ----------
-        item : QListWidgetItem
-            _description_
-        """
+        """Dialog Window that gets opened when a item in the right list is double clicked."""
         dialog = ParameterDialog(item.data(Qt.UserRole)[1], item.data(Qt.UserRole)[2])
         answer = dialog.exec_()
 
@@ -268,13 +246,13 @@ class FilterSelectionWidget(QWidget):
 
     def loadFiles(self):
         """load the files from the folder 'image filters' and and load the functions from each file. The functions and parameters are stored as data associated with each item."""
-        # ERROR:funktioniert nur für module die über programm reingeladen wurden
+        # Bug: only works for files that were loaded into the imaga_filters folder through the plugin and not for manually added ones
         self.leftList.clear()
         moduleList = []
         for importer, modname, ispkg in pkgutil.iter_modules(image_filters.__path__):
             if not modname == "__init__":
                 moduleList.append(
-                    "napari_live_recording.processing_engine_.image_filters." + modname
+                    "napari_live_recording.processing_engine.image_filters." + modname
                 )
         for module in map(importlib.import_module, moduleList):
             for func in filter(callable, module.__dict__.values()):
@@ -306,9 +284,9 @@ class FilterSelectionWidget(QWidget):
             if filterName == "":
                 self.alertWindow("Please Name your Filter-Group.")
             else:
-                self.filtersDict = self.settings.getFiltersDict()
-                self.filtersDict[filterName] = functionsDict
-                self.settings.setFiltersDict(self.filtersDict)
+                self.filterGroupsDict = self.settings.getFilterGroupsDict()
+                self.filterGroupsDict[filterName] = functionsDict
+                self.settings.setFilterGroupsDict(self.filterGroupsDict)
                 self.filterAdded.emit()
 
     def updatePreviewImage(self):
@@ -325,14 +303,8 @@ class FilterSelectionWidget(QWidget):
         dialog.setText("Current Filters not applicable:  " + text)
         dialog.exec()
 
-    def update_display(self, text: str):
-        """Update the left list, i.e. hide items in the left list. Is used when text in the searchbar is changed.
-
-        Parameters
-        ----------
-        text : str
-            Input from the searchbar
-        """
+    def updateDisplay(self, text: str):
+        """Update the left list, i.e. hide items in the left list. Is used when text in the searchbar is changed."""
         for i in range(self.leftList.count()):
             item = self.leftList.item(i)
             item.setHidden(True)
@@ -350,29 +322,29 @@ class FilterSelectionWidget(QWidget):
                 shutil.copy(filepath, self.filters_folder)
         self.loadFiles()
 
-    def showExistingFilters(self):
-        existingFiltersDialog = ShowFiltersDialog()
-        accept = existingFiltersDialog.exec()
-        # existingFiltersDialog.filterDeleted.connect(emitFilterAdded)
-
+    def showExistingFilterGroups(self):
+        existingFilterGroupsDialog = ExistingFilterGroupsDialog()
+        existingFilterGroupsDialog.filterDeleted.connect(
+            lambda: self.filterAdded.emit()
+        )
+        accept = existingFilterGroupsDialog.exec()
         if accept:
             self.clearListWidget()
-            item = existingFiltersDialog.listWidget.currentItem()
+            item = existingFilterGroupsDialog.listWidget.currentItem()
             text = item.text()
-            functionsDict = self.filtersDict[text]
+            functionsDict = self.filterGroupsDict[text]
             self.rightList.convertFunctionsDictToItemList(functionsDict)
         else:
-            self.filterAdded.emit()
-        existingFiltersDialog.show()
+            pass
+        existingFilterGroupsDialog.show()
 
     def loadPreviewImage(self, isDefault=False):
+        """Method for loading the preview image. Either the default image or a selected image from a folder."""
         if isDefault:
             if self.settings.settings.contains("Preview Image"):
                 self.image = self.settings.getSetting("Preview Image")
             else:
-                image_ = cv.imread(
-                    r"C:\git\napari-live-recording\src\napari_live_recording\processing_engine_\testImage.jpg"
-                )
+                image_ = cv.imread(defaultImagePath)
                 aspectRatio = image_.shape[0] / image_.shape[1]
                 self.image = cv.resize(
                     image_,
@@ -380,7 +352,6 @@ class FilterSelectionWidget(QWidget):
                     interpolation=cv.INTER_CUBIC,
                 )
             self.imageView.setImage(self.image)
-            # return image
         else:
             try:
                 filepath, _ = QFileDialog.getOpenFileName(
@@ -404,12 +375,13 @@ class FilterSelectionWidget(QWidget):
     def initializeMainWindow(self):
         """Creates the widgets and the layouts of the MainWindow"""
         self.setAcceptDrops(True)
+        # Left column
         self.leftContainer = QGroupBox()
         self.leftContainerLayout = QGridLayout()
         self.leftContainer.setLayout(self.leftContainerLayout)
 
         self.searchbar = QLineEdit()
-        self.searchbar.textChanged.connect(self.update_display)
+        self.searchbar.textChanged.connect(self.updateDisplay)
         self.searchbar.setClearButtonEnabled(True)
 
         self.load_btn = QPushButton("Add new Function")
@@ -420,6 +392,7 @@ class FilterSelectionWidget(QWidget):
         self.leftContainerLayout.addWidget(self.leftList, 1, 0, 1, 2)
         self.leftContainerLayout.addWidget(self.load_btn, 2, 0, 1, 2)
 
+        # middle Column
         self.rightContainer = QGroupBox()
         self.rightContainerLayout = QGridLayout()
         self.rightContainer.setLayout(self.rightContainerLayout)
@@ -427,29 +400,15 @@ class FilterSelectionWidget(QWidget):
         self.rightList = RightList()
         self.rightList.count
         self.rightList.setMouseTracking(True)
-        # self.rightList.itemChanged.connect(self.updatePreviewImage)
-        # self.rightList.DragDropSignalRight.connect(self.updatePreviewImage)
-        # self.leftList.DragDropSignalLeft.connect(self.updatePreviewImage)
-        # self.rightList.model().rowsRemoved.connect(self.updatePreviewImage)
-        # self.rightList.model().rowsInserted.connect(self.updatePreviewImage)
-        # self.rightList.model().rowsMoved.connect(self.updatePreviewImage)
-        # self.rightList.itemEntered.connect(self.updatePreviewImage)
-        # self.rightList.itemSelectionChanged.connect(self.updatePreviewImage)
-        # self.rightList.currentItemChanged.connect(self.updatePreviewImage)
-        # # self.rightList.currentRowChanged.connect(self.updatePreviewImage)
-        # self.rightList.itemDoubleClicked.connect(self.updatePreviewImage)
         self.clear_btn = QPushButton("Clear")
         self.createFilter_btn = QPushButton("Create Filter-Group")
         self.filterNameLineEdit = QLineEdit()
         self.filterNameLabel = QLabel("Filter Name")
-        self.loadExistingFilter_btn = QPushButton("Show Exisiting Filters")
-        self.loadExistingFilter_btn.clicked.connect(self.showExistingFilters)
-        # self.filterNameLineEdit.textChanged.connect(self.handleApply_btn)
-
+        self.loadExistingFilter_btn = QPushButton("Show Exisiting Filter-Groups")
+        self.loadExistingFilter_btn.clicked.connect(self.showExistingFilterGroups)
         self.clear_btn.clicked.connect(self.clearListWidget)
         self.createFilter_btn.clicked.connect(self.returnRightListContent)
         self.rightList.itemDoubleClicked.connect(self.openParameterDialogWindow)
-        # self.apply_btn.setDisabled(True)
         self.rightContainerLayout.addWidget(self.loadExistingFilter_btn, 0, 0, 1, 2)
         self.rightContainerLayout.addWidget(self.rightList, 1, 0, 1, 2)
         self.rightContainerLayout.addWidget(self.clear_btn, 3, 0)
@@ -457,6 +416,7 @@ class FilterSelectionWidget(QWidget):
         self.rightContainerLayout.addWidget(self.filterNameLabel, 2, 0)
         self.rightContainerLayout.addWidget(self.filterNameLineEdit, 2, 1)
 
+        # right Column
         self.previewContainer = QGroupBox()
         self.previewContainerLayout = QGridLayout()
         self.previewContainer.setLayout(self.previewContainerLayout)
@@ -465,49 +425,17 @@ class FilterSelectionWidget(QWidget):
 
         self.refresh_btn.clicked.connect(self.updatePreviewImage)
         self.loadNewPreviewImage_btn.clicked.connect(self.loadPreviewImage)
-        # self.image_ = cv.imread(
-        #     r"C:\git\napari-live-recording\src\napari_live_recording\processing_engine_\testImage.jpg"
-        # )
-        # aspectRatio = self.image_.shape[0] / self.image_.shape[1]
-        # self.image = cv.resize(
-        #     self.image_,
-        #     dsize=(int(280 * aspectRatio), 400),
-        #     interpolation=cv.INTER_CUBIC,
-        # )
 
         self.imageView = ImageView()
-        # self.imageView.ui.histogram.hide()
         self.imageView.ui.roiBtn.hide()
         self.imageView.ui.menuBtn.hide()
         self.loadPreviewImage(True)
-        #        self.imageView.setImage(self.loadPreviewImage(True))
         self.previewContainerLayout.addWidget(self.imageView, 0, 0, 1, 2)
         self.previewContainerLayout.addWidget(self.refresh_btn, 1, 0, 1, 1)
         self.previewContainerLayout.addWidget(self.loadNewPreviewImage_btn, 1, 1, 1, 1)
 
+        # Combining all three columns
         layout = QHBoxLayout(self)
         layout.addWidget(self.leftContainer)
         layout.addWidget(self.rightContainer)
         layout.addWidget(self.previewContainer)
-
-
-if __name__ == "__main__":
-    # don't auto scale when drag app to a different monitor.
-    # QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
-
-    app = QApplication(sys.argv)
-    app.setStyleSheet(
-        """
-        QWidget {
-            font-size: 15px;
-        }
-    """
-    )
-
-    myApp = FilterSelectionWidget()
-    myApp.show()
-
-    try:
-        sys.exit(app.exec())
-    except SystemExit:
-        print("Closing Window...")

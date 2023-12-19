@@ -13,7 +13,6 @@ from napari_live_recording.common import (
     ROI,
     Settings,
     createPipelineFilter,
-    filtersDict,
 )
 from napari_live_recording.control.devices.interface import ICamera
 from napari_live_recording.control.frame_buffer import Framebuffer
@@ -55,17 +54,16 @@ class MainController(QObject):
         """Main Controller class. Stores all camera objects to access live and stack recordings."""
         super().__init__()
         self.deviceControllers: Dict[str, LocalController] = {}
-        self.deviceLiveBuffer: Dict[str, np.ndarray] = {}
         self.deviceBuffers: Dict[str, Framebuffer] = {}
         self.recordingBuffers: Dict[str, Framebuffer] = {}
         self.processingBuffers: Dict[str, Framebuffer] = {}
         self.processedBuffers: Dict[str, Framebuffer] = {}
         self.settings = Settings()
-        self.filtersDict = filtersDict
+        self.filterGroupsDict = self.settings.getFilterGroupsDict()
         self.stackSize = 5000
         self.idx = 0
-        self.liveWorker = None
-        self.__isAcquiring = {}
+        self.bufferWorker = None
+        self.__isAcquiring = False
         self.recordLoopEnabled = False
         self.processingRunning: Dict[str, bool] = {}
         self.recordingRunning: Dict[str, bool] = {}
@@ -74,11 +72,22 @@ class MainController(QObject):
             lambda: self.recordFinished.emit()
         )
         self.recordFinished.connect(self.resetRecordingCounter)
-        self.bufferWorkers: Dict[str, FunctionWorker] = {}
 
     @property
-    def isLive(self) -> dict:
+    def isAcquiring(self) -> bool:
         return self.__isAcquiring
+
+    @contextmanager
+    def recordToBufferPaused(self):
+        print("ContextManager")
+        if self.isAcquiring:
+            try:
+                self.recordToBuffer(False)
+                yield
+            finally:
+                self.recordToBuffer(True)
+        else:
+            yield
 
     def addCamera(self, cameraKey: str, camera: ICamera) -> str:
         """Adds a new device in the controller, with a thread in which the device operates."""
@@ -103,29 +112,41 @@ class MainController(QObject):
         self.recordingRunning[cameraKey] = False
 
         self.recordSignalCounter.maxCount += 3
-
-        self.deviceControllers[cameraKey].device.setAcquisitionStatus(True)
-        self.bufferWorkers[cameraKey] = self.recordToBuffer(cameraKey)
-        self.__isAcquiring[cameraKey] = True
-        self.bufferWorkers[cameraKey].start()
-
         return cameraKey
 
-    @thread_worker(worker_class=FunctionWorker, start_thread=False)
-    def recordToBuffer(self, cameraKey: str):
-        if self.__isAcquiring[cameraKey]:
-            while self.__isAcquiring[cameraKey]:
-                try:
-                    currentFrame = np.copy(
-                        self.deviceControllers[cameraKey].device.grabFrame()
-                    )
-                    self.deviceBuffers[cameraKey].addFrame(currentFrame)
+    def recordToBuffer(self, toggle: bool):
+        print("Record to buffer", toggle)
+        self.__isAcquiring = toggle
 
-                    if self.recordingRunning[cameraKey]:
-                        self.recordingBuffers[cameraKey].addFrame(currentFrame)
-                        self.processingBuffers[cameraKey].addFrame(currentFrame)
-                except Exception as e:
-                    pass
+        @thread_worker(worker_class=FunctionWorker, start_thread=False)
+        def recordToBufferLoop():
+                while self.isAcquiring:
+                    for cameraKey in self.deviceControllers.keys():
+                        print("record To Buffer Loop Running")
+                        try:
+                            currentFrame = np.copy(
+                                self.deviceControllers[cameraKey].device.grabFrame()
+                            )
+                            self.deviceBuffers[cameraKey].addFrame(currentFrame)
+
+                            if self.recordingRunning[cameraKey]:
+                                print("also Recording in Buffer Loop")
+                                self.recordingBuffers[cameraKey].addFrame(currentFrame)
+                                self.processingBuffers[cameraKey].addFrame(currentFrame)
+                        except Exception as e:
+                            pass
+
+        if self.isAcquiring:
+            print("Start Buffer Worker")
+            for key in self.deviceControllers.keys():
+                self.deviceControllers[key].device.setAcquisitionStatus(True)
+            self.bufferWorker = recordToBufferLoop()
+            self.bufferWorker.start()
+        else:
+            print("Quitting Buffer Worker")
+            self.bufferWorker.quit()
+            for key in self.deviceControllers.keys():
+                self.deviceControllers[key].device.setAcquisitionStatus(False)
 
     def changeCameraROI(self, cameraKey: str, newROI: ROI) -> None:
         self.deviceControllers[cameraKey].device.changeROI(newROI)
@@ -151,22 +172,21 @@ class MainController(QObject):
     def deleteCamera(self, cameraKey: str) -> None:
         """Deletes a camera device."""
         try:
-            self.__isAcquiring[cameraKey] = False
-            _ = self.processingRunning.pop(cameraKey)
-            _ = self.recordingRunning.pop(cameraKey)
+            self.__isAcquiring = False
+            self.processingRunning.pop(cameraKey)
+            self.recordingRunning.pop(cameraKey)
             self.cameraDeleted.emit(False)
 
             self.deviceControllers[cameraKey].device.close()
             self.deviceControllers[cameraKey].thread.quit()
             self.deviceControllers[cameraKey].device.deleteLater()
             self.deviceControllers[cameraKey].thread.deleteLater()
-            self.bufferWorkers[cameraKey].quit()
             self.deviceControllers[cameraKey].device.setAcquisitionStatus(False)
 
-            _ = self.deviceBuffers.pop(cameraKey)
-            _ = self.recordingBuffers.pop(cameraKey)
-            _ = self.processingBuffers.pop(cameraKey)
-            _ = self.processedBuffers.pop(cameraKey)
+            self.deviceBuffers.pop(cameraKey)
+            self.recordingBuffers.pop(cameraKey)
+            self.processingBuffers.pop(cameraKey)
+            self.processedBuffers.pop(cameraKey)
 
             self.recordSignalCounter.maxCount -= 3
         except RuntimeError:
@@ -174,11 +194,68 @@ class MainController(QObject):
             pass
 
     def returnNewestFrame(self, cameraKey: str) -> None:
-        if self.__isAcquiring[cameraKey]:
-            newestFrame = self.deviceBuffers[cameraKey].popNewestFrame()
+        if self.isAcquiring:
+            newestFrame = self.processedBuffers[cameraKey].returnTail()
             return newestFrame
         else:
             pass
+
+    def snap(self, cameraKey: str, functionsDict) -> np.ndarray:
+        self.deviceControllers[cameraKey].device.setAcquisitionStatus(True)
+        if list(functionsDict.values())[0] == None:
+            image = self.deviceControllers[cameraKey].device.grabFrame()
+        else:
+            image_ = self.deviceControllers[cameraKey].device.grabFrame()
+            composedFunction = createPipelineFilter(functionsDict)
+            image = composedFunction(image_)
+        self.deviceControllers[cameraKey].device.setAcquisitionStatus(False)
+        return image
+
+    def processFrames(self, status, camName, selectedFilterGroup):
+        print("Process frames", status)
+
+        @thread_worker(
+            worker_class=FunctionWorker,
+            start_thread=False,
+        )
+        def processFramesLoop(camName: str) -> None:
+            if list(selectedFilterGroup.values())[0] == None:
+                print("none")
+                while self.deviceBuffers[camName].empty:
+                    pass
+
+                while self.isAcquiring:
+                    try:
+                        frame = self.deviceBuffers[camName].popHead()
+                        self.processedBuffers[camName].addFrame(frame)
+                    except Exception as e:
+                        pass
+
+            else:
+                print("Not none")
+                filterFunction = createPipelineFilter(selectedFilterGroup)
+                while self.deviceBuffers[camName].empty:
+                    print("Empty")
+                    pass
+
+                while self.isAcquiring:
+                    try:
+                        print("Process loop try")
+                        frame_processed = filterFunction(
+                            self.deviceBuffers[camName].popHead()
+                        )
+                        self.processedBuffers[camName].addFrame(frame_processed)
+                    except Exception as e:
+                        print("processLoop", e)
+                        pass
+
+        processingWorker = processFramesLoop(camName)
+        if status:
+            print("Start process worker")
+            processingWorker.start()
+        else:
+            print("Quitting processing workers")
+            processingWorker.quit()
 
     def process(self, filtersList: dict, writerInfo: WriterInfo) -> None:
         for key in filtersList.copy().keys():
@@ -188,7 +265,6 @@ class MainController(QObject):
                 del filtersList[key]
             else:
                 pass
-
 
         def closeFile(filename) -> None:
             files[filename].close()
@@ -234,7 +310,7 @@ class MainController(QObject):
             ):
                 try:
                     frame_processed = filterFunction(
-                        self.processingBuffers[camName].popOldestFrame()
+                        self.processingBuffers[camName].popHead()
                     )
                     self.processedBuffers[camName].addFrame(frame_processed)
                 except Exception as e:
@@ -258,11 +334,10 @@ class MainController(QObject):
                     if self.processedBuffers[camName].empty:
                         pass
                     else:
-                        frame = self.processedBuffers[camName].popOldestFrame()
+                        frame = self.processedBuffers[camName].popHead()
                         writeFunc(frame)
                 except Exception as e:
                     pass
-
 
             print("Writing process finished")
             return filename
@@ -283,7 +358,7 @@ class MainController(QObject):
                     if self.processedBuffers[camName].empty:
                         pass
                     else:
-                        frame = self.processedBuffers[camName].popOldestFrame()
+                        frame = self.processedBuffers[camName].popHead()
 
                         writeFunc(frame)
                 except Exception as e:
@@ -444,7 +519,7 @@ class MainController(QObject):
                     or not self.recordingBuffers[camName].empty
                 ):
                     try:
-                        frame = self.recordingBuffers[camName].popOldestFrame()
+                        frame = self.recordingBuffers[camName].popHead()
                         writeFunc(frame)
                     except Exception as e:
                         pass
@@ -466,7 +541,7 @@ class MainController(QObject):
                     or not self.recordingBuffers[camName].empty
                 ):
                     try:
-                        writeFunc(self.recordingBuffers[camName].popOldestFrame())
+                        writeFunc(self.recordingBuffers[camName].popHead())
                     except:
                         pass
             print("Writing record toggled finished")
@@ -552,10 +627,8 @@ class MainController(QObject):
         for key in self.recordingRunning.keys():
             self.recordingRunning[key] = False
 
-
     def resetRecordingCounter(self):
         self.recordSignalCounter.count = 0
-
 
     def cleanup(self):
         for key in self.deviceControllers.keys():
