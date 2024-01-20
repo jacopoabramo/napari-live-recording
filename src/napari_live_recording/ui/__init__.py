@@ -61,7 +61,7 @@ class ViewerAnchor:
         self.selectionWidget.newCameraRequested.connect(self.addCameraUI)
         self.recordingWidget.signals["snapRequested"].connect(self.snap)
         self.recordingWidget.signals["liveRequested"].connect(self.live)
-        self.recordingWidget.signals["recordRequested"].connect(self.record)
+        self.recordingWidget.signals["recordRequested"].connect(self.recordAndProcess)
 
         self.mainController.newMaxTimePoint.connect(
             self.recordingWidget.recordProgress.setMaximum
@@ -124,9 +124,8 @@ class ViewerAnchor:
             # widget.setItemData(indexOfLast, filterDescription, Qt.ToolTipRole)
             tab.setFiltersComboCurrentIndex(previousIndex)
 
-
-    def record(self, status: bool) -> None:
-        self.mainController.recordToBuffer(status)
+    def recordAndProcess(self, status: bool) -> None:
+        self.mainController.appendToBuffer(status)
         if status:
             # todo: add dynamic control
             filtersList = {}
@@ -155,26 +154,28 @@ class ViewerAnchor:
                 filtersList[key] = self.filterGroupsDict[selectedFilter]
             self.mainController.process(filtersList, writerInfoProcessed)
             self.mainController.record(cameraKeys, writerInfo)
-            self.liveTimer.start()
-        else:
-            self.mainController.stopRecord()
-            self.liveTimer.stop()
+
+
 
     def snap(self) -> None:
         for key in self.mainController.deviceControllers.keys():
             cameraTab = self.cameraWidgetGroups[key]
-            selectedFilter = cameraTab.getFiltersComboCurrentText()
-            functionsDict = self.filterGroupsDict[selectedFilter]
-            self._updateLayer(f"Snap {key}", self.mainController.snap(key, functionsDict))
+            selectedFilterName = cameraTab.getFiltersComboCurrentText()
+            selectedFilter = self.filterGroupsDict[selectedFilterName]
+            self._updateLayer(
+                f"Snap {key}", self.mainController.snap(key, selectedFilter)
+            )
 
     def live(self, status: bool) -> None:
+        print("Live requested")
+        self.mainController.appendToBuffer(status)
         cameraKeys = list(self.cameraWidgetGroups.keys())
-        self.mainController.recordToBuffer(status)
+        filtersList = {}
         for key in cameraKeys:
             cameraTab = self.cameraWidgetGroups[key]
             selectedFilter = cameraTab.getFiltersComboCurrentText()
-            selectedFilterGroup = self.filterGroupsDict[selectedFilter]
-            self.mainController.processFrames(status,key, selectedFilterGroup)
+            filtersList[key] = self.filterGroupsDict[selectedFilter]
+        self.mainController.live(status,filtersList)
         if status:
             self.liveTimer.start()
         else:
