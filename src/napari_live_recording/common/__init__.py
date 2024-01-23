@@ -12,8 +12,6 @@ settingsFilePath = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), "./settings.ini"
 )
 settings = QSettings(settingsFilePath, QSettings.IniFormat)
-print("Filename", settings.fileName())
-
 
 class Settings:
     def __init__(self) -> None:
