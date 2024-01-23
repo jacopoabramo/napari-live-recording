@@ -1,14 +1,10 @@
-import typing
-from PyQt5 import QtGui
 from qtpy.QtWidgets import (
     QApplication,
     QGroupBox,
-    QHBoxLayout,
     QWidget,
     QDialog,
     QLabel,
     QMessageBox,
-    QMainWindow,
     QVBoxLayout,
 )
 from pyqtgraph import ImageView
@@ -16,38 +12,27 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 from ast import literal_eval
-import pims, math
 from napari_live_recording.processing_engine.image_filters import *
 from napari_live_recording.common import createPipelineFilter, Settings
-import functools
 from napari_live_recording.processing_engine import image_filters, defaultImagePath
 import importlib
 import pkgutil
 from qtpy.QtCore import Qt, Signal
 import shutil
-import sys, os, glob
-from qtpy.QtGui import QPixmap, QImage, QDropEvent
+import sys
 from qtpy.QtWidgets import (
     QWidget,
-    QComboBox,
     QLineEdit,
     QLabel,
     QFormLayout,
     QGridLayout,
     QPushButton,
     QFileDialog,
-    QScrollArea,
-    QMainWindow,
     QApplication,
-    QHBoxLayout,
     QVBoxLayout,
-    QSpacerItem,
     QListWidgetItem,
     QDialogButtonBox,
-    QSizePolicy,
-    QCompleter,
     QListWidget,
-    QTableWidget,
     QAbstractItemView,
 )
 
@@ -107,7 +92,7 @@ class RightList(QListWidget):
         self.setDragDropMode(QAbstractItemView.DragDrop)
         self.setDefaultDropAction(Qt.MoveAction)
         self.setSelectionRectVisible(True)
-        self.setSortingEnabled(True)
+        self.setSortingEnabled(False)
 
     def convertFunctionsDictToItemList(self, functionsDict: dict):
         """Convenience method to convert the dictionary of functions with their parameters to QListWidgetItems"""
@@ -246,7 +231,6 @@ class FilterGroupCreationWidget(QWidget):
 
     def loadFiles(self):
         """load the files from the folder 'image filters' and and load the functions from each file. The functions and parameters are stored as data associated with each item."""
-        # Bug: only works for files that were loaded into the imaga_filters folder through the plugin and not for manually added ones
         self.leftList.clear()
         moduleList = []
         for importer, modname, ispkg in pkgutil.iter_modules(image_filters.__path__):
@@ -345,12 +329,7 @@ class FilterGroupCreationWidget(QWidget):
                 self.image = self.settings.getSetting("Preview Image")
             else:
                 image_ = cv.imread(defaultImagePath)
-                aspectRatio = image_.shape[0] / image_.shape[1]
-                self.image = cv.resize(
-                    image_,
-                    dsize=(int(280 * aspectRatio), 400),
-                    interpolation=cv.INTER_CUBIC,
-                )
+                image_ = cv.transpose(image_)
             self.imageView.setImage(self.image)
         else:
             try:
@@ -359,14 +338,12 @@ class FilterGroupCreationWidget(QWidget):
                     caption="Load new preview image",
                     filter="Image Files (*.png *.jpg *jpeg)",
                 )
-                image_ = cv.imread(filepath)
-                aspectRatio = image_.shape[0] / image_.shape[1]
+                image_ = cv.imdecode(
+                    np.fromfile(filepath, np.uint8), cv.IMREAD_UNCHANGED
+                )
+                image_ = cv.transpose(image_)
+                image_ = cv.cvtColor(image_, cv.COLOR_BGR2RGB)
                 self.image = image_
-                # cv.resize(
-                #     image_,
-                #     dsize=(int(280 * aspectRatio), 400),
-                #     interpolation=cv.INTER_CUBIC,
-                # )
                 self.settings.setSetting("Preview Image", self.image)
                 self.imageView.setImage(self.image)
             except:
@@ -426,7 +403,7 @@ class FilterGroupCreationWidget(QWidget):
         self.refresh_btn.clicked.connect(self.updatePreviewImage)
         self.loadNewPreviewImage_btn.clicked.connect(self.loadPreviewImage)
 
-        self.imageView = ImageView()
+        self.imageView = ImageView(parent=self.previewContainer)
         self.imageView.ui.roiBtn.hide()
         self.imageView.ui.menuBtn.hide()
         self.loadPreviewImage(True)
@@ -435,7 +412,13 @@ class FilterGroupCreationWidget(QWidget):
         self.previewContainerLayout.addWidget(self.loadNewPreviewImage_btn, 1, 1, 1, 1)
 
         # Combining all three columns
-        layout = QHBoxLayout(self)
-        layout.addWidget(self.leftContainer)
-        layout.addWidget(self.rightContainer)
-        layout.addWidget(self.previewContainer)
+        layout = QGridLayout(self)
+
+        layout.addWidget(self.leftContainer, 0, 0)
+        layout.addWidget(self.rightContainer, 0, 1)
+        layout.addWidget(self.previewContainer, 0, 2)
+        layout.setColumnStretch(0, 1)
+        layout.setColumnStretch(1, 1)
+        layout.setColumnStretch(2, 1)
+
+

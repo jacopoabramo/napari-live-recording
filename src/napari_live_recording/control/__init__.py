@@ -2,7 +2,6 @@ import numpy as np
 import tifffile.tifffile as tiff
 import h5py
 import os
-from typing import Union
 from contextlib import contextmanager
 from napari.qt.threading import thread_worker, FunctionWorker
 from qtpy.QtCore import QThread, QObject, Signal, QTimer
@@ -11,7 +10,6 @@ from napari_live_recording.common import (
     THIRTY_FPS,
     WriterInfo,
     RecordType,
-    ROI,
     Settings,
     createPipelineFilter,
 )
@@ -19,7 +17,7 @@ from napari_live_recording.control.devices.interface import ICamera
 from napari_live_recording.control.frame_buffer import Framebuffer
 from typing import Dict, NamedTuple
 from functools import partial
-from time import time, sleep
+from time import sleep
 
 
 class SignalCounter(QObject):
@@ -59,7 +57,7 @@ class MainController(QObject):
         self.postProcessingBuffers: Dict[str, Framebuffer] = {}
         self.settings = Settings()
         self.filterGroupsDict = self.settings.getFilterGroupsDict()
-        self.stackSize = 1000
+        self.stackSize = 50
         self.bufferWorker = None
         self.__isAcquiring = False
         self.isProcessing: Dict[str, bool] = {}
@@ -101,8 +99,6 @@ class MainController(QObject):
         self.postProcessingBuffers[cameraKey] = Framebuffer(
             self.stackSize, camera=camera, cameraKey=cameraKey, capacity=self.stackSize
         )
-        # self.rawBuffers[cameraKey].roiChanged.connect(lambda:self.changeCameraROI)
-        # self.preProcessingBuffers[cameraKey].roiChanged.connect(lambda:self.changeCameraROI)
         self.isProcessing[cameraKey] = False
         self.isAppending[cameraKey] = False
 
@@ -111,20 +107,16 @@ class MainController(QObject):
 
     def appendToBuffer(self, toggle: bool):
         self.__isAcquiring = toggle
-        print("Append to Buffer", toggle)
 
         @thread_worker(worker_class=FunctionWorker, start_thread=False)
         def appendToBufferLoop():
-            print("Appending to Buffers Loop")
             while self.isAcquiring:
-                sleep(THIRTY_FPS / 1000)
                 for cameraKey in self.deviceControllers.keys():
                     try:
-                        currentFrame = np.copy(
-                            self.deviceControllers[cameraKey].device.grabFrame()
-                        )
                         if self.isAppending[cameraKey]:
-                            print("Loop")
+                            currentFrame = np.copy(
+                                self.deviceControllers[cameraKey].device.grabFrame()
+                            )
                             self.rawBuffers[cameraKey].addFrame(currentFrame)
                             self.preProcessingBuffers[cameraKey].addFrame(currentFrame)
                     except Exception as e:
@@ -147,7 +139,7 @@ class MainController(QObject):
                     pass
 
     def processFrames(
-        self, status: bool, type: str, camName: str, selectedFilterGroup: Dict
+        self, status: bool, type: str, camName: str, selectedFilterGroup: Dict = None
     ):
         @thread_worker(
             worker_class=FunctionWorker,
@@ -170,7 +162,7 @@ class MainController(QObject):
                         )
                     except Exception as e:
                         pass
-
+            # if a certain filter-group is selected for camName
             else:
                 filterFunction = createPipelineFilter(selectedFilterGroup)
                 while self.preProcessingBuffers[camName].empty:
@@ -186,7 +178,6 @@ class MainController(QObject):
                         )
                         self.postProcessingBuffers[camName].addFrame(frame_processed)
                     except Exception as e:
-                        print("processLoop", e)
                         pass
             self.isProcessing[camName] = False
 
@@ -199,7 +190,7 @@ class MainController(QObject):
                 processingWorker.start()
             else:
                 self.isProcessing[camName] = False
-                # manually clear buffer so processing stops, cause empty buffer
+                # manually clear buffer so processing stops, cause empty buffer and self.isProcessing[camName] == False
                 self.preProcessingBuffers[camName].clearBuffer()
                 processingWorker.quit()
 
@@ -214,14 +205,7 @@ class MainController(QObject):
                 processingWorker.start()
             else:
                 self.isProcessing[camName] = False
-
                 processingWorker.quit()
-
-    def changeCameraROI(self, cameraKey: str, newROI: ROI) -> None:
-        with self.appendToBufferPaused():
-            self.rawBuffers[cameraKey].changeROI(newROI)
-            self.preProcessingBuffers[cameraKey].changeROI(newROI)
-            self.postProcessingBuffers[cameraKey].changeROI(newROI)
 
     def changeStackSize(self, newStackSize: int):
         self.stackSize = newStackSize
@@ -237,7 +221,11 @@ class MainController(QObject):
     def deleteCamera(self, cameraKey: str) -> None:
         """Deletes a camera device."""
         try:
+            self.appendToBuffer(False)
+            self.processFrames(False, "nothing", cameraKey)
             self.__isAcquiring = False
+            self.isAppending[cameraKey] = False
+            self.isProcessing[cameraKey] = False
             self.isProcessing.pop(cameraKey)
             self.isAppending.pop(cameraKey)
             self.cameraDeleted.emit(False)
@@ -247,8 +235,6 @@ class MainController(QObject):
             self.deviceControllers[cameraKey].device.deleteLater()
             self.deviceControllers[cameraKey].thread.deleteLater()
             self.deviceControllers[cameraKey].device.setAcquisitionStatus(False)
-
-            # self.deviceBuffers.pop(cameraKey)
             self.rawBuffers.pop(cameraKey)
             self.preProcessingBuffers.pop(cameraKey)
             self.postProcessingBuffers.pop(cameraKey)
@@ -294,6 +280,7 @@ class MainController(QObject):
             files[filename].close()
 
         def timeStackBuffer(camName: str, acquisitionTime: float):
+            #TODO change into timer 
             self.preProcessingBuffers[camName].allowOverwrite = False
             self.preProcessingBuffers[camName].clearBuffer()
             self.preProcessingBuffers[camName].stackSize = round(acquisitionTime * 30)
@@ -410,7 +397,7 @@ class MainController(QObject):
             # }
             # for file in files.values():
             #     file.create_dataset()
-            # todo: implement HDF5 writing
+            # TODO: implement HDF5 writing
             raise ValueError("Unsupported file format selected for recording!")
 
         fileWorkers = []
@@ -437,7 +424,6 @@ class MainController(QObject):
             ]
 
         elif writerInfo.recordType == RecordType["Toggled"]:
-            # here we have to do some extra work and set to True the record loop flag
             for camName in filtersList.keys():
                 toggledBuffer(camName)
             fileWorkers = [
@@ -553,7 +539,7 @@ class MainController(QObject):
                 for file, colorMap in zip(list(files.values()), colorMaps)
             ]
         else:
-            # todo: implement HDF5 writing
+            # TODO: implement HDF5 writing
             raise ValueError(
                 "Unsupported file format selected for recording! HDF5 will be implemented in the future."
             )
@@ -576,7 +562,6 @@ class MainController(QObject):
                 for filename, camName, writeFunc in zip(filenames, camNames, writeFuncs)
             ]
         elif writerInfo.recordType == RecordType["Toggled"]:
-            # here we have to do some extra work and set to True the record loop flag
             for camName in camNames:
                 toggledBuffer(camName)
             fileWorkers = [

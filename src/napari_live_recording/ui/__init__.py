@@ -2,34 +2,22 @@ from napari.viewer import Viewer
 from qtpy.QtCore import QTimer, Qt
 from qtpy.QtWidgets import (
     QTabWidget,
-    QWidget,
-    QScrollArea,
     QVBoxLayout,
-    QGridLayout,
     QSpacerItem,
     QSizePolicy,
 )
 from typing import Dict
-from superqt import QCollapsible
 from napari_live_recording.common import (
     THIRTY_FPS,
     WriterInfo,
     Settings,
 )
 from napari_live_recording.control.devices import devicesDict, ICamera
-from napari_live_recording.control.devices.interface import NumberParameter
 from napari_live_recording.control import MainController
 from napari_live_recording.ui.widgets import (
-    QFormLayout,
-    QGroupBox,
-    QComboBox,
-    QPushButton,
-    LabeledSlider,
-    ComboBox,
     CameraTab,
     RecordHandling,
     CameraSelection,
-    ROIHandling,
 )
 import numpy as np
 
@@ -116,18 +104,11 @@ class ViewerAnchor:
             previousIndex = tab.getFiltersComboCurrentIndex()
             self.filterGroupsDict = self.settings.getFilterGroupsDict()
             tab.setFiltersCombo(self.filterGroupsDict)
-            # filterDescription = ""
-            # for key in list(self.filterGroupsDict.values())[-1].keys():
-            #     filterDescription += str(key)
-            #     filterDescription += " "
-            # indexOfLast = widget.count() - 1
-            # widget.setItemData(indexOfLast, filterDescription, Qt.ToolTipRole)
             tab.setFiltersComboCurrentIndex(previousIndex)
 
     def recordAndProcess(self, status: bool) -> None:
         self.mainController.appendToBuffer(status)
         if status:
-            # todo: add dynamic control
             filtersList = {}
             cameraKeys = list(self.cameraWidgetGroups.keys())
 
@@ -141,7 +122,7 @@ class ViewerAnchor:
             )
             writerInfoProcessed = WriterInfo(
                 folder=self.recordingWidget.folderTextEdit.text(),
-                filename=self.recordingWidget.filenameTextEdit.text() + "processed",
+                filename=self.recordingWidget.filenameTextEdit.text() + "_processed",
                 fileFormat=self.recordingWidget.formatComboBox.currentEnum(),
                 recordType=self.recordingWidget.recordComboBox.currentEnum(),
                 stackSize=self.recordingWidget.recordSize,
@@ -155,8 +136,6 @@ class ViewerAnchor:
             self.mainController.process(filtersList, writerInfoProcessed)
             self.mainController.record(cameraKeys, writerInfo)
 
-
-
     def snap(self) -> None:
         for key in self.mainController.deviceControllers.keys():
             cameraTab = self.cameraWidgetGroups[key]
@@ -167,7 +146,6 @@ class ViewerAnchor:
             )
 
     def live(self, status: bool) -> None:
-        print("Live requested")
         self.mainController.appendToBuffer(status)
         cameraKeys = list(self.cameraWidgetGroups.keys())
         filtersList = {}
