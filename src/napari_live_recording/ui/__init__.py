@@ -184,7 +184,6 @@ class ViewerAnchor:
 
     def _updateLiveLayers(self):
         try:
-            # for key, buffer in self.mainController.deviceLiveBuffer.items():
             for key in self.mainController.deviceControllers.keys():
                 # this copy may not be truly necessary
                 # but it does not impact performance too much

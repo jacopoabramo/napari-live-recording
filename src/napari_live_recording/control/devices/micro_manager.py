@@ -64,7 +64,6 @@ class MicroManager(ICamera):
         pass
 
     def changeROI(self, newROI: ROI):
-        print("Change ROI MM")
         try:
             with self.acquisitionSuspended():
                 self.__capture.setROI(
