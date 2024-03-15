@@ -7,11 +7,6 @@ from napari_live_recording.control.devices.interface import ICamera
 from typing import Union, Any
 
 
-"""
-Micro-Manager reference installer :MMSetup_64bit_2.0.1_20230510 (nightliy build)
-"""
-
-
 class MicroManager(ICamera):
     def __init__(self, name: str, deviceID: Union[str, int]) -> None:
         """MMC-Core VideoCapture wrapper.

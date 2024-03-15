@@ -1,7 +1,4 @@
-import logging
 from napari_live_recording import NapariLiveRecording
-
-logger = logging.getLogger(__name__)
 
 def test_mmcore_live_recording(recording_widget, qtbot):
     widget : NapariLiveRecording = recording_widget

@@ -1,8 +1,5 @@
-import logging
 from napari_live_recording import NapariLiveRecording
 from napari_live_recording.common import ROI
-
-logger = logging.getLogger(__name__)
 
 def test_mmcore_settings_change(recording_widget):
     widget : NapariLiveRecording = recording_widget
