@@ -55,7 +55,7 @@ By default, the plugin is shipped with the following interfaces:
 
 ## Documentation
 
-You can review the documentation of this plugin [here](./docs/documentation.md)
+To install and use the plugin you can review the documentation [here](./docs/documentation.md).
 
 ## Contributing
 
