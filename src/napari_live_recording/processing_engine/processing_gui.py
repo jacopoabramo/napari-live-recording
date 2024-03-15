@@ -1,16 +1,6 @@
-from qtpy.QtWidgets import (
-    QApplication,
-    QGroupBox,
-    QWidget,
-    QDialog,
-    QLabel,
-    QMessageBox,
-    QVBoxLayout,
-)
 from pyqtgraph import ImageView
 import cv2 as cv
 import numpy as np
-import matplotlib.pyplot as plt
 from ast import literal_eval
 from napari_live_recording.processing_engine.image_filters import *
 from napari_live_recording.common import createPipelineFilter, Settings
@@ -19,8 +9,10 @@ import importlib
 import pkgutil
 from qtpy.QtCore import Qt, Signal
 import shutil
-import sys
 from qtpy.QtWidgets import (
+    QDialog,
+    QMessageBox,
+    QGroupBox,
     QWidget,
     QLineEdit,
     QLabel,
@@ -28,7 +20,6 @@ from qtpy.QtWidgets import (
     QGridLayout,
     QPushButton,
     QFileDialog,
-    QApplication,
     QVBoxLayout,
     QListWidgetItem,
     QDialogButtonBox,
