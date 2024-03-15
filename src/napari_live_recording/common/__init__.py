@@ -145,25 +145,49 @@ baseRecordingFolder = os.path.join(getDocumentsFolder(), "napari-live-recording"
 if not os.path.exists(baseRecordingFolder):
     os.mkdir(baseRecordingFolder)
 
-
-MMC_DEVICE_MAP = {}
-core = mmc.CMMCorePlus.instance()
-adapters = core.getDeviceAdapterNames()
-
-for adapter in adapters:
-    try:
-        devices = []
-
-        types = [mmc.DeviceType(type) for type in core.getAvailableDeviceTypes(adapter)]
-        names = core.getAvailableDevices(adapter)
-        for t in types:
-            if t == mmc.DeviceType.Camera:
-                devices.append(names[types.index(t)])
-        if len(devices) > 0:
-            MMC_DEVICE_MAP[adapter] = devices
-
-    except:
-        pass
+MMC_DEVICE_MAP = {
+    'ABSCamera': ['ABSCam'],
+    'AmScope': ['AmScope'],
+    'Andor': ['Andor'],
+    'ArduinoCounter': ['ArduinoCounterCamera'],
+    'AtikCamera': ['Universal Atik Cameras Device Adapter'],
+    'AxioCam': ['Zeiss AxioCam'],
+    'BaumerOptronic': ['BaumerOptronic'],
+    'DECamera': ['Direct Electron Camera'],
+    'DemoCamera': ['DCam'],
+    'FLICamera': ['FLICamera'],
+    'FakeCamera': ['FakeCamera'],
+    'HamamatsuHam': ['HamamatsuHam_DCAM'],
+    'HoribaEPIX': ['Horiba EFIS Camera',
+                'Horiba EFIS Camera',
+                'Horiba EFIS Camera',
+                'Horiba EFIS Camera',
+                'Horiba EFIS Camera'],
+    'JAI': ['JAICamera'],
+    'Mightex_C_Cam': ['Mightex_BUF_USBCCDCamera'],
+    'OpenCVgrabber': ['OpenCVgrabber'],
+    'PCO_Camera': ['pco_camera'],
+    'PVCAM': ['Camera-1', 'Camera-1', 'Camera-1', 'Camera-1'],
+    'RaptorEPIX': ['Raptor Falcon Camera',
+                'Raptor Falcon Camera',
+                'Raptor Falcon Camera',
+                'Raptor Falcon Camera',
+                'Raptor Falcon Camera',
+                'Raptor Falcon Camera',
+                'Raptor Falcon Camera',
+                'Raptor Falcon Camera',
+                'Raptor Falcon Camera',
+                'Raptor Falcon Camera',
+                'Raptor Falcon Camera',
+                'Raptor Falcon Camera',
+                'Raptor Falcon Camera',
+                'Raptor Falcon Camera',
+                'Raptor Falcon Camera'],
+    'TIScam': ['TIS_DCAM'],
+    'TSI': ['TSICam'],
+    'TwainCamera': ['TwainCam'],
+    'Utilities': ['Multi Camera']
+}
 
 microscopeDeviceDict = {
     "andorsdk3": "AndorSDK3",  # microscope.cameras.andorsdk3.AndorSDK3
