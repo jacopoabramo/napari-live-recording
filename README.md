@@ -55,7 +55,7 @@ When recording, the plugin allows to store images according to the following for
 
 ## Supported cameras
 
-`napari-live-recording` aims to maintain itself agnostic for the type of devices it controls. Via a common API (Application Programming Interface),
+`napari-live-recording` aims to maintain itself agnostic for the type of cameras it controls. Via a common API (Application Programming Interface),
 it possible to define a controller for a specific camera. Instructions
 on how to do so are provided in the documentation.
 
@@ -99,7 +99,9 @@ the coverage at least stays the same before you submit a pull request.
 The developers would like to thank the [Chan-Zuckerberg Initiative (CZI)](https://chanzuckerberg.com/) for providing funding
 for this project via the [napari Ecosystem Grants](https://chanzuckerberg.com/science/programs-resources/imaging/napari/napari-live-recording-camera-control-through-napari/).
 
-https://images.squarespace-cdn.com/content/v1/63a48a2d279afe2a328b2823/5830fddc-a02b-451a-827b-3d4446dcf57b/Chan_Zuckerberg_Initiative.png
+<p align="center">
+  <img src="https://images.squarespace-cdn.com/content/v1/63a48a2d279afe2a328b2823/5830fddc-a02b-451a-827b-3d4446dcf57b/Chan_Zuckerberg_Initiative.png" width="150">
+</p>
 
 ## License
 
