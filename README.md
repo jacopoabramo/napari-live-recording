@@ -97,6 +97,3 @@ If you encounter any problems, please [file an issue] along with a detailed desc
 [tox]: https://tox.readthedocs.io/en/latest/
 [pip]: https://pypi.org/project/pip/
 [PyPI]: https://pypi.org/
-[venv]: https://docs.python.org/3/library/venv.html
-[mamba]: https://mamba.readthedocs.io/en/latest/user_guide/mamba.html#mamba
-[conda]: https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html
