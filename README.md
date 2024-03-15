@@ -3,7 +3,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/jacopoabramo/napari-live-recording/raw/main/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/napari-live-recording.svg?color=green)](https://pypi.org/project/napari-live-recording)
 [![Python Version](https://img.shields.io/pypi/pyversions/napari-live-recording.svg?color=green)](https://python.org)
-![Chan-Zuckerberg Initiative](https://custom-icon-badges.demolab.com/badge/Chan--Zuckerberg_Initiative-red?logo=czi)
+[![napari plugin](https://custom-icon-badges.demolab.com/badge/napari-plugin-blue?logo=napari-custom&link=https%3A%2F%2Fchanzuckerberg.com%2F)](https://napari.org/)
+[![Chan-Zuckerberg Initiative](https://custom-icon-badges.demolab.com/badge/Chan--Zuckerberg_Initiative-red?logo=czi)](https://chanzuckerberg.com/)
+
 
 
 <!--[![tests](https://github.com/jethro33/napari-live-recording/workflows/tests/badge.svg)](https://github.com/jacopoabramo/napari-live-recording/actions)-->
