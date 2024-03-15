@@ -24,10 +24,11 @@ Other than that, the plugin also allows to create computation pipelines that can
 > image processing and data storage via a common pipelined infrastructure.
 > More details are provided in the documentation.
 
-The plugin allows two modes of operation:
+The plugin allows the following operations:
 
-- live view (continously acquiring from the currently active camera and show the collected data on the napari viewer);
-- recording (stream data to disk from the currently active cameras).
+- snapping: capture a single image
+- live view: continously acquiring from the currently active camera and show the collected data on the napari viewer;
+- recording: stream data to disk from the currently active cameras
 
 When recording, the plugin allows to store images according to the following formats:
 
