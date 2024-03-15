@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-from dataclasses import replace
 from napari_live_recording.common import ROI, ColorType
 from napari_live_recording.control.devices.interface import (
     ICamera,
