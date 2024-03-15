@@ -321,6 +321,7 @@ class FilterGroupCreationWidget(QWidget):
             else:
                 image_ = cv.imread(defaultImagePath)
                 image_ = cv.transpose(image_)
+                self.image = image_
             self.imageView.setImage(self.image)
         else:
             try:
