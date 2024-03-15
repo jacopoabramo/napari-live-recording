@@ -39,7 +39,7 @@ When recording, the plugin allows to store images according to the following for
 > - HDF5
 > - MP4
 >
-> Furthermore, we will provide a method to add custom metadata to the recorded image files.
+> We will also provide a method to add custom metadata to the recorded image files.
 
 ## Supported cameras
 
