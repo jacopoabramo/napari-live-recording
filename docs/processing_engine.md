@@ -22,6 +22,7 @@ The filter "No Filter" is always there.
 After you are done, your custom filters will be available for recording (How this is done will be discussed in one of the follwing chapters). 
 
 ## 2. Creating new filter functions
+
 To create new filter functions you need to create a python file that contains this function anywhere on your PC. This file can later be loaded into the plugin. This file has to follow a certain pattern to work properly.
 A template filter function is shown [here](./template_filter.py).
 
