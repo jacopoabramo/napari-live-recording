@@ -57,6 +57,10 @@ To add this OpenCV grabber, click on `Add camera`, adding the controls for your 
 
 If you wish to remove the camera from the current list of devices, you can also click on `Delete camera` to remove it.
 
+## Pipeline filtering
+
+For more information on how to create image processing pipelines, see [here](./processing_engine.md).
+
 [venv]: https://docs.python.org/3/library/venv.html
 [mamba]: https://mamba.readthedocs.io/en/latest/user_guide/mamba.html#mamba
 [conda]: https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html
