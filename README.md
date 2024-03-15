@@ -6,12 +6,8 @@
 [![napari plugin](https://custom-icon-badges.demolab.com/badge/napari-plugin-blue?logo=napari-custom&link=https%3A%2F%2Fchanzuckerberg.com%2F)](https://napari.org/)
 [![Chan-Zuckerberg Initiative](https://custom-icon-badges.demolab.com/badge/Chan--Zuckerberg_Initiative-red?logo=czi)](https://chanzuckerberg.com/)
 
-
-
 <!--[![tests](https://github.com/jethro33/napari-live-recording/workflows/tests/badge.svg)](https://github.com/jacopoabramo/napari-live-recording/actions)-->
 <!--[![codecov](https://codecov.io/gh/jethro33/napari-live-recording/branch/master/graph/badge.svg)](https://codecov.io/gh/jacopoabramo/napari-live-recording)-->
-
-----------------------------------
 
 This [napari] plugin was generated with [Cookiecutter] using with [@napari]'s [cookiecutter-napari-plugin] template.
 
