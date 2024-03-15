@@ -4,6 +4,56 @@ from dataclasses import dataclass
 from functools import total_ordering
 import pymmcore_plus as mmc
 import os
+from qtpy.QtCore import QSettings, Qt
+import functools, pims
+
+
+settingsFilePath = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), "./settings.ini"
+)
+settings = QSettings(settingsFilePath, QSettings.IniFormat)
+
+class Settings:
+    def __init__(self) -> None:
+        self.settings = settings
+
+    def setSetting(self, key, newValue):
+        self.settings.setValue(key, newValue)
+
+    def getSetting(self, key):
+        if self.settings.contains(key):
+            return self.settings.value(key)
+        else:
+            return None
+
+    def getFilterGroupsDict(self):
+        if self.settings.contains("availableFilterGroups"):
+            return self.settings.value("availableFilterGroups")
+        else:
+            self.settings.setValue(
+                "availableFilterGroups", {"No Filter": {"1.No Filter": None}}
+            )
+            return self.settings.value("availableFilterGroups")
+
+    def setFilterGroupsDict(self, newDict):
+        newDict["No Filter"] = {"1.No Filter": None}
+        self.settings.setValue("availableFilterGroups", newDict)
+
+
+def createPipelineFilter(filters):
+    def composeFunctions(functionList):
+        return functools.reduce(
+            lambda f, g: lambda x: f(g(x)), functionList, lambda x: x
+        )
+
+    functionList = []
+
+    for filter in filters.values():
+        filterPartial = functools.partial(filter[0], **filter[1])
+        functionList.append(pims.pipeline(filterPartial))
+    composedFunction = composeFunctions(list(reversed(functionList)))
+    return composedFunction
+
 
 # equivalent number of milliseconds
 # for 30 Hz and 60 Hz refresh rates
@@ -40,6 +90,7 @@ class WriterInfo:
     stackSize: int = 0
     acquisitionTime: float = 0
 
+
 @total_ordering
 @dataclass
 class ROI:
@@ -64,23 +115,28 @@ class ROI:
         """Returns the number of pixels along width and height of the current ROI."""
         return (self.height - self.offset_y, self.width - self.offset_x)
 
-def getDocumentsFolder():
-    """ Returns the user's documents folder if they are using a Windows system,
-    or their home folder if they are using another operating system. """
 
-    if os.name == 'nt':  # Windows system, try to return documents directory
+def getDocumentsFolder():
+    """Returns the user's documents folder if they are using a Windows system,
+    or their home folder if they are using another operating system."""
+
+    if os.name == "nt":  # Windows system, try to return documents directory
         try:
             import ctypes.wintypes
+
             CSIDL_PERSONAL = 5  # Documents
             SHGFP_TYPE_CURRENT = 0  # Current value
 
             buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
-            ctypes.windll.shell32.SHGetFolderPathW(0, CSIDL_PERSONAL, 0, SHGFP_TYPE_CURRENT, buf)
+            ctypes.windll.shell32.SHGetFolderPathW(
+                0, CSIDL_PERSONAL, 0, SHGFP_TYPE_CURRENT, buf
+            )
 
             return buf.value
         except ImportError:
             pass
-    return os.path.expanduser('~')  # Non-Windows system, return home directory
+    return os.path.expanduser("~")  # Non-Windows system, return home directory
+
 
 baseRecordingFolder = os.path.join(getDocumentsFolder(), "napari-live-recording")
 
@@ -134,11 +190,11 @@ MMC_DEVICE_MAP = {
 }
 
 microscopeDeviceDict = {
-    "andorsdk3": "AndorSDK3",  #microscope.cameras.andorsdk3.AndorSDK3
-    "atmcd": "AndorAtmcd", #microscope.cameras.atmcd.AndotAtmcd
-    "pvcam": "PVCamera", #microscope.cameras.pvcam.PVCamera
-    "ximea": "XimeaCamera", #microscope.cameras.ximea.XimeaCamera
+    "andorsdk3": "AndorSDK3",  # microscope.cameras.andorsdk3.AndorSDK3
+    "atmcd": "AndorAtmcd",  # microscope.cameras.atmcd.AndotAtmcd
+    "pvcam": "PVCamera",  # microscope.cameras.pvcam.PVCamera
+    "ximea": "XimeaCamera",  # microscope.cameras.ximea.XimeaCamera
     "hamamatsu": "HamamtsuCamera",
     "picamera": "PiCamera",
-    "simulators": "SimulatedCamera"
+    "simulators": "SimulatedCamera",
 }

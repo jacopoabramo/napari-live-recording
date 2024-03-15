@@ -11,6 +11,7 @@ from typing import Union, Any
 Micro-Manager reference installer :MMSetup_64bit_2.0.1_20230510 (nightliy build)
 """
 
+
 class MicroManager(ICamera):
     def __init__(self, name: str, deviceID: Union[str, int]) -> None:
         """MMC-Core VideoCapture wrapper.
@@ -63,18 +64,25 @@ class MicroManager(ICamera):
         pass
 
     def changeROI(self, newROI: ROI):
-        with self.acquisitionSuspended():
-            self.__capture.setROI(
-                self.name, newROI.offset_x, newROI.offset_y, newROI.width, newROI.height
-            )
-        if newROI <= self.fullShape:
-            self.roiShape = newROI
+        try:
+            with self.acquisitionSuspended():
+                self.__capture.setROI(
+                    self.name,
+                    newROI.offset_x,
+                    newROI.offset_y,
+                    newROI.width,
+                    newROI.height,
+                )
+            if newROI <= self.fullShape:
+                self.roiShape = newROI
+        except Exception as e:
+            print("ROI", e)
 
     def close(self) -> None:
         if self.__capture.isSequenceRunning():
             self.setAcquisitionStatus(False)
         self.__capture.unloadDevice(self.name)
-    
+
     @contextmanager
     def acquisitionSuspended(self):
         if self.__capture.isSequenceRunning():
