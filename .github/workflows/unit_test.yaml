@@ -30,4 +30,4 @@ jobs:
         python3 -m pytest src/napari_live_recording/_test
     - name: Run tests (Windows)
       if: runner.os == 'Windows'
-      run: python pytest src/napari_live_recording/_test
+      run: pytest src/napari_live_recording/_test
