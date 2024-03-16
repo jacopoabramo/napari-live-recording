@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/jacopoabramo/napari-live-recording/raw/main/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/napari-live-recording.svg?color=green)](https://pypi.org/project/napari-live-recording)
 [![Python Version](https://img.shields.io/pypi/pyversions/napari-live-recording.svg?color=green)](https://python.org)
-![tests](https://github.com/jacopoabramo/napari-live-recording/actions/workflows/unit_test.yaml/badge.svg)
+![tests](https://github.com/jacopoabramo/napari-live-recording/actions/workflows/test_and_deploy.yaml/badge.svg)
 [![codecov](https://codecov.io/github/jacopoabramo/napari-live-recording/graph/badge.svg?token=WhI2MO452Z)](https://codecov.io/github/jacopoabramo/napari-live-recording) \
 [![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-live-recording)](https://napari-hub.org/plugins/napari-live-recording)
 [![Chan-Zuckerberg Initiative](https://custom-icon-badges.demolab.com/badge/Chan--Zuckerberg_Initiative-red?logo=czi)](https://chanzuckerberg.com/)
