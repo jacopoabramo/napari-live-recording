@@ -1,4 +1,3 @@
-from napari.viewer import Viewer
 from qtpy.QtCore import QTimer, Qt
 from qtpy.QtWidgets import (
     QTabWidget,
@@ -6,14 +5,13 @@ from qtpy.QtWidgets import (
     QSpacerItem,
     QSizePolicy,
 )
-from typing import Dict
+from typing import Dict, TYPE_CHECKING
 from napari_live_recording.common import (
     THIRTY_FPS,
     WriterInfo,
     Settings,
 )
 from napari_live_recording.control.devices import devicesDict, ICamera
-from napari_live_recording.control import MainController
 from napari_live_recording.ui.widgets import (
     CameraTab,
     RecordHandling,
@@ -21,14 +19,17 @@ from napari_live_recording.ui.widgets import (
 )
 import numpy as np
 
+if TYPE_CHECKING:
+    from napari.viewer import Viewer
+    from napari_live_recording.control import MainController
 
 class ViewerAnchor:
     """Class which handles the UI elements of the plugin."""
 
     def __init__(
         self,
-        napari_viewer: Viewer,
-        mainController: MainController,
+        napari_viewer: "Viewer",
+        mainController: "MainController",
     ) -> None:
         self.viewer = napari_viewer
         self.mainController = mainController

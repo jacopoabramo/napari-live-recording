@@ -21,7 +21,6 @@ jobs:
           libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0
         fi
         python3 -m pip install --upgrade pip
-        python3 -m pip install -r requirements.txt
         python3 -m pip install -r requirements-dev.txt
         python3 -m pip install .
       shell: bash
