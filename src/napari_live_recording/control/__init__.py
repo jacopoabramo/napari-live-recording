@@ -6,7 +6,6 @@ from napari.qt.threading import thread_worker, FunctionWorker
 from qtpy.QtCore import QThread, QObject, Signal, QTimer
 from napari_live_recording.common import (
     TIFF_PHOTOMETRIC_MAP,
-    THIRTY_FPS,
     WriterInfo,
     RecordType,
     Settings,
@@ -16,7 +15,6 @@ from napari_live_recording.control.devices.interface import ICamera
 from napari_live_recording.control.frame_buffer import Framebuffer
 from typing import Dict, NamedTuple
 from functools import partial
-from time import sleep
 
 
 class SignalCounter(QObject):
