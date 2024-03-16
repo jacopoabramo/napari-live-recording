@@ -1,6 +1,5 @@
 import numpy as np
 import tifffile.tifffile as tiff
-import h5py
 import os
 from contextlib import contextmanager
 from napari.qt.threading import thread_worker, FunctionWorker
@@ -390,13 +389,6 @@ class MainController(QObject):
             ]
 
         else:
-            # extension = ".hdf5"
-            # files = {
-            #     filename: h5py.File(filename + extension, **kwargs)
-            #     for filename in filenames
-            # }
-            # for file in files.values():
-            #     file.create_dataset()
             # TODO: implement HDF5 writing
             raise ValueError("Unsupported file format selected for recording!")
 
