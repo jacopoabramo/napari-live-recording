@@ -20,7 +20,7 @@ Other than that, the plugin also allows to create computation pipelines that can
 > [!NOTE]
 > 
 > ### Why medium weight?
-> `napari-live-recording` relies on multithreading to handle camera control
+> `napari-live-recording` relies on multithreading to handle camera control,
 > image processing and data storage via a common pipelined infrastructure.
 > More details are provided in the documentation.
 
