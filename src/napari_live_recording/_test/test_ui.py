@@ -1,8 +1,4 @@
-import logging
 from napari_live_recording import NapariLiveRecording
-
-
-logger = logging.getLogger(__name__)
 
 def test_widget_startup_and_cleanup(recording_widget):
     widget : NapariLiveRecording = recording_widget

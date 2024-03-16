@@ -3,48 +3,74 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/jacopoabramo/napari-live-recording/raw/main/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/napari-live-recording.svg?color=green)](https://pypi.org/project/napari-live-recording)
 [![Python Version](https://img.shields.io/pypi/pyversions/napari-live-recording.svg?color=green)](https://python.org)
-[![tests](https://github.com/jethro33/napari-live-recording/workflows/tests/badge.svg)](https://github.com/jacopoabramo/napari-live-recording/actions)
-[![codecov](https://codecov.io/gh/jethro33/napari-live-recording/branch/master/graph/badge.svg)](https://codecov.io/gh/jacopoabramo/napari-live-recording)
+[![napari plugin](https://custom-icon-badges.demolab.com/badge/napari-plugin-blue?logo=napari-custom&link=https%3A%2F%2Fchanzuckerberg.com%2F)](https://napari.org/)
+[![Chan-Zuckerberg Initiative](https://custom-icon-badges.demolab.com/badge/Chan--Zuckerberg_Initiative-red?logo=czi)](https://chanzuckerberg.com/)
 
-A napari plugin for live video recording with a generic camera device and generate a stack of TIFF images from said device.
-
-The plugin provides a common interface for a generic camera device to be directly controlled from the napari GUI. The plugin can
-
-- acquire continously in live view;
-- record a stack of images and store them as ImageJ-compatible TIFF, OME-TIFF or HDF5 files.
-
-----------------------------------
+<!--[![tests](https://github.com/jethro33/napari-live-recording/workflows/tests/badge.svg)](https://github.com/jacopoabramo/napari-live-recording/actions)-->
+<!--[![codecov](https://codecov.io/gh/jethro33/napari-live-recording/branch/master/graph/badge.svg)](https://codecov.io/gh/jacopoabramo/napari-live-recording)-->
 
 This [napari] plugin was generated with [Cookiecutter] using with [@napari]'s [cookiecutter-napari-plugin] template.
 
-<!--
-Don't miss the full getting started guide to set up your new package:
-https://github.com/napari/cookiecutter-napari-plugin#getting-started
+## Description
 
-and review the napari docs for plugin developers:
-https://napari.org/docs/plugins/index.html
--->
+`napari-live-recording` (or `nlr`, if you like acronyms) is a <a href="#why-medium-weight">medium-weight</a> plugin part of the napari ecosystem that provides an easy 
+access point for controlling area detector devices (most commonly reffered to as cameras) with a common interface.
+Other than that, the plugin also allows to create computation pipelines that can be executed real-time in a flow starting directly from the camera stream.
 
-## Installation
+> [!NOTE]
+> 
+> ### Why medium weight?
+> `napari-live-recording` relies on multithreading to handle camera control
+> image processing and data storage via a common pipelined infrastructure.
+> More details are provided in the documentation.
 
-You can install `napari-live-recording` via [pip]:
+The plugin allows the following operations:
 
-    pip install napari-live-recording
+- snapping: capture a single image
+- live view: continously acquiring from the currently active camera and show the collected data on the napari viewer;
+- recording: stream data to disk from the currently active cameras
 
-If you want to install the plugin using the source code, you can do so by cloning the project and installing locally:
+When recording, the plugin allows to store images according to the following formats:
 
-    git clone https://github.com/jacopoabramo/napari-live-recording
-    cd napari-live-recording
-    pip install .
+- ImageJ TIFF
+- OME-TIFF
+
+> [!NOTE]
+> Future releases will also add further file formats to the recording options, specifically:
+> - HDF5
+> - MP4
+>
+> We will also provide a method to add custom metadata to the recorded image files.
+
+## Supported cameras
+
+`napari-live-recording` aims to maintain itself agnostic for the type of cameras it controls. Via a common API (Application Programming Interface),
+it possible to define a controller for a specific camera. Instructions
+on how to do so are provided in the documentation.
+
+By default, the plugin is shipped with the following interfaces:
+
+- an [OpenCV](./src/napari_live_recording/control/devices/opencv.py) camera grabber;
+- a [Micro-Manager](./src/napari_live_recording/control/devices/micro_manager.py) interface via the package [`pymmcore-plus`](https://pypi.org/project/pymmcore-plus/);
+- an interface to the [microscope](./src/napari_live_recording/control/devices/pymicroscope.py) python package.
 
 ## Documentation
 
-You can review the documentation of this plugin [here](./docs/README.md)
+To install and use the plugin you can review the documentation [here](./docs/documentation.md).
 
 ## Contributing
 
 Contributions are very welcome. Tests can be run with [tox], please ensure
 the coverage at least stays the same before you submit a pull request.
+
+## Acknowledgments
+
+The developers would like to thank the [Chan-Zuckerberg Initiative (CZI)](https://chanzuckerberg.com/) for providing funding
+for this project via the [napari Ecosystem Grants](https://chanzuckerberg.com/science/programs-resources/imaging/napari/napari-live-recording-camera-control-through-napari/).
+
+<p align="center">
+  <img src="https://images.squarespace-cdn.com/content/v1/63a48a2d279afe2a328b2823/5830fddc-a02b-451a-827b-3d4446dcf57b/Chan_Zuckerberg_Initiative.png" width="150">
+</p>
 
 ## License
 

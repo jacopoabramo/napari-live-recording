@@ -1,3 +1,8 @@
+# Creating a camera interface
+
+The documentation is work in progress. For a first glance on how the Python interface looks like, please refer to the OpenCV grabber implementation in `napari-live-recording/control/devices/opencv.py`:
+
+```py
 import cv2
 import numpy as np
 from napari_live_recording.common import ROI, ColorType
@@ -103,3 +108,5 @@ class OpenCV(ICamera):
     
     def close(self) -> None:
         self.__capture.release()
+```
+

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.4
+
+- Hotfix to statically create Micro-Manager device adapter's dictionary
+  - When opening the plugin it took too much time to inspect the available adapters
+
 ## 0.3.3
 
 - Added python-microscope interface (@PiaPritzke)
