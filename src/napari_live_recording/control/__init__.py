@@ -117,7 +117,6 @@ class MainController(QObject):
                             self.rawBuffers[cameraKey].addFrame(currentFrame)
                             self.preProcessingBuffers[cameraKey].addFrame(currentFrame)
                     except Exception as e:
-                        print("Appending Error", e)
                         pass
 
         if self.isAcquiring:
@@ -126,7 +125,8 @@ class MainController(QObject):
             self.bufferWorker = appendToBufferLoop()
             self.bufferWorker.start()
         else:
-            self.bufferWorker.quit()
+            if self.bufferWorker is not None:
+                self.bufferWorker.quit()
 
             for key in self.deviceControllers.keys():
                 self.deviceControllers[key].device.setAcquisitionStatus(False)

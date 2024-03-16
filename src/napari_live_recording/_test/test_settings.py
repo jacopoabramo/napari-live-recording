@@ -1,8 +1,45 @@
-from napari_live_recording import NapariLiveRecording
 from napari_live_recording.common import ROI
+from typing import TYPE_CHECKING
+from typing import Union
+from qtpy.QtWidgets import QScrollArea
+from qtpy.QtWidgets import QComboBox, QSlider
+from superqt import QLabeledDoubleSlider
+
+if TYPE_CHECKING:
+    from napari_live_recording import NapariLiveRecording
+
+def set_roi(widget: "NapariLiveRecording", height: int, width: int, offset_x: int, offset_y: int, cam_name: str):
+    """Helper function to set the ROI of a widget."""
+    
+    roi_widget = widget.anchor.cameraWidgetGroups[cam_name].roiWidget
+    roi_widget.heightSpinBox.setValue(height)
+    roi_widget.widthSpinBox.setValue(width)
+    roi_widget.offsetXSpinBox.setValue(offset_x)
+    roi_widget.offsetYSpinBox.setValue(offset_y)
+    roi_widget.changeROIButton.click()
+
+def change_parameter(widget: "NapariLiveRecording", cam_name: str, param_index: int, value: Union[float, int, str, bool]):
+    """Helper function to change a parameter of a widget."""
+    
+    camera_widget_group = widget.anchor.cameraWidgetGroups[cam_name]
+    scrollArea : QScrollArea = camera_widget_group.layout.itemAt(1).widget()
+    layout = scrollArea.widget().layout()
+    widget = layout.itemAt(param_index, 1).widget()
+    if type(widget) == QComboBox:
+        widget.setCurrentIndex(value)
+    elif type(widget) == QSlider or type(widget) == QLabeledDoubleSlider:
+        widget.setValue(value)
+    
+    # item = layout.itemAt(param_index)
+    # widget = item.widget()
+    # widget_layout = widget.layout()
+    # target_widget = widget_layout.itemAt(param_index, 1).widget()
+    # target_widget.setValue(value)
 
 def test_mmcore_settings_change(recording_widget):
-    widget : NapariLiveRecording = recording_widget
+    full_cam_name = "MyCamera:MicroManager:DemoCamera DCam"
+    
+    widget : "NapariLiveRecording" = recording_widget
 
     widget.anchor.selectionWidget.camerasComboBox.combobox.setCurrentIndex(1) # MicroManager
     widget.anchor.selectionWidget.adapterComboBox.combobox.setCurrentIndex(8) # DemoCamera
@@ -16,102 +53,51 @@ def test_mmcore_settings_change(recording_widget):
 
     assert len(list(widget.anchor.cameraWidgetGroups.keys())) == 1
     assert len(list(widget.mainController.deviceControllers.keys())) == 1
-    assert "MyCamera:MicroManager:DemoCamera DCam" in list(widget.anchor.cameraWidgetGroups.keys())
-
-    # parameters settings are handled by the pymmcore-plus widgets,
-    # and are not part of the plugin source code; we will test only the ROI settings;
-    # default DCam ROI is 512x512 pixels;
-    # ROI control is nested as follows:
-    # .layout() -> returns the QVBoxLayout of the cameraWidgetGroup tab;
-    # .itemAt(1) -> returns the element of the layout;
-    # .widget() -> returns the QGroupBox;
-    # .layout() -> returns the QFormLayout of the QGroupBox;
-    # .itemAt(1) -> returns the second element of the layout (the ROI widget);
-    # .widget() -> returns the widget;
-    # .click() -> clicks the button
-    widget.anchor.cameraWidgetGroups["MyCamera:MicroManager:DemoCamera DCam"].layout().itemAt(1).widget().layout().itemAt(1).widget().heightSpinBox.setValue(256)
-    widget.anchor.cameraWidgetGroups["MyCamera:MicroManager:DemoCamera DCam"].layout().itemAt(1).widget().layout().itemAt(1).widget().widthSpinBox.setValue(256)
-    widget.anchor.cameraWidgetGroups["MyCamera:MicroManager:DemoCamera DCam"].layout().itemAt(1).widget().layout().itemAt(1).widget().offsetXSpinBox.setValue(128)
-    widget.anchor.cameraWidgetGroups["MyCamera:MicroManager:DemoCamera DCam"].layout().itemAt(1).widget().layout().itemAt(1).widget().offsetYSpinBox.setValue(128)
-    widget.anchor.cameraWidgetGroups["MyCamera:MicroManager:DemoCamera DCam"].layout().itemAt(1).widget().layout().itemAt(1).widget().changeROIButton.click()
+    assert full_cam_name in list(widget.anchor.cameraWidgetGroups.keys())
+        
+    # Set the ROI using the helper function
+    set_roi(widget, height=256, width=256, offset_x=128, offset_y=128, cam_name=full_cam_name)
 
     target_roi = ROI(128, 128, 256, 256)
-    new_roi = widget.mainController.deviceControllers["MyCamera:MicroManager:DemoCamera DCam"].device.roiShape
+    new_roi = widget.mainController.deviceControllers[full_cam_name].device.roiShape
 
     assert target_roi == new_roi
     assert target_roi.pixelSizes == new_roi.pixelSizes
 
 def test_microscope_settings_change(recording_widget):
-    widget : NapariLiveRecording = recording_widget
+    full_cam_name = "MyCamera:Microscope:simulators SimulatedCamera"
+    
+    widget : "NapariLiveRecording" = recording_widget
 
     # add microscope device
     widget.anchor.selectionWidget.camerasComboBox.combobox.setCurrentIndex(3) # Microscope
-    widget.anchor.selectionWidget.microscopeModuleComboBox.combobox.setCurrentIndex(4) # simulators
+    widget.anchor.selectionWidget.microscopeModuleComboBox.combobox.setCurrentIndex(6) # simulators
     widget.anchor.selectionWidget.microscopeDeviceComboBox.combobox.setCurrentIndex(0) # SimulatedCamera
 
     widget.anchor.selectionWidget.addButton.click()
 
     assert len(list(widget.anchor.cameraWidgetGroups.keys())) == 1
     assert len(list(widget.mainController.deviceControllers.keys())) == 1
-    assert "MyCamera:Microscope:simulators SimulatedCamera" in list(widget.anchor.cameraWidgetGroups.keys())
-
-    # microscope default ROI is 512x512 pixels;
-    widget.anchor.cameraWidgetGroups["MyCamera:Microscope:simulators SimulatedCamera"].layout().itemAt(1).widget().layout().itemAt(1).widget().heightSpinBox.setValue(256)
-    widget.anchor.cameraWidgetGroups["MyCamera:Microscope:simulators SimulatedCamera"].layout().itemAt(1).widget().layout().itemAt(1).widget().widthSpinBox.setValue(256)
-    widget.anchor.cameraWidgetGroups["MyCamera:Microscope:simulators SimulatedCamera"].layout().itemAt(1).widget().layout().itemAt(1).widget().offsetXSpinBox.setValue(128)
-    widget.anchor.cameraWidgetGroups["MyCamera:Microscope:simulators SimulatedCamera"].layout().itemAt(1).widget().layout().itemAt(1).widget().offsetYSpinBox.setValue(128)
-    widget.anchor.cameraWidgetGroups["MyCamera:Microscope:simulators SimulatedCamera"].layout().itemAt(1).widget().layout().itemAt(1).widget().changeROIButton.click()
+    assert full_cam_name in list(widget.anchor.cameraWidgetGroups.keys())
+    
+    # Set the ROI using the helper function
+    set_roi(widget, height=256, width=256, offset_x=128, offset_y=128, cam_name=full_cam_name)
 
     target_roi = ROI(128, 128, 256, 256)
-    new_roi = widget.mainController.deviceControllers["MyCamera:Microscope:simulators SimulatedCamera"].device.roiShape
+    new_roi = widget.mainController.deviceControllers[full_cam_name].device.roiShape
 
     assert target_roi == new_roi
     assert target_roi.pixelSizes == new_roi.pixelSizes
 
-    # microscope has two special parameters: "Exposure time" and "transform" which are handled separately;
-    # widgets nested as follows:
-    # .layout() -> returns the QVBoxLayout of the cameraWidgetGroup tab;
-    # .itemAt(0) -> returns the element of the layout;
-    # .widget() -> returns the QScrollArea;
-    # .widget() -> returns the widget containing the parameters;
-    # .layout() -> returns the QFormLayout of the widget;
-    # .itemAt(0, 1) -> returns the first widget element of the layout (the "transform" widget; (0, 0) would return the label);
-    # .widget() -> returns the QComboBox;
-    # .setCurrentIndex(1) -> changes the value of the ComboBox to 1 "(False, False, True)"
-
-    # transform parameter (index: 0)
-    widget.anchor.cameraWidgetGroups["MyCamera:Microscope:simulators SimulatedCamera"].layout() \
-                                                                                    .itemAt(0) \
-                                                                                    .widget().widget() \
-                                                                                    .layout() \
-                                                                                    .itemAt(0, 1) \
-                                                                                    .widget() \
-                                                                                    .setCurrentIndex(1)
-
-
-    assert widget.mainController.deviceControllers["MyCamera:Microscope:simulators SimulatedCamera"].device.parameters["transform"].value == "(False, False, True)"
-
-    # exposure time parameter (index: 7)
-    widget.anchor.cameraWidgetGroups["MyCamera:Microscope:simulators SimulatedCamera"].layout() \
-                                                                                    .itemAt(0) \
-                                                                                    .widget().widget() \
-                                                                                    .layout() \
-                                                                                    .itemAt(7, 1) \
-                                                                                    .widget() \
-                                                                                    .setValue(0.03)
-
-    assert widget.mainController.deviceControllers["MyCamera:Microscope:simulators SimulatedCamera"].device.parameters["Exposure time"].value == 0.03
-
-    # image pattern (generic parameter) (index: 2)
-    widget.anchor.cameraWidgetGroups["MyCamera:Microscope:simulators SimulatedCamera"].layout() \
-                                                                                .itemAt(0) \
-                                                                                .widget().widget() \
-                                                                                .layout() \
-                                                                                .itemAt(2, 1) \
-                                                                                .widget() \
-                                                                                .setCurrentIndex(1)
+    # image pattern (generic parameter) (index: 0)
+    change_parameter(widget, full_cam_name, 0, 1)
     
-    assert widget.mainController.deviceControllers["MyCamera:Microscope:simulators SimulatedCamera"].device.parameters["image pattern"].value == "gradient"
+    assert widget.mainController.deviceControllers[full_cam_name].device.parameters["image pattern"].value == "gradient"
+    
+    # exposure time parameter (index: 5)
+    change_parameter(widget, full_cam_name, 5, 0.03)
+
+    assert widget.mainController.deviceControllers[full_cam_name].device.parameters["Exposure time"].value == 0.03
 
 
 

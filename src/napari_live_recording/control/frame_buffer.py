@@ -1,5 +1,4 @@
 import numpy as np
-import threading
 from collections import deque
 from napari_live_recording.common import ROI
 from napari_live_recording.control.devices.interface import ICamera
@@ -26,7 +25,6 @@ class Framebuffer(QObject):
         self._appendedFrames = 0
         self.allowOverwrite = allowOverwrite
         self.frameShape = camera.roiShape.pixelSizes
-        self.lock = threading.Lock()
         self.buffer = deque(maxlen=capacity)
 
     def clearBuffer(self):

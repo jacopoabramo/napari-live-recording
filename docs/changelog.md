@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.7
+
+- Fixed unit tests and added workflows for test code coverage and automatic upload on new release
+
 ## 0.3.6
 
 - Small clean-up to fix conda feedstock

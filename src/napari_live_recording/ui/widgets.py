@@ -568,11 +568,7 @@ class RecordHandling(QObject):
         self.snap.setEnabled(not status)
         self.live.setEnabled(not status)
         self.recordSpinBox.setEnabled(not status)
-        # if status:
-        #     self.recordProgress.show()
-        # else:
-        #     self.recordProgress.hide()
-
+        
     @property
     def recordSize(self) -> int:
         """Returns the record size currently indicated in the QSpinBox widget."""
