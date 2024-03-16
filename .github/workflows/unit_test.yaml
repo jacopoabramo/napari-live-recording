@@ -19,6 +19,7 @@ jobs:
         pip install --upgrade pip
         pip install -r requirements-dev.txt
         pip install .
+        mmcore install
       shell: bash
     - name: Run tests (Windows)
       if: runner.os == 'Windows'
