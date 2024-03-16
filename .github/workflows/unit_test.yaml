@@ -24,6 +24,7 @@ jobs:
         python3 -m pip install -r requirements.txt
         python3 -m pip install -r requirements-dev.txt
         python3 -m pip install .
+      shell: bash
     - name: Run tests (Linux)
       if: runner.os == 'Linux'
       run: |
