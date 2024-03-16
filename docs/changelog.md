@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.5
+
+- Updated documentation
+- Merging processing engine features into main branch
+
 ## 0.3.4
 
 - Hotfix to statically create Micro-Manager device adapter's dictionary
