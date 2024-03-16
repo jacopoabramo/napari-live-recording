@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.6
+
+- Small clean-up to fix conda feedstock
+
 ## 0.3.5
 
 - Updated documentation
