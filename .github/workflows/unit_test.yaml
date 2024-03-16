@@ -24,3 +24,8 @@ jobs:
     - name: Run tests (Windows)
       if: runner.os == 'Windows'
       run: pytest src/napari_live_recording/_test
+    - name: Upload coverage
+      uses: codecov/codecov-action@v4.0.1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        slug: jacopoabramo/napari-live-recording
