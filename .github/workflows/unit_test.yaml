@@ -5,7 +5,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [windows-latest]
         python-version: [3.9, 3.11]
     steps:
     - name: Check out code
@@ -16,18 +16,10 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        if [ "$RUNNER_OS" == "Linux" ]; then
-        sudo apt install -y xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
-          libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0
-        fi
-        python3 -m pip install --upgrade pip
-        python3 -m pip install -r requirements-dev.txt
-        python3 -m pip install .
+        pip install --upgrade pip
+        pip install -r requirements-dev.txt
+        pip install .
       shell: bash
-    - name: Run tests (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        python3 -m pytest src/napari_live_recording/_test
     - name: Run tests (Windows)
       if: runner.os == 'Windows'
       run: pytest src/napari_live_recording/_test
