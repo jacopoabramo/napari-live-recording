@@ -20,15 +20,14 @@ jobs:
         sudo apt install -y xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
           libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0
         fi
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
-        pip install .
+        python3 -m pip install --upgrade pip
+        python3 -m pip install -r requirements.txt
+        python3 -m pip install -r requirements-dev.txt
+        python3 -m pip install .
     - name: Run tests (Linux)
       if: runner.os == 'Linux'
       run: |
-        sudo apt-get install -y xvfb
-        xvfb-run --auto-servernum pytest src/napari_live_recording/_test
+        python3 -m pytest src/napari_live_recording/_test
     - name: Run tests (Windows)
       if: runner.os == 'Windows'
-      run: pytest src/napari_live_recording/_test
+      run: python pytest src/napari_live_recording/_test
