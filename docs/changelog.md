@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.8
+
+- Putting up again origina CI workflows
+
+## 0.3.7
+
+- Fixed unit tests and added workflows for test code coverage and automatic upload on new release
+
+## 0.3.6
+
+- Small clean-up to fix conda feedstock
+
+## 0.3.5
+
+- Updated documentation
+- Merging processing engine features into main branch
+
+## 0.3.4
+
+- Hotfix to statically create Micro-Manager device adapter's dictionary
+  - When opening the plugin it took too much time to inspect the available adapters
+
 ## 0.3.3
 
 - Added python-microscope interface (@PiaPritzke)
